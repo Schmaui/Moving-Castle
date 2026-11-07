@@ -79,6 +79,15 @@ export const MIGRATIONS = [
   );
   `,
 
+  // 5: Gemeinsame Einstellungen (Werte als JSON, erlaubte Werte stehen in modules/settings.js)
+  `
+  CREATE TABLE settings (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+  );
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];

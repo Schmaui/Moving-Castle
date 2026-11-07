@@ -2,7 +2,7 @@
 // das Routing per URL-Hash (#/liste, #/vorrat) und zeichnet bei Änderungen neu.
 import { CONFIG } from './config.js';
 import { VIEWS } from './views/index.js';
-import { state, subscribe, startSync, onError, logout } from './store.js';
+import { state, subscribe, startSync, onError } from './store.js';
 import { renderLogin } from './ui/login.js';
 import { icon } from './ui/art.js';
 import { h } from './util.js';
@@ -13,7 +13,6 @@ const viewsEl = document.getElementById('views');
 const offlineHint = document.getElementById('offline-hint');
 const appEl = document.querySelector('.app');
 const loginScreen = document.getElementById('login-screen');
-const footer = document.getElementById('app-footer');
 
 const ctx = { rerender: render };
 const parts = new Map(); // id -> { view, section, link, badge }
@@ -104,13 +103,8 @@ function render() {
   }
 
   offlineHint.hidden = state.online;
-  footer.hidden = !state.authEnabled;
-  if (state.authEnabled && !footer.firstChild) {
-    footer.append(h('button', {
-      class: 'btn btn--ghost btn--small', type: 'button',
-      onclick: () => { if (confirm('Dieses Gerät wirklich abmelden?')) logout(); },
-    }, 'Auf diesem Gerät abmelden'));
-  }
+  // gemeinsame Einstellungen anwenden (Farbe der Kühlschranktür, siehe css/tokens.css)
+  document.body.dataset.fridge = state.settings?.fridgeColor || 'mauve';
   withFocusPreserved(() => {
     for (const p of parts.values()) {
       p.section.replaceChildren(...[p.view.render(state, ctx)].flat().filter(Boolean));

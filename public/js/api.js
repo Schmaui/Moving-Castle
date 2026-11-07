@@ -43,6 +43,7 @@ export const api = {
     if (!res.ok) throw new ApiError(data?.error || `Serverfehler (${res.status})`, res.status);
     return data;
   },
+  patchSettings: async (patch) => (await request('PATCH', '/api/settings', patch)).data,
   photoUrl: (photo) => `/api/photos/${photo.id}/bild`,
 
   // Generische Funktionen für jede Ressource ('items', 'categories', später z. B. 'tasks')

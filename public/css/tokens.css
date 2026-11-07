@@ -165,5 +165,27 @@
   }
 }
 
+/* ---------- Weitere Kühlschrank-Farben (wählbar in den Einstellungen) ----------
+   Neue Farbe? Eine Zeile hell + eine dunkel + eine Musterfarbe ergänzen,
+   dann in server/modules/settings.js und js/views/einstellungen.js eintragen. */
+body[data-fridge="rose"] { --fridge: #e3b5b0; --on-fridge: #4f2522; --on-fridge-muted: #71403b; --color-bg: var(--fridge); }
+body[data-fridge="mint"] { --fridge: #b7d6c4; --on-fridge: #1f3f35; --on-fridge-muted: #3e5f53; --color-bg: var(--fridge); }
+body[data-fridge="salbei"] { --fridge: #bcc6a2; --on-fridge: #2f3b25; --on-fridge-muted: #4e5a42; --color-bg: var(--fridge); }
+body[data-fridge="himmel"] { --fridge: #b2c7d8; --on-fridge: #1f3446; --on-fridge-muted: #3f5567; --color-bg: var(--fridge); }
+body[data-fridge="creme"] { --fridge: #eee1c9; --on-fridge: #45352a; --on-fridge-muted: #6d5a49; --color-bg: var(--fridge); }
+@media (prefers-color-scheme: dark) {
+  body[data-fridge="rose"] { --fridge: #3d2a2a; --on-fridge: #f5e3e0; --on-fridge-muted: #cfaaa5; --color-bg: var(--fridge); }
+  body[data-fridge="mint"] { --fridge: #24332d; --on-fridge: #e2f1e8; --on-fridge-muted: #a9c7b7; --color-bg: var(--fridge); }
+  body[data-fridge="salbei"] { --fridge: #2c3326; --on-fridge: #e9eedd; --on-fridge-muted: #b6c2a0; --color-bg: var(--fridge); }
+  body[data-fridge="himmel"] { --fridge: #26303a; --on-fridge: #e1ebf3; --on-fridge-muted: #a8bccb; --color-bg: var(--fridge); }
+  body[data-fridge="creme"] { --fridge: #332b22; --on-fridge: #f3e8d8; --on-fridge-muted: #c8b59e; --color-bg: var(--fridge); }
+}
+[data-fridge-swatch="mauve"] { --swatch: #bc98ad; }
+[data-fridge-swatch="rose"] { --swatch: #e3b5b0; }
+[data-fridge-swatch="mint"] { --swatch: #b7d6c4; }
+[data-fridge-swatch="salbei"] { --swatch: #bcc6a2; }
+[data-fridge-swatch="himmel"] { --swatch: #b2c7d8; }
+[data-fridge-swatch="creme"] { --swatch: #eee1c9; }
+
 /* Tipp: Breakpoints (Handy / Tablet / PC) stehen in layout.css,
    weil CSS-Variablen in @media-Regeln nicht funktionieren. */
