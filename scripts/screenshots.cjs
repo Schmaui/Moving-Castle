@@ -800,12 +800,25 @@ function check(cond, msg) {
   await page.waitForSelector('.fx-door', { state: 'detached' });
   await reader.close();
 
+  // Am Mac: schon am Handy gesehen -> Tür zeigt die Nachrichten kurz und geht von selbst auf
+  const seenMac = await device({ viewport: { width: 1280, height: 800 }, reducedMotion: 'no-preference' }, 1);
+  page = await seenMac.newPage(); watch(page);
+  await page.goto(BASE + '/#/vorrat');
+  await page.waitForSelector('.fx-door--messages .door-note');
+  await page.waitForSelector('.fx-door', { state: 'detached', timeout: 6000 });
+  check(true, 'Am Handy gesehen (pro Person): am Mac hängt sie nur kurz, dann geht die Tür von selbst auf');
+  await seenMac.close();
+
+  // Neue Nachricht -> am Mac bleibt die Tür zu
+  await api('POST', '/api/messages', { body: 'Kino heute? 🍿', paper: 'gelb' }, 2);
   const readerPc = await device({ viewport: { width: 1280, height: 800 }, colorScheme: 'dark' }, 1);
   page = await readerPc.newPage(); watch(page);
   await page.goto(BASE + '/#/vorrat');
   await page.waitForSelector('.fx-door--messages .door-note');
   await page.screenshot({ path: path.join(OUT, 'pc-tuer-nachricht-dunkel.jpg'), quality: 85 });
-  check(true, 'PC: Nachrichten nebeneinander an der Tür');
+  check(await page.locator('.fx-door .door-note').count() === 3, 'PC: neue Nachricht -> Tür zu, alle Nachrichten nebeneinander');
+  await page.locator('.fx-door').click();
+  await page.waitForSelector('.fx-door', { state: 'detached' });
   await readerPc.close();
 
   // Schmaui (ohne Nachricht für sich): kurz „Hallo“, dann geht die Tür von selbst auf
