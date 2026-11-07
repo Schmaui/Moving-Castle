@@ -2,7 +2,8 @@
 // das Routing per URL-Hash (#/liste, #/vorrat) und zeichnet bei Änderungen neu.
 import { CONFIG } from './config.js';
 import { VIEWS } from './views/index.js';
-import { state, subscribe, startSync, onError } from './store.js';
+import { state, subscribe, startSync, onError, me } from './store.js';
+import { renderPersonPicker } from './ui/people.js';
 import { renderLogin } from './ui/login.js';
 import { icon } from './ui/art.js';
 import { h } from './util.js';
@@ -13,6 +14,7 @@ const viewsEl = document.getElementById('views');
 const offlineHint = document.getElementById('offline-hint');
 const appEl = document.querySelector('.app');
 const loginScreen = document.getElementById('login-screen');
+const whoScreen = document.getElementById('who-screen');
 
 const ctx = { rerender: render };
 const parts = new Map(); // id -> { view, section, link, badge }
@@ -100,6 +102,17 @@ function render() {
     loginScreen.hidden = true;
     loginScreen.replaceChildren();
     appEl.hidden = false;
+  }
+
+  // "Wer bist du?" – solange auf diesem Gerät noch niemand gewählt ist
+  const needsPerson = state.loaded && state.people.length > 0 && !me();
+  if (needsPerson && whoScreen.hidden) {
+    whoScreen.hidden = false;
+    renderPersonPicker(whoScreen, render);
+    whoScreen.querySelector('.who')?.focus();
+  } else if (!needsPerson && !whoScreen.hidden) {
+    whoScreen.hidden = true;
+    whoScreen.replaceChildren();
   }
 
   offlineHint.hidden = state.online;

@@ -6,5 +6,7 @@ import categories from './categories.js';
 import items from './items.js';
 import photos from './photos.js';
 import settings from './settings.js';
+import people from './people.js';
+import tasks from './tasks.js';
 
-export const MODULES = [categories, items, photos, settings];
+export const MODULES = [people, categories, items, photos, settings, tasks];

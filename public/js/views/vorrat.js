@@ -5,6 +5,7 @@ import { h, sameName } from '../util.js';
 import { viewHeader, categoryHeader, loading, toneOf, iconLabel } from '../ui/components.js';
 import { icon, PICKABLE } from '../ui/art.js';
 import { photoTiles, photoHint } from '../ui/photos.js';
+import { dueNoteCard } from './aufgaben.js';
 import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory } from '../store.js';
 import { showToast } from '../ui/toast.js';
 import { CONFIG } from '../config.js';
@@ -50,7 +51,8 @@ export default {
     // Polaroids zwischen die Zettel hängen: nach jedem X. Zettel eins (Einstellungen)
     const every = state.settings?.photoEvery ?? 2;
     const photos = every > 0 ? photoTiles() : [];
-    const board = [];
+    // Fällige Aufgaben hängen als erster Zettel an der Tür
+    const board = [dueNoteCard(state, ctx)].filter(Boolean);
     cards.forEach((card, i) => {
       board.push(card);
       if (every > 0 && (i + 1) % every === 0 && photos.length) board.push(photos.shift());

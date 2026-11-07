@@ -12,6 +12,16 @@ import { bumpRev, now, transaction } from './db.js';
 import { config } from './config.js';
 
 /**
+ * Wer macht gerade die Änderung? Jedes Gerät schickt die gewählte Person
+ * im Header "X-Person" mit (siehe public/js/me.js). Unbekannt -> null.
+ */
+export function actorOf(db, req) {
+  const id = Number(req?.headers?.['x-person']);
+  if (!Number.isSafeInteger(id) || id <= 0) return null;
+  return db.prepare('SELECT 1 FROM people WHERE id = ?').get(id) ? id : null;
+}
+
+/**
  * @param {object} ctx  { db, router }
  * @param {object} def
  *   path     – URL, z. B. '/api/items'
@@ -19,7 +29,8 @@ import { config } from './config.js';
  *   fields   – { apiName: { col, type, required, max, default, readonly, ref } }
  *   orderBy  – SQL-Sortierung
  *   messages – { duplicate, inUse } eigene Fehlermeldungen
- *   hooks    – { beforeWrite(values, existing) } um abgeleitete Felder zu setzen
+ *   hooks    – { beforeWrite(values, existing, { actor }) } um abgeleitete Felder zu setzen
+ *              (actor = id der Person, die gerade etwas ändert, oder null)
  */
 export function registerCrud({ db, router }, def) {
   const { path, table, fields, orderBy = 'id', hooks = {}, messages = {} } = def;
@@ -110,7 +121,7 @@ export function registerCrud({ db, router }, def) {
 
   router.post(path, async ({ req }) => {
     const values = parseBody(await readJson(req, config.maxBodyBytes), { isCreate: true });
-    hooks.beforeWrite?.(values, null);
+    hooks.beforeWrite?.(values, null, { actor: actorOf(db, req) });
     const ts = now();
     values.created_at = ts;
     values.updated_at = ts;
@@ -125,7 +136,7 @@ export function registerCrud({ db, router }, def) {
   router.patch(`${path}/:id`, async ({ req, params }) => {
     const existing = getOr404(params.id);
     const values = parseBody(await readJson(req, config.maxBodyBytes), { isCreate: false });
-    hooks.beforeWrite?.(values, existing);
+    hooks.beforeWrite?.(values, existing, { actor: actorOf(db, req) });
     if (Object.keys(values).length === 0) return existing;
     values.updated_at = now();
     const cols = Object.keys(values);

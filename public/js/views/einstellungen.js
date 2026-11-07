@@ -6,12 +6,15 @@
 //                   2) hier unten einen Abschnitt (section) ergänzen.
 import { h } from '../util.js';
 import { viewHeader, loading, iconLabel } from '../ui/components.js';
-import { icon } from '../ui/art.js';
+import { icon, FIGURES } from '../ui/art.js';
+import { avatar } from '../ui/people.js';
+import { myId, setMyId } from '../me.js';
 import { api } from '../api.js';
 import { shrink, openLightbox } from '../ui/photos.js';
 import { showToast } from '../ui/toast.js';
 import {
   addPhoto, deletePhoto, updatePhoto, movePhoto, sortedPhotos, updateSettings, logout,
+  updatePerson, uploadAvatar, removeAvatar,
 } from '../store.js';
 
 // Farben der Kühlschranktür (die echten Farbwerte stehen in css/tokens.css)
@@ -33,6 +36,8 @@ const PHOTO_EVERY = [
 
 const draft = { blob: null, url: null, caption: '', busy: false };
 const captions = {};   // angefangene Änderungen an Bildunterschriften
+const names = {};      // angefangene Änderungen an Namen
+const uploading = new Set(); // Profilfotos, die gerade hochgeladen werden
 
 export default {
   id: 'einstellungen',
@@ -45,13 +50,92 @@ export default {
     return [
       viewHeader({ id: 'title-einstellungen', title: 'Einstellungen', subtitle: 'gilt für euch beide ♡' }),
       h('div', { class: 'settings' },
+        peopleSection(state, ctx),
         photosSection(ctx),
         fridgeSection(state),
-        state.authEnabled && deviceSection(),
+        deviceSection(state, ctx),
       ),
     ];
   },
 };
+
+// ---------- Wir zwei (Profile) ----------
+function peopleSection(state, ctx) {
+  if (!state.people.length) return null;
+  return section('Wir zwei', 'herz', 'Name, Bild und Farbe', 5,
+    h('ul', { class: 'person-list' }, state.people.map((p) => personRow(p, ctx))),
+  );
+}
+
+function personRow(person, ctx) {
+  const saveName = () => {
+    const value = (names[person.id] ?? person.name).trim();
+    delete names[person.id];
+    if (value && value !== person.name) updatePerson(person, { name: value });
+    else ctx.rerender();
+  };
+  const input = h('input', {
+    type: 'file', accept: 'image/*', class: 'visually-hidden', tabindex: '-1',
+    onchange: async (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      uploading.add(person.id);
+      ctx.rerender();
+      try {
+        const blob = await shrink(file, { maxSize: 480, square: true });
+        if (await uploadAvatar(person, blob)) showToast('Neues Profilbild ♡');
+      } catch {
+        showToast('Das Bild konnte nicht gelesen werden', { variant: 'error' });
+      } finally {
+        uploading.delete(person.id);
+        ctx.rerender();
+      }
+    },
+  });
+  return h('li', { class: 'person-row' },
+    h('button', {
+      type: 'button', class: ['person-row__pic', uploading.has(person.id) && 'is-busy'],
+      'aria-label': `Profilbild von ${person.name} ändern`, 'data-focus-key': `pic-${person.id}`,
+      onclick: () => input.click(),
+    }, avatar(person, { size: 'lg' }), h('span', { class: 'person-row__cam' }, icon('kamera', { wash: false }))),
+    input,
+    h('div', { class: 'person-row__body' },
+      h('input', {
+        class: 'input person-row__name', type: 'text', maxlength: 30, 'aria-label': 'Name',
+        'data-focus-key': `name-${person.id}`, autocomplete: 'off', enterkeyhint: 'done',
+        value: names[person.id] ?? person.name,
+        oninput: (e) => { names[person.id] = e.target.value; },
+        onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } },
+        onblur: saveName,
+      }),
+      person.photo
+        ? h('button', {
+          type: 'button', class: 'btn btn--small btn--ghost',
+          onclick: () => { if (confirm('Profilfoto entfernen? Dann siehst du wieder die gezeichnete Figur.')) removeAvatar(person); },
+        }, 'Foto entfernen')
+        : h('div', { class: 'figure-picker', role: 'group', 'aria-label': 'Figur aussuchen' },
+          FIGURES.map((f) => h('button', {
+            type: 'button',
+            class: ['figure-picker__item', f.name === person.figure && 'is-chosen'],
+            'data-tone': person.tone,
+            'aria-pressed': String(f.name === person.figure),
+            'aria-label': f.label, title: f.label,
+            'data-focus-key': `fig-${person.id}-${f.name}`,
+            onclick: () => updatePerson(person, { figure: f.name }),
+          }, icon(f.name)))),
+      h('div', { class: 'tone-picker', role: 'group', 'aria-label': 'Farbe aussuchen' },
+        [1, 2, 3, 4, 5, 6].map((tone) => h('button', {
+          type: 'button',
+          class: ['tone-picker__item', tone === person.tone && 'is-chosen'],
+          'data-tone': tone,
+          'aria-pressed': String(tone === person.tone),
+          'aria-label': `Farbe ${tone}`,
+          'data-focus-key': `tone-${person.id}-${tone}`,
+          onclick: () => updatePerson(person, { tone }),
+        }))),
+    ),
+  );
+}
 
 // ---------- Fotos ----------
 function photosSection(ctx) {
@@ -187,12 +271,25 @@ function fridgeSection(state) {
 }
 
 // ---------- Dieses Gerät ----------
-function deviceSection() {
-  return section('Dieses Gerät', 'tuer', 'gilt nur für dieses Handy/diesen Computer', 5,
-    h('button', {
-      type: 'button', class: 'btn',
-      onclick: () => { if (confirm('Dieses Gerät wirklich abmelden?')) logout(); },
-    }, iconLabel('tuer', 'Abmelden')),
+function deviceSection(state, ctx) {
+  const mine = myId();
+  return section('Dieses Gerät', 'tuer', 'gilt nur für dieses Handy/diesen Computer', 4,
+    state.people.length > 0 && h('fieldset', { class: 'choice' },
+      h('legend', { class: 'choice__legend' }, 'Hier bin ich:'),
+      h('div', { class: 'pills' }, state.people.map((p) => h('button', {
+        type: 'button',
+        class: ['pill', 'pill--person', p.id === mine && 'is-chosen'],
+        'aria-pressed': String(p.id === mine),
+        'data-focus-key': `me-${p.id}`,
+        onclick: () => { setMyId(p.id); ctx.rerender(); },
+      }, avatar(p, { size: 'sm' }), p.name))),
+    ),
+    state.authEnabled && h('div', { class: 'choice' },
+      h('button', {
+        type: 'button', class: 'btn',
+        onclick: () => { if (confirm('Dieses Gerät wirklich abmelden?')) logout(); },
+      }, iconLabel('tuer', 'Abmelden')),
+    ),
   );
 }
 

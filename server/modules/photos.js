@@ -12,13 +12,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { registerCrud } from '../resource.js';
+import { registerCrud, actorOf } from '../resource.js';
+import { readJpeg, sendJpeg } from '../jpeg.js';
 import { HttpError } from '../http.js';
 import { validateField } from '../validate.js';
 import { bumpRev, now, transaction } from '../db.js';
 import { config } from '../config.js';
 
-const MAX_BYTES = 4 * 1024 * 1024;  // 4 MB pro Foto (verkleinert sind es meist ~300 KB)
 const MAX_PHOTOS = 100;
 const CAPTION = { col: 'caption', type: 'text', max: 60 };
 
@@ -35,27 +35,9 @@ export default {
 
     // Eigene Routen VOR registerCrud anmelden – sie haben dann Vorrang.
     router.post('/api/photos', async ({ req, query }) => {
-      if (!String(req.headers['content-type'] || '').startsWith('image/jpeg')) {
-        throw new HttpError(415, 'Bitte ein JPEG-Bild schicken');
-      }
       const count = db.prepare('SELECT COUNT(*) AS n FROM photos').get().n;
       if (count >= MAX_PHOTOS) throw new HttpError(409, `Höchstens ${MAX_PHOTOS} Fotos – bitte erst eins abnehmen`);
-
-      const chunks = [];
-      let size = 0;
-      for await (const chunk of req) {
-        size += chunk.length;
-        if (size > MAX_BYTES) throw new HttpError(413, 'Foto ist zu groß');
-        chunks.push(chunk);
-      }
-      const data = Buffer.concat(chunks);
-      // Echte JPEG-Datei? (beginnt immer mit FF D8 FF)
-      if (data.length < 100 || data[0] !== 0xff || data[1] !== 0xd8 || data[2] !== 0xff) {
-        // Für die Fehlersuche (docker compose logs): Größe und Anfang der Daten
-        console.warn(`[photos] kein JPEG: ${data.length} Bytes, Anfang ${data.subarray(0, 8).toString('hex') || 'leer'}, ` +
-          `Browser: ${String(req.headers['user-agent'] || '?').slice(0, 120)}`);
-        throw new HttpError(400, 'Das ist kein JPEG-Bild');
-      }
+      const data = await readJpeg(req);
       const caption = validateField(CAPTION, query.get('caption') ?? '', 'caption');
       const file = crypto.randomBytes(12).toString('hex') + '.jpg';
       fs.writeFileSync(path.join(dir, file), data, { mode: 0o640 });
@@ -64,8 +46,8 @@ export default {
       const sort = (db.prepare('SELECT MAX(sort) AS m FROM photos').get().m ?? -1) + 1;
       try {
         const id = transaction(db, () => {
-          const r = db.prepare('INSERT INTO photos (file, caption, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?)')
-            .run(file, caption, sort, ts, ts);
+          const r = db.prepare('INSERT INTO photos (file, caption, sort, added_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
+            .run(file, caption, sort, actorOf(db, req), ts, ts);
           bumpRev(db);
           return Number(r.lastInsertRowid);
         });
@@ -81,13 +63,7 @@ export default {
       if (!row) throw new HttpError(404, 'Foto nicht gefunden');
       let data;
       try { data = fs.readFileSync(fileOf(row)); } catch { throw new HttpError(404, 'Foto-Datei fehlt'); }
-      res.writeHead(200, {
-        'Content-Type': 'image/jpeg',
-        'Content-Length': data.length,
-        // Bild ändert sich nie (neue ID bei neuem Foto) -> darf lange im Browser bleiben
-        'Cache-Control': 'private, max-age=31536000, immutable',
-      });
-      res.end(data);
+      sendJpeg(res, data);
       return undefined;
     });
 
@@ -111,6 +87,7 @@ export default {
       fields: {
         caption: CAPTION,
         sort: { col: 'sort', type: 'int', default: 0 },
+        addedBy: { col: 'added_by', type: 'int', readonly: true },  // wer hat's aufgehängt
       },
     });
     return api;

@@ -1,12 +1,16 @@
 // Ansicht "Einkaufsliste" (/#/liste): zeigt nur, was fehlt.
 // Antippen = gekauft -> verschwindet, mit "Rückgängig".
-import { h, plural, formatAmount } from '../util.js';
+import { h, plural, formatAmount, formatWhen } from '../util.js';
 import { viewHeader, categoryHeader, emptyState, loading, toneOf, iconLabel } from '../ui/components.js';
-import { setMissing } from '../store.js';
+import { setMissing, personById } from '../store.js';
+import { avatar, byline } from '../ui/people.js';
+import { icon } from '../ui/art.js';
 import { showToast } from '../ui/toast.js';
 
 const CHECK_ANIMATION_MS = 350;
 const checking = new Set(); // Artikel, die gerade abgehakt werden (kurze Animation)
+const RECENT_DAYS = 3;      // "Zuletzt gekauft": so viele Tage zurück
+const RECENT_MAX = 6;
 
 export default {
   id: 'liste',
@@ -33,7 +37,7 @@ export default {
         title: 'Alles da!',
         text: 'Zeit für einen Tee. Was fehlt, tippst du im Vorrat an.',
         action: h('a', { class: 'btn', href: '#/vorrat' }, iconLabel('regal', 'Zum Vorrat')),
-      })];
+      }), h('div', { class: 'cards' }, recentCard(state))];
     }
 
     const cards = state.categories
@@ -45,7 +49,7 @@ export default {
           h('ul', { class: 'check-list' }, items.map((item) => h('li', {}, checkRow(item, ctx)))),
         ));
 
-    return [header, h('div', { class: 'cards' }, cards)];
+    return [header, h('div', { class: 'cards' }, cards, recentCard(state))];
   },
 };
 
@@ -64,6 +68,8 @@ function checkRow(item, ctx) {
       h('span', { class: 'check-row__name' }, item.name),
       detail && h('span', { class: 'check-row__detail' }, detail),
     ),
+    // wer hat's auf die Liste gesetzt
+    avatar(personById(item.missingBy), { size: 'sm', className: 'check-row__who' }),
   );
 }
 
@@ -92,4 +98,34 @@ function checkMark() {
   path.setAttribute('pathLength', '1');
   svg.append(path);
   return svg;
+}
+
+/** "Zuletzt gekauft": wer hat was gekauft – und mit einem Tipp wieder auf die Liste. */
+function recentCard(state) {
+  const since = Date.now() - RECENT_DAYS * 86400000;
+  const recent = state.items
+    .filter((i) => !i.missing && i.boughtAt && Date.parse(i.boughtAt) > since)
+    .sort((a, b) => b.boughtAt.localeCompare(a.boughtAt))
+    .slice(0, RECENT_MAX);
+  if (!recent.length) return null;
+  return h('section', { class: 'card card--note card--recent', 'data-tone': 6 },
+    h('div', { class: 'card__header' },
+      h('span', { class: 'card__icon' }, icon('korb')),
+      h('h2', { class: 'card__title' }, 'Zuletzt gekauft'),
+    ),
+    h('ul', { class: 'recent-list' }, recent.map((item) => h('li', { class: 'recent' },
+      h('span', { class: 'recent__text' },
+        h('span', { class: 'recent__name' }, item.name),
+        byline(item.boughtBy, formatWhen(item.boughtAt)),
+      ),
+      h('button', {
+        type: 'button', class: 'pill', 'data-focus-key': `again-${item.id}`,
+        'aria-label': `${item.name} wieder auf die Liste`,
+        onclick: () => {
+          setMissing(item, true);
+          showToast(`„${item.name}“ steht wieder auf der Liste`);
+        },
+      }, icon('plus', { wash: false }), 'nochmal'),
+    ))),
+  );
 }

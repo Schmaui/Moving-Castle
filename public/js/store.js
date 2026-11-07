@@ -7,6 +7,7 @@
 //   und schicken die Änderung dann an den Server.
 import { api } from './api.js';
 import { CONFIG } from './config.js';
+import { myId } from './me.js';
 
 export const state = {
   loaded: false,
@@ -18,6 +19,8 @@ export const state = {
   items: [],
   photos: [],
   settings: {},
+  people: [],
+  tasks: [],
 };
 
 const listeners = new Set();
@@ -129,6 +132,7 @@ export async function logout() {
   state.categories = [];
   state.photos = [];
   state.items = [];
+  state.tasks = [];
   requireLogin();
 }
 
@@ -219,4 +223,77 @@ export function updateSettings(patch) {
     () => { state.settings = { ...state.settings, ...patch }; },
     () => api.patchSettings(patch)
   );
+}
+
+// ---------- Profile ----------
+export const personById = (id) => (id == null ? null : state.people.find((p) => p.id === id) || null);
+
+/** Die Person, die gerade dieses Gerät benutzt (oder null, wenn noch nicht gewählt). */
+export const me = () => personById(myId());
+
+export function updatePerson(person, patch) {
+  return mutate(
+    () => Object.assign(personById(person.id) || {}, patch),
+    () => api.update('people', person.id, patch)
+  );
+}
+
+export function uploadAvatar(person, blob) {
+  return mutate(null, () => api.uploadAvatar(person, blob));
+}
+
+export function removeAvatar(person) {
+  return mutate(
+    () => { const p = personById(person.id); if (p) p.photo = null; },
+    () => api.removeAvatar(person)
+  );
+}
+
+// ---------- Aufgaben ----------
+const findTask = (id) => state.tasks.find((t) => t.id === id);
+
+export function addTask(data) {
+  return mutate(null, () => api.create('tasks', data));
+}
+
+export function updateTask(task, patch) {
+  return mutate(
+    () => Object.assign(findTask(task.id) || {}, patch),
+    () => api.update('tasks', task.id, patch)
+  );
+}
+
+/** Abhaken. Gibt { task, next } zurück (next = nächste Wiederholung oder null). */
+export function completeTask(task, nextDue) {
+  return mutate(
+    () => {
+      const t = findTask(task.id);
+      if (t) Object.assign(t, { done: true, doneBy: myId(), doneAt: new Date().toISOString() });
+    },
+    () => api.completeTask(task, nextDue)
+  );
+}
+
+/** "Rückgängig" nach dem Abhaken: wieder offen, eine schon angelegte Wiederholung weg. */
+export async function reopenTask(task, next) {
+  if (next) {
+    await mutate(
+      () => { state.tasks = state.tasks.filter((t) => t.id !== next.id); },
+      () => api.remove('tasks', next.id)
+    );
+  }
+  return updateTask(task, { done: false });
+}
+
+export function deleteTask(task) {
+  return mutate(
+    () => { state.tasks = state.tasks.filter((t) => t.id !== task.id); },
+    () => api.remove('tasks', task.id)
+  );
+}
+
+/** Gelöschte Aufgabe wiederherstellen (für "Rückgängig"). */
+export function restoreTask(task) {
+  const { title, note, due, repeat, assigneeId } = task;
+  return mutate(null, () => api.create('tasks', { title, note, due, repeat, assigneeId }));
 }

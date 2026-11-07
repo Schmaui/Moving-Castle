@@ -21,14 +21,27 @@ export default {
         unit:         { col: 'unit',          type: 'text',   max: 20 },
         note:         { col: 'note',          type: 'text',   max: 500, multiline: true },
         sort:         { col: 'sort',          type: 'int',    default: 0 },
+        missingBy:    { col: 'missing_by',    type: 'int',    readonly: true }, // wer hat's auf die Liste gesetzt
+        boughtBy:     { col: 'bought_by',     type: 'int',    readonly: true }, // wer hat's zuletzt gekauft
+        boughtAt:     { col: 'bought_at',     type: 'text',   readonly: true },
       },
       hooks: {
-        // "fehlt seit" automatisch pflegen
-        beforeWrite(values, existing) {
+        // "fehlt seit", "wer hat's draufgesetzt" und "wer hat's gekauft" automatisch pflegen
+        beforeWrite(values, existing, { actor }) {
           if (!('missing' in values)) return;
           const was = existing ? existing.missing : false;
-          if (values.missing && !was) values.missing_since = now();
-          if (!values.missing) values.missing_since = null;
+          if (values.missing && !was) {
+            values.missing_since = now();
+            values.missing_by = actor;
+          }
+          if (!values.missing) {
+            values.missing_since = null;
+            values.missing_by = null;
+            if (was) {
+              values.bought_by = actor;
+              values.bought_at = now();
+            }
+          }
         },
       },
     });

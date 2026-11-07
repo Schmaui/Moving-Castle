@@ -780,3 +780,314 @@
   .swatch:hover:not(.is-chosen), .segmented__item:hover:not(.is-chosen) { background: var(--color-surface-hover); }
 }
 .polaroid--add { text-decoration: none; }
+
+/* =====================================================================
+   PROFILE & AUFGABEN (js/ui/people.js, js/views/aufgaben.js)
+   ===================================================================== */
+
+/* ---------- Avatar: runder Sticker mit Foto oder gezeichneter Figur ---------- */
+.avatar {
+  --avatar-size: 30px;
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: var(--avatar-size);
+  height: var(--avatar-size);
+  border: 1.5px solid var(--color-ink);
+  border-radius: var(--radius-blob);
+  background: color-mix(in srgb, var(--card-tone, var(--tone-1)) 60%, var(--color-surface));
+  color: var(--color-ink);
+  overflow: hidden;
+  rotate: -4deg;
+  --art-wash: color-mix(in srgb, var(--card-tone, var(--tone-1)) 100%, var(--color-ink) 12%);
+}
+.avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.avatar .art { width: 92%; height: 92%; stroke-width: 2.2; }
+.avatar--xs { --avatar-size: 22px; border-width: 1.2px; }
+.avatar--xs .art { stroke-width: 2.8; }
+.avatar--sm { --avatar-size: 30px; }
+.avatar--md { --avatar-size: 44px; }
+.avatar--lg { --avatar-size: 72px; border-width: 2px; box-shadow: 2px 2px 0 var(--color-ink); }
+.avatar--xl { --avatar-size: 104px; border-width: 2px; box-shadow: 3px 3px 0 var(--color-ink); }
+.avatar--lg .art, .avatar--xl .art { stroke-width: 1.7; }
+
+/* "Kait · heute 14:30" */
+.byline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+/* ---------- "Wer bist du?" ---------- */
+.who-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: var(--space-4);
+  background: color-mix(in srgb, var(--fridge) 88%, transparent);
+  backdrop-filter: blur(3px);
+  animation: fade-in 180ms ease-out;
+}
+.who-screen[hidden] { display: none; }
+.who {
+  width: min(100%, 440px);
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+  text-align: center;
+  padding: var(--space-6) var(--space-5) var(--space-5);
+  rotate: -1deg;
+}
+
+.who:focus { outline: none; }
+.who__title { font-size: var(--font-size-2xl); font-weight: 600; }
+.who__text { color: var(--color-accent); margin: 0; max-width: 26ch; rotate: -1deg; }
+.who__people { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--space-5); margin: var(--space-3) 0; }
+.who__person {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 0;
+  border-radius: var(--radius-card);
+  background: transparent;
+  transition: transform var(--transition), background var(--transition-fast);
+}
+.who__person:nth-child(even) .avatar { rotate: 5deg; }
+.who__person:active { transform: scale(0.95); }
+.who__name { font-family: var(--font-hand); font-size: 1.9rem; font-weight: 700; line-height: 1; }
+.who__small { margin: 0; font-size: var(--font-size-sm); }
+@media (hover: hover) {
+  .who__person:hover { background: var(--color-surface-hover); transform: rotate(-2deg) translateY(-2px); }
+}
+
+/* ---------- Kleine Auswahl-Knöpfe ("Pillen") ---------- */
+.pills { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 var(--space-3);
+  border: 1.5px solid color-mix(in srgb, var(--color-ink) 30%, transparent);
+  border-radius: var(--radius-chip);
+  background: var(--color-surface);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition);
+}
+.pill .art { width: 18px; height: 18px; stroke-width: 3; margin-left: -2px; }
+.pill:has(.avatar) { padding-left: 5px; }
+.pill:active { transform: scale(0.95); }
+.pill.is-chosen {
+  background: var(--color-accent);
+  border-color: var(--color-ink);
+  color: var(--color-on-accent);
+  box-shadow: 2px 2px 0 var(--color-ink);
+}
+@media (hover: hover) {
+  .pill:hover:not(.is-chosen) { background: var(--color-surface-hover); border-color: var(--color-ink); }
+}
+/* Filter oben direkt auf der Tür */
+.pills--filter { margin: calc(-1 * var(--space-2)) 0 var(--space-5); }
+.pills--filter .pill:not(.is-chosen) { background: color-mix(in srgb, var(--color-surface) 75%, transparent); }
+
+/* ---------- Aufgaben ---------- */
+/* Raster statt Spalten: so bricht kein Zettel (samt Tape) zwischen zwei Spalten um */
+.cards--tasks { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 340px), 1fr)); column-gap: var(--space-5); align-items: start; }
+@media (min-width: 1100px) { .cards--tasks { max-width: 1200px; } }
+
+.task-list > li { border-bottom: 1.5px solid var(--line-color); }
+.task-list > li:last-child { border-bottom: 0; }
+.task {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-size);
+  transition: opacity var(--transition);
+}
+.task__check {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 44px; height: 48px;
+  margin-left: -6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+.task__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  text-decoration: none;
+  color: inherit;
+}
+.task__title {
+  font-family: var(--font-hand);
+  font-size: 1.6rem;
+  font-weight: 600;
+  line-height: 1.05;
+  overflow-wrap: anywhere;
+}
+.task__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-3); }
+.task__due, .task__tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+  min-width: 0;
+}
+.task__due .art, .task__tag .art { width: 15px; height: 15px; stroke-width: 3; }
+.task__due.is-today { color: var(--color-accent); font-weight: var(--font-weight-medium); }
+.task__due.is-overdue { color: var(--color-missing); font-weight: var(--font-weight-bold); }
+.task__note { max-width: 100%; }
+.task__note, .task__note + * { overflow: hidden; }
+.task__note { white-space: nowrap; text-overflow: ellipsis; display: inline-block; max-width: 22ch; }
+.task__note .art { vertical-align: -2px; margin-right: 2px; }
+.task__who { margin-left: auto; }
+
+.task__check:hover .check-row__box, .task__check:focus-visible .check-row__box { transform: rotate(-6deg); }
+@media (hover: hover) {
+  .task__main:hover { background: color-mix(in srgb, var(--color-highlight) 15%, transparent); }
+  .task__check:hover .check-mark { color: var(--color-accent); }
+  .task__check:hover .check-mark path { stroke-dashoffset: 0; opacity: 0.4; }
+}
+.task.is-checked { opacity: 0.55; }
+.task.is-checked .check-row__box { background: var(--color-accent); color: var(--color-on-accent); transform: rotate(-8deg) scale(1.1); }
+.task.is-checked .check-mark path { animation: draw-check 320ms ease-out forwards; opacity: 1; }
+.task.is-checked .task__title { text-decoration: line-through wavy var(--color-missing) 2px; }
+
+/* Erledigt-Verlauf */
+.task--done .check-row__box { background: var(--color-accent-soft); border-color: var(--color-accent); color: var(--color-accent); }
+.task--done .check-mark path { stroke-dashoffset: 0; }
+.task--done .task__title { font-size: 1.35rem; color: var(--color-text-muted); text-decoration: line-through 1.5px; }
+.task--done .btn--icon { width: 36px; min-height: 36px; }
+.task--done .btn--icon .art { width: 20px; height: 20px; }
+.card--done > .btn { margin-top: var(--space-2); }
+
+/* Neue Aufgabe */
+.task-new { border: 2px dashed color-mix(in srgb, var(--color-ink) 25%, transparent); }
+.add-form--tight { margin-top: 0; }
+.task-new__more {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: var(--space-3);
+  padding: var(--space-1) var(--space-2) var(--space-1) 0;
+  border: 0;
+  background: transparent;
+  font-family: var(--font-hand);
+  font-size: 1.3rem;
+  color: var(--color-text-muted);
+  text-align: left;
+}
+.task-new__more .art { width: 18px; height: 18px; stroke-width: 3; }
+.task-new__summary { color: var(--color-accent); }
+.task-fields { display: grid; gap: var(--space-1); }
+.task-fields .choice__legend { display: inline-flex; align-items: center; gap: 4px; }
+.task-fields .choice__legend .art--btn { margin-left: 0; }
+label.choice { display: grid; gap: var(--space-2); }
+.input--date { flex: 0 1 170px; min-height: 38px; padding: 0 var(--space-3); font-size: var(--font-size-sm); }
+.input--area { width: 100%; min-height: 64px; padding: var(--space-2) var(--space-3); resize: vertical; line-height: 1.35; }
+
+/* Aufgabe bearbeiten */
+.task--editing { display: block; padding: var(--space-3) 0; }
+.task-edit { display: grid; gap: var(--space-2); }
+.task-edit__title { font-family: var(--font-hand); font-size: 1.5rem; font-weight: 600; }
+.task-edit__by { margin: var(--space-2) 0 0; }
+.task-edit__delete { margin-left: auto; }
+
+/* Zettel "Heute dran" an der Kühlschranktür (Vorrat) */
+.card__link, .card__more {
+  font-family: var(--font-hand);
+  font-size: 1.25rem;
+  color: var(--color-accent);
+  text-decoration: underline wavy color-mix(in srgb, var(--color-accent) 45%, transparent) 1.5px;
+  text-underline-offset: 4px;
+  white-space: nowrap;
+}
+.card__more { display: inline-block; margin-top: var(--space-2); }
+.card--due .task__title { font-size: 1.45rem; }
+.card--due .card__header { padding-right: 0; }
+
+/* ---------- Einkaufsliste: wer hat's draufgesetzt / Zuletzt gekauft ---------- */
+.check-row__who { margin-left: auto; }
+.recent-list > li { border-bottom: 1.5px dashed var(--color-border); }
+.recent-list > li:last-child { border-bottom: 0; }
+.recent { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; }
+.recent__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.recent__name { font-family: var(--font-hand); font-size: 1.4rem; font-weight: 600; line-height: 1.05; }
+
+/* ---------- Polaroid: wer hat's aufgehängt ---------- */
+.polaroid__by { position: absolute; right: 4px; bottom: 6px; rotate: 8deg; z-index: 2; }
+.polaroid--big .polaroid__by { --avatar-size: 34px; }
+
+/* ---------- Einstellungen: Wir zwei ---------- */
+.person-list { display: grid; gap: var(--space-4); }
+.person-row { display: flex; align-items: flex-start; gap: var(--space-4); padding-bottom: var(--space-4); border-bottom: 1.5px dashed var(--color-border); }
+.person-row:last-child { border-bottom: 0; padding-bottom: 0; }
+.person-row__pic {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 4px;
+  border: 0;
+  background: transparent;
+}
+.person-row__pic.is-busy { opacity: 0.5; }
+.person-row:nth-child(even) .person-row__pic .avatar { rotate: 4deg; }
+.person-row__cam {
+  position: absolute;
+  right: -2px; bottom: -2px;
+  display: grid; place-items: center;
+  width: 30px; height: 30px;
+  border: 1.5px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-surface);
+}
+.person-row__cam .art { width: 18px; height: 18px; stroke-width: 2.6; }
+.person-row__body { flex: 1; min-width: 0; display: grid; gap: var(--space-2); justify-items: start; }
+.person-row__name { width: 100%; font-family: var(--font-hand); font-size: 1.5rem; font-weight: 600; }
+.figure-picker { display: flex; flex-wrap: wrap; gap: 2px; }
+.figure-picker__item {
+  display: grid; place-items: center;
+  width: 42px; height: 42px;
+  padding: 3px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-blob);
+  background: transparent;
+  --art-wash: var(--card-tone);
+}
+.figure-picker__item .art { width: 100%; height: 100%; }
+.figure-picker__item.is-chosen { border-color: var(--color-ink); background: var(--color-surface); box-shadow: 2px 2px 0 var(--color-ink); rotate: -4deg; }
+.tone-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.tone-picker__item {
+  width: 28px; height: 28px;
+  padding: 0;
+  border: 1.5px solid color-mix(in srgb, var(--color-ink) 30%, transparent);
+  border-radius: var(--radius-blob);
+  background: var(--card-tone);
+}
+.tone-picker__item.is-chosen { border: 2.5px solid var(--color-ink); scale: 1.15; rotate: -8deg; }
+@media (hover: hover) {
+  .figure-picker__item:hover:not(.is-chosen) { background: var(--color-surface-hover); }
+  .person-row__pic:hover .avatar { rotate: 2deg; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .task.is-checked .check-mark path { animation: none; stroke-dashoffset: 0; }
+}

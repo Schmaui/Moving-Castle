@@ -16,7 +16,19 @@ const TYPES = {
     if (field.max && [...v].length > field.max) {
       throw new HttpError(400, `${key}: höchstens ${field.max} Zeichen`);
     }
+    if (v !== '' && field.values && !field.values.includes(v)) {
+      throw new HttpError(400, `${key}: ungültiger Wert`);
+    }
     return v === '' ? null : v;
+  },
+  // Kalendertag, z. B. "2026-11-07"
+  date(value, field, key) {
+    if (value === null || value === '') return null;
+    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value) ||
+        Number.isNaN(Date.parse(`${value}T00:00:00Z`))) {
+      throw new HttpError(400, `${key}: Datum im Format JJJJ-MM-TT erwartet`);
+    }
+    return value;
   },
   int(value, field, key) {
     if (value === null) return null;

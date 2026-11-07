@@ -120,6 +120,111 @@ test('Statische Dateien und Schutz vor Pfad-Tricks', async () => {
   assert.equal((await fetch(BASE + '/css/tokens.css')).status, 200);
 });
 
+// ---------- Profile, "wer hat was gemacht", Aufgaben ----------
+const as = (person, method, url, body) =>
+  fetch(BASE + url, {
+    method,
+    headers: { 'X-Person': String(person), ...(body ? { 'Content-Type': 'application/json' } : {}) },
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(async (r) => ({ status: r.status, body: await r.json().catch(() => null) }));
+
+// kleinstes gültiges JPEG-ähnliches Stück: FF D8 FF + Füllbytes
+const fakeJpeg = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(200, 1)]);
+
+test('Profile: wir zwei sind angelegt und änderbar', async () => {
+  const { body } = await json('GET', '/api/state');
+  assert.deepEqual(body.people.map((p) => p.name), ['Kait', 'Schmaui']);
+  const r = await json('PATCH', '/api/people/2', { figure: 'pilz', tone: 3 });
+  assert.equal(r.body.figure, 'pilz');
+  assert.equal((await json('PATCH', '/api/people/2', { figure: 'drache' })).status, 400);
+  assert.equal((await json('PATCH', '/api/people/2', { tone: 9 })).status, 400);
+});
+
+test('Profilfoto hochladen und entfernen', async () => {
+  const up = await fetch(BASE + '/api/people/1/bild', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: fakeJpeg });
+  assert.equal(up.status, 200);
+  const person = await up.json();
+  assert.match(person.photo, /^profil-[0-9a-f]+\.jpg$/);
+  const img = await fetch(BASE + '/api/people/1/bild');
+  assert.equal(img.status, 200);
+  assert.equal(img.headers.get('content-type'), 'image/jpeg');
+  const bad = await fetch(BASE + '/api/people/1/bild', { method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: 'hallo'.repeat(30) });
+  assert.equal(bad.status, 400);
+  const del = await json('DELETE', '/api/people/1/bild');
+  assert.equal(del.body.photo, null);
+  assert.equal((await fetch(BASE + '/api/people/1/bild')).status, 404);
+});
+
+test('Einkaufsliste merkt sich, wer draufgesetzt und wer gekauft hat', async () => {
+  const on = await as(2, 'PATCH', '/api/items/3', { missing: true });
+  assert.equal(on.body.missingBy, 2);
+  const off = await as(1, 'PATCH', '/api/items/3', { missing: false });
+  assert.equal(off.body.missingBy, null);
+  assert.equal(off.body.boughtBy, 1);
+  assert.ok(off.body.boughtAt);
+  // unbekannte Person wird ignoriert
+  const unknown = await as(99, 'PATCH', '/api/items/3', { missing: true });
+  assert.equal(unknown.body.missingBy, null);
+  await json('PATCH', '/api/items/3', { missing: false });
+});
+
+test('Fotos merken sich, wer sie aufgehängt hat', async () => {
+  const r = await fetch(BASE + '/api/photos?caption=Urlaub', {
+    method: 'POST', headers: { 'Content-Type': 'image/jpeg', 'X-Person': '2' }, body: fakeJpeg,
+  });
+  assert.equal(r.status, 201);
+  const photo = await r.json();
+  assert.equal(photo.addedBy, 2);
+  await json('DELETE', `/api/photos/${photo.id}`);
+});
+
+test('Aufgaben: anlegen, prüfen, bearbeiten, löschen', async () => {
+  const t = await as(1, 'POST', '/api/tasks', { title: ' Altglas wegbringen ', due: '2026-11-10', assigneeId: 2, note: 'Zeile 1\nZeile 2' });
+  assert.equal(t.status, 201);
+  assert.equal(t.body.title, 'Altglas wegbringen');
+  assert.equal(t.body.createdBy, 1);
+  assert.equal(t.body.note, 'Zeile 1\nZeile 2');
+  assert.equal(t.body.done, false);
+
+  assert.equal((await json('POST', '/api/tasks', { title: '' })).status, 400);
+  assert.equal((await json('POST', '/api/tasks', { title: 'x', due: '10.11.2026' })).status, 400);
+  assert.equal((await json('POST', '/api/tasks', { title: 'x', repeat: 'jaehrlich' })).status, 400);
+  assert.equal((await json('POST', '/api/tasks', { title: 'x', assigneeId: 99 })).status, 400);
+  assert.equal((await json('POST', '/api/tasks', { title: 'x', createdBy: 2 })).status, 400); // schreibgeschützt
+
+  const done = await as(2, 'PATCH', `/api/tasks/${t.body.id}`, { done: true });
+  assert.equal(done.body.doneBy, 2);
+  assert.ok(done.body.doneAt);
+  const reopened = await as(1, 'PATCH', `/api/tasks/${t.body.id}`, { done: false, due: null });
+  assert.equal(reopened.body.doneBy, null);
+  assert.equal(reopened.body.due, null);
+
+  assert.equal((await json('DELETE', `/api/tasks/${t.body.id}`)).status, 200);
+});
+
+test('Aufgaben: abhaken mit Wiederholung legt die nächste an', async () => {
+  const t = await as(1, 'POST', '/api/tasks', { title: 'Bad putzen', due: '2026-11-07', repeat: 'woechentlich' });
+  const r = await as(2, 'POST', `/api/tasks/${t.body.id}/erledigt`, { nextDue: '2026-11-14' });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.task.done, true);
+  assert.equal(r.body.task.doneBy, 2);
+  assert.equal(r.body.next.due, '2026-11-14');
+  assert.equal(r.body.next.repeat, 'woechentlich');
+  assert.equal(r.body.next.createdBy, 1);
+  assert.equal(r.body.next.done, false);
+
+  // zweimal abhaken (z. B. beide Handys gleichzeitig) legt keine zweite an
+  const again = await as(1, 'POST', `/api/tasks/${t.body.id}/erledigt`, { nextDue: '2026-11-14' });
+  assert.equal(again.body.next, null);
+  const { body } = await json('GET', '/api/state');
+  assert.equal(body.tasks.filter((x) => x.title === 'Bad putzen' && !x.done).length, 1);
+
+  // ohne Wiederholung: keine neue Aufgabe
+  const once = await json('POST', '/api/tasks', { title: 'Einmalig' });
+  const r2 = await json('POST', `/api/tasks/${once.body.id}/erledigt`, {});
+  assert.equal(r2.body.next, null);
+});
+
 // ---------- Anmeldung (zweiter Server mit Passwort) ----------
 test('Anmeldung mit Haushalts-Passwort', async () => {
   const port = PORT + 1;

@@ -4,7 +4,8 @@
 //     (js/views/einstellungen.js) – gilt für alle Geräte.
 import { h } from '../util.js';
 import { api } from '../api.js';
-import { sortedPhotos } from '../store.js';
+import { sortedPhotos, personById } from '../store.js';
+import { avatar } from './people.js';
 import { icon } from './art.js';
 
 const MAX_SIZE = 1600;
@@ -27,6 +28,8 @@ export function polaroid(photo, i = 0, { className } = {}) {
       onclick: () => openLightbox(photo),
     }, h('img', { src: api.photoUrl(photo), alt: photo.caption || '', loading: 'lazy', decoding: 'async' })),
     h('figcaption', { class: 'polaroid__caption' }, photo.caption || ''),
+    // kleiner Sticker: wer hat's aufgehängt
+    avatar(personById(photo.addedBy), { size: 'xs', className: 'polaroid__by' }),
   );
 }
 
@@ -38,8 +41,12 @@ export function photoHint() {
   );
 }
 
-/** Bild verkleinern und als JPEG neu speichern (entfernt auch GPS-Daten). */
-export async function shrink(file) {
+/**
+ * Bild verkleinern und als JPEG neu speichern (entfernt auch GPS-Daten).
+ *   shrink(file)                                -> Foto für die Tür
+ *   shrink(file, { maxSize: 480, square: true }) -> quadratisch (Profilbild)
+ */
+export async function shrink(file, { maxSize = MAX_SIZE, square = false } = {}) {
   let source;
   try {
     source = await createImageBitmap(file, { imageOrientation: 'from-image' });
@@ -51,12 +58,17 @@ export async function shrink(file) {
       img.src = URL.createObjectURL(file);
     });
   }
-  const w = source.width, hgt = source.height;
-  const scale = Math.min(1, MAX_SIZE / Math.max(w, hgt));
+  // Ausschnitt: ganzes Bild, oder bei square die Mitte als Quadrat
+  let sx = 0, sy = 0, sw = source.width, sh = source.height;
+  if (square) {
+    const side = Math.min(sw, sh);
+    sx = (sw - side) / 2; sy = (sh - side) / 2; sw = sh = side;
+  }
+  const scale = Math.min(1, maxSize / Math.max(sw, sh));
   const canvas = document.createElement('canvas');
-  canvas.width = Math.round(w * scale);
-  canvas.height = Math.round(hgt * scale);
-  canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
+  canvas.width = Math.round(sw * scale);
+  canvas.height = Math.round(sh * scale);
+  canvas.getContext('2d').drawImage(source, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
   source.close?.();
 
   // Manche Handy-Browser liefern bei toBlob leere oder falsche Daten (z. B. PNG).

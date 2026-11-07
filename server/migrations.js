@@ -88,6 +88,44 @@ export const MIGRATIONS = [
   );
   `,
 
+  // 6: Profile (wir zwei), "wer hat was gemacht" und Aufgaben
+  `
+  CREATE TABLE people (
+    id          INTEGER PRIMARY KEY,
+    name        TEXT    NOT NULL,
+    figure      TEXT    NOT NULL DEFAULT 'katze',  -- gezeichnete Figur (public/js/ui/art.js)
+    tone        INTEGER NOT NULL DEFAULT 1,        -- Farbton 1–6 (css/tokens.css)
+    photo       TEXT,                              -- eigenes Profilfoto in data/fotos/ (optional)
+    sort        INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+  INSERT INTO people (name, figure, tone, sort, created_at, updated_at) VALUES
+    ('Kait',    'katze',  5, 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    ('Schmaui', 'frosch', 1, 1, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+
+  ALTER TABLE items  ADD COLUMN missing_by INTEGER REFERENCES people(id) ON DELETE SET NULL; -- wer hat's auf die Liste gesetzt
+  ALTER TABLE items  ADD COLUMN bought_by  INTEGER REFERENCES people(id) ON DELETE SET NULL; -- wer hat's zuletzt gekauft
+  ALTER TABLE items  ADD COLUMN bought_at  TEXT;
+  ALTER TABLE photos ADD COLUMN added_by   INTEGER REFERENCES people(id) ON DELETE SET NULL; -- wer hat's aufgehängt
+
+  CREATE TABLE tasks (
+    id          INTEGER PRIMARY KEY,
+    title       TEXT    NOT NULL,
+    note        TEXT,
+    due         TEXT,                 -- fällig am "JJJJ-MM-TT" (oder leer = irgendwann)
+    repeat      TEXT,                 -- leer, 'taeglich', 'woechentlich', '2wochen', 'monatlich'
+    assignee_id INTEGER REFERENCES people(id) ON DELETE SET NULL,  -- leer = egal wer
+    created_by  INTEGER REFERENCES people(id) ON DELETE SET NULL,
+    done        INTEGER NOT NULL DEFAULT 0,
+    done_by     INTEGER REFERENCES people(id) ON DELETE SET NULL,
+    done_at     TEXT,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+  CREATE INDEX tasks_done ON tasks (done);
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];

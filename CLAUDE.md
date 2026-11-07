@@ -7,7 +7,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
 ## Technik (Kurzfassung – Details in README.md und docs/ANPASSEN.md)
 - Node.js ≥ 22.13 ohne npm-Abhängigkeiten, eingebautes `node:sqlite`. Start: `npm start`, Tests: `npm test`.
 - Frontend: Vanilla JS (ES-Module), kein Build. Design-Variablen in `public/css/tokens.css`.
-- Module (Server): `server/modules/*` (categories, items, photos, settings). Ansichten: `public/js/views/*`.
+- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks). Ansichten: `public/js/views/*`.
 - Migrationen: `server/migrations.js` – nur NEUE Einträge anhängen, alte nie ändern.
 - Gezeichnete Symbole statt Emojis: `public/js/ui/art.js`. Szenen-SVGs: `scripts/make-art.py`.
 - Strenge CSP (keine Inline-Styles/-Scripts), alle Ausgaben über `h()` (XSS-sicher).
@@ -36,6 +36,17 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   - Polaroid-Fotos zwischen den Zetteln (Upload, im Browser verkleinert, nur mit Login sichtbar).
   - Einstellungen-Seite (#/einstellungen, Nav „Mehr“): Fotos verwalten, Türfarbe, Foto-Häufigkeit,
     Abmelden – gemeinsam für alle Geräte (`server/modules/settings.js`).
-- Danach geplant: NFC-Sticker (Anleitung `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`),
+- Branch `aufgaben-profile` (**noch nicht live**, wartet auf Freigabe):
+  - Profile „Wir zwei“ (Kait, Schmaui): Name, gezeichnete Figur oder eigenes Foto, Farbe
+    (`server/modules/people.js`). Jedes Gerät fragt einmal „Wer bist du?“ (localStorage,
+    `public/js/me.js`) und schickt die Person als Header `X-Person` mit.
+  - Wer-hat-was: Einkaufsliste (wer draufgesetzt, „Zuletzt gekauft“ mit „nochmal“), Fotos (wer aufgehängt).
+  - Aufgaben (#/aufgaben, `server/modules/tasks.js`): fällig am, wer macht’s, wiederholen
+    (täglich/wöchentlich/2 Wochen/monatlich), Notiz, Erledigt-Verlauf; „Heute dran“-Zettel im Vorrat.
+- Nächste Wünsche (Reihenfolge der Nutzer): Rezepte + Essensplan (Abgleich mit Vorrat, Fehlendes
+  auf die Liste; Rezepte per Link-Import und selbst eintippen; Nutzer leben fast vegan),
+  dann Infos-Pinnwand (WLAN-QR, Nummern, Zählerstände, Müll …), dann Kalender
+  (Abo-Link für Apple-Kalender, ggf. iCloud-Kalender lesend anzeigen).
+- Später: NFC-Sticker (Anleitung `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`),
   evtl. später Aufgaben/Infos/Rezepte (Beispiel in docs/ANPASSEN.md).
 - Hinweis: Bilder, die Nutzer im Chat schicken, kamen zuletzt teilweise leer an → ggf. nachfragen.
