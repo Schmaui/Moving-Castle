@@ -30,8 +30,8 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
 - Vor dem Mergen: `npm test` und `scripts/screenshots.cjs` müssen grün sein.
 
 ## Stand / offen (zuletzt aktualisiert: 7.11.2026)
-- `main` (live): Zeichnungs-Design (Skizzenbuch, Papier), Login, Auto-Update.
-- Branch `design-kuehlschrank` (**noch nicht live**, wartet auf Freigabe):
+- `main` (live): Zeichnungs-Design, Login, Auto-Update **und seit 7.11.2026 das Kühlschrank-Design**
+  (vom Branch `design-kuehlschrank` gemergt):
   - Kühlschranktür-Design in Mauve, schräge Zettel mit Washi-Tape.
   - Polaroid-Fotos zwischen den Zetteln (Upload, im Browser verkleinert, nur mit Login sichtbar).
   - Einstellungen-Seite (#/einstellungen, Nav „Mehr“): Fotos verwalten, Türfarbe, Foto-Häufigkeit,
