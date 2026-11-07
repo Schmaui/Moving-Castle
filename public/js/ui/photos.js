@@ -57,8 +57,27 @@ export async function shrink(file) {
   canvas.width = Math.round(w * scale);
   canvas.height = Math.round(hgt * scale);
   canvas.getContext('2d').drawImage(source, 0, 0, canvas.width, canvas.height);
-  return new Promise((resolve, reject) =>
-    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('toBlob'))), 'image/jpeg', 0.85));
+  source.close?.();
+
+  // Manche Handy-Browser liefern bei toBlob leere oder falsche Daten (z. B. PNG).
+  // Darum prüfen wir die ersten Bytes und nehmen notfalls den Umweg über toDataURL.
+  let bytes = null;
+  try {
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if (blob) bytes = new Uint8Array(await blob.arrayBuffer());
+  } catch { /* Umweg unten */ }
+  if (!isJpeg(bytes)) {
+    const url = canvas.toDataURL('image/jpeg', 0.85);
+    const bin = atob(url.slice(url.indexOf(',') + 1));
+    bytes = Uint8Array.from(bin, (c) => c.charCodeAt(0));
+  }
+  canvas.width = canvas.height = 0; // Speicher sofort freigeben (wichtig auf dem iPhone)
+  if (!isJpeg(bytes)) throw new Error('kein JPEG');
+  return new Blob([bytes], { type: 'image/jpeg' });
+}
+
+function isJpeg(b) {
+  return !!b && b.length > 100 && b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff;
 }
 
 /** Foto groß ansehen. Antippen oder Esc schließt. */

@@ -51,6 +51,9 @@ export default {
       const data = Buffer.concat(chunks);
       // Echte JPEG-Datei? (beginnt immer mit FF D8 FF)
       if (data.length < 100 || data[0] !== 0xff || data[1] !== 0xd8 || data[2] !== 0xff) {
+        // Für die Fehlersuche (docker compose logs): Größe und Anfang der Daten
+        console.warn(`[photos] kein JPEG: ${data.length} Bytes, Anfang ${data.subarray(0, 8).toString('hex') || 'leer'}, ` +
+          `Browser: ${String(req.headers['user-agent'] || '?').slice(0, 120)}`);
         throw new HttpError(400, 'Das ist kein JPEG-Bild');
       }
       const caption = validateField(CAPTION, query.get('caption') ?? '', 'caption');

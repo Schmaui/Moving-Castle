@@ -37,7 +37,9 @@ export const api = {
   // Fotos: Bild als JPEG-Datei hochladen (nicht als JSON)
   uploadPhoto: async (blob, caption = '') => {
     const res = await fetch(`/api/photos?caption=${encodeURIComponent(caption)}`, {
-      method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob,
+      // Als fertige Bytes schicken statt als Blob – manche Handy-Browser
+      // haben beim Blob-Upload sonst einen leeren Inhalt geschickt.
+      method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: await blob.arrayBuffer(),
     });
     const data = await res.json().catch(() => null);
     if (!res.ok) throw new ApiError(data?.error || `Serverfehler (${res.status})`, res.status);
