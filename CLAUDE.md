@@ -135,6 +135,7 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   (Home-Bildschirm-App, Scriptable) und Feedback abwarten.
 - **Nächste gewünschte Ideen** (Nutzer am 7.11. gewählt, vorher per Klick-Fragen klären):
   **Wochen-Rückblick** (Sonntags-Zettel: erledigt, gekocht, geguckt).
+  **Fotos bei Rezepten** (Nutzer am 7.11.: eigene Bilder vom Essen zu einem Rezept hinzufügen).
   Nicht gewählt: Liste nach Laden sortiert, Wetter an der Tür.
 - Ideen-Speicher (Nutzer interessiert, „für später“): **Gemeinsame Ausgaben** (wer hat was bezahlt,
   wer schuldet wem). Nicht gewählt: Ausflugs-/Date-Ideen, Geburtstage & Geschenke, Haltbarkeit im Vorrat,
