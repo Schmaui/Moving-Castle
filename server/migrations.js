@@ -223,6 +223,40 @@ export const MIGRATIONS = [
       AND NOT EXISTS (SELECT 1 FROM items WHERE name = 'Reis' COLLATE NOCASE) LIMIT 1;
   `,
 
+  // 8: Pinnwand – Zettel (frei, WLAN, Nummern, Dokument) und angehängte Dateien (PDF/Foto)
+  `
+  CREATE TABLE notes (
+    id          INTEGER PRIMARY KEY,
+    kind        TEXT    NOT NULL DEFAULT 'zettel',  -- zettel | wlan | nummern | dokument
+    title       TEXT    NOT NULL,
+    body        TEXT,                               -- Notiz (mehrzeilig)
+    secret      TEXT,                               -- WLAN-Passwort, PIN, Code … (wird verdeckt angezeigt)
+    data        TEXT,                               -- JSON: WLAN-Netz bzw. Liste der Nummern
+    sort        INTEGER NOT NULL DEFAULT 0,
+    created_by  INTEGER REFERENCES people(id) ON DELETE SET NULL,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+
+  CREATE TABLE note_files (
+    id          INTEGER PRIMARY KEY,
+    note_id     INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+    file        TEXT    NOT NULL,                   -- Dateiname in data/dokumente/
+    name        TEXT    NOT NULL,                   -- angezeigter Name, z. B. "Mietvertrag.pdf"
+    type        TEXT    NOT NULL,                   -- pdf | jpg
+    size        INTEGER NOT NULL DEFAULT 0,
+    added_by    INTEGER REFERENCES people(id) ON DELETE SET NULL,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+  CREATE INDEX note_files_note ON note_files (note_id);
+
+  -- Notfall-Nummern schon mal anpinnen
+  INSERT INTO notes (kind, title, data, sort, created_at, updated_at) VALUES ('nummern', 'Notfälle',
+    '{"entries":[{"name":"Feuerwehr & Rettungsdienst","number":"112"},{"name":"Polizei","number":"110"},{"name":"Ärztlicher Bereitschaftsdienst","number":"116117"},{"name":"Karten sperren (Sperr-Notruf)","number":"116116"}]}',
+    0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];

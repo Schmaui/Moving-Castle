@@ -1392,3 +1392,212 @@ a.meal__title:hover { text-decoration: underline wavy var(--color-accent) 1.5px;
 a.pill { text-decoration: none; color: inherit; }
 a.pill.is-chosen { color: var(--color-on-accent); }
 .past-toggle { margin-bottom: var(--space-4); background: color-mix(in srgb, var(--color-surface) 75%, transparent); }
+
+/* ---------- Pinnwand (js/views/pinnwand.js) ---------- */
+.pinboard { display: grid; gap: var(--space-5); max-width: 1200px; }
+.pin-group { display: grid; gap: var(--space-3); }
+.pin-group__title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-hand);
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--on-fridge);
+  line-height: 1;
+}
+.pin-group__title .art { width: 30px; height: 30px; stroke-width: 2.6; }
+.pin-cards { row-gap: var(--space-6); }
+
+/* "Was möchtest du anpinnen?" */
+.pin-new { max-width: 720px; border: 2px dashed color-mix(in srgb, var(--color-ink) 25%, transparent); }
+.pin-new__kinds { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-2); }
+.pin-new__kind {
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-1) var(--space-3);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--card-tone) 35%, var(--color-surface));
+  color: var(--color-text);
+  font-family: var(--font-hand);
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.05;
+  cursor: pointer;
+  transition: transform var(--transition-fast), background var(--transition-fast);
+}
+.pin-new__kind .art { width: 44px; height: 44px; --art-wash: var(--card-tone); }
+.pin-new__kind:nth-child(even) { rotate: 1.5deg; }
+.pin-new__kind:nth-child(odd) { rotate: -1.5deg; }
+.pin-new__kind:active { transform: scale(0.95); }
+@media (hover: hover) {
+  .pin-new__kind:hover { background: color-mix(in srgb, var(--card-tone) 60%, var(--color-surface)); }
+}
+@media (max-width: 380px) {
+  .pin-new__kind { font-size: 1.1rem; }
+  .pin-new__kind .art { width: 36px; height: 36px; }
+}
+
+/* Ein Zettel */
+.pin { display: grid; gap: var(--space-2); align-content: start; }
+.pin > .card__header { margin-bottom: var(--space-1); }
+.pin__edit { margin-left: auto; margin-right: -8px; width: 40px; min-height: 40px; }
+.pin__edit .art { width: 22px; height: 22px; }
+.pin__body { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.4; }
+.pin--form { max-width: 720px; }
+
+.pin-field { display: flex; flex-wrap: wrap; align-items: center; gap: 2px var(--space-2); min-height: 40px; }
+.pin-field__label {
+  flex: 0 0 5.2em;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+.pin-field__value { font-weight: var(--font-weight-medium); overflow-wrap: anywhere; }
+.pin-copy { width: 40px; min-height: 40px; }
+.pin-copy .art { width: 22px; height: 22px; }
+
+/* Verdecktes Passwort: antippen zeigt */
+.secret {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 40px;
+  padding: 2px var(--space-3);
+  border: 1.5px dashed var(--color-border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  color: var(--color-text);
+  font: inherit;
+  cursor: pointer;
+}
+.secret__value { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1rem; letter-spacing: 0.04em; overflow-wrap: anywhere; }
+.secret:not(.is-shown) .secret__value { letter-spacing: 0.12em; }
+.secret.is-shown { border-style: solid; border-color: var(--color-accent); background: var(--color-accent-soft); }
+.secret__hint { display: inline-flex; align-items: center; gap: 3px; font-size: var(--font-size-sm); color: var(--color-text-muted); }
+.secret__hint .art { width: 18px; height: 18px; stroke-width: 3; }
+
+/* QR-Code (immer schwarz auf weiß, auch im Dunkelmodus) */
+.qr { display: block; background: #fff; border-radius: 4px; }
+.pin-qr {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-1);
+  padding: var(--space-2);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  cursor: zoom-in;
+}
+.pin-qr .qr { flex: 0 0 auto; width: 84px; height: 84px; rotate: -2deg; box-shadow: 1px 2px 4px rgb(0 0 0 / 0.15); }
+.pin-qr__text { display: grid; gap: 2px; font-size: var(--font-size-sm); color: var(--color-text-muted); }
+.pin-qr__text strong { font-family: var(--font-hand); font-size: 1.35rem; color: var(--color-text); line-height: 1; }
+.qr-big {
+  margin: 0;
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  width: min(88vw, 420px);
+  padding: var(--space-5) var(--space-5) var(--space-4);
+  background: #fffdf8;
+  color: #3a2230;
+  border-radius: 4px;
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.35);
+  rotate: -1deg;
+}
+.qr-big .qr { width: 100%; height: auto; }
+.qr-big__caption { display: grid; gap: var(--space-1); text-align: center; }
+.qr-big__caption strong { font-family: var(--font-hand); font-size: 2rem; line-height: 1; overflow-wrap: anywhere; }
+
+/* Telefonnummern: antippen = anrufen */
+.phone-list { display: grid; }
+.phone-list > li { border-bottom: 1.5px solid var(--line-color); }
+.phone-list > li:last-child { border-bottom: 0; }
+.phone {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 52px;
+  padding: var(--space-1) 0;
+  color: var(--color-text);
+  text-decoration: none;
+}
+.phone__text { display: grid; flex: 1; min-width: 0; }
+.phone__name { font-family: var(--font-hand); font-size: 1.4rem; font-weight: 600; line-height: 1.05; }
+.phone__number { font-variant-numeric: tabular-nums; color: var(--color-text-muted); letter-spacing: 0.02em; }
+.phone__name + .phone__number { font-size: var(--font-size-sm); }
+.phone__call {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--card-tone) 70%, var(--color-surface));
+  color: var(--color-text);
+}
+.phone__call .art { width: 24px; height: 24px; stroke-width: 2.6; }
+@media (hover: hover) {
+  .phone:hover .phone__call { background: var(--color-accent); color: var(--color-on-accent); }
+}
+
+/* Dateien */
+.file-list { display: grid; gap: var(--space-1); }
+.file, .file-edit {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-1) var(--space-2);
+  border: 1.5px solid var(--color-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--color-surface) 75%, transparent);
+  color: var(--color-text);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.file-edit { cursor: default; padding-right: 0; }
+.file .art, .file-edit > .art { flex: 0 0 auto; width: 26px; height: 26px; stroke-width: 2.6; }
+.file__name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file__size { flex: 0 0 auto; font-size: var(--font-size-sm); color: var(--color-text-muted); }
+.file-edit .btn--icon { width: 40px; min-height: 40px; }
+.file-edit .btn--icon .art { width: 20px; height: 20px; }
+@media (hover: hover) {
+  .file:hover { border-color: var(--color-accent); }
+}
+.lightbox--doc { padding: var(--space-3); }
+.doc-image { max-width: 100%; max-height: calc(100dvh - 2 * var(--space-3)); border-radius: 3px; box-shadow: 0 10px 30px rgb(0 0 0 / 0.35); background: #fff; }
+
+/* Formular */
+.pin-form { display: grid; gap: var(--space-1); }
+.pin-form .add-form { margin-top: var(--space-2); }
+.pin-form__delete { margin-left: auto; }
+.phone-edit { display: grid; gap: var(--space-2); margin-bottom: var(--space-2); }
+.phone-edit__row { display: grid; grid-template-columns: 1fr 1fr auto; gap: var(--space-2); align-items: center; }
+.phone-edit__row .btn--icon { width: 40px; min-height: 40px; }
+.phone-edit__row .btn--icon .art { width: 20px; height: 20px; }
+@media (max-width: 480px) {
+  .phone-edit__row { grid-template-columns: 1fr auto; }
+  .phone-edit__row > .input:first-child { grid-column: 1 / -1; }
+  .phone-edit__row { padding-bottom: var(--space-2); border-bottom: 1.5px dashed var(--line-color); }
+}
+
+/* Leiste unten: 6 Knöpfe -> am Handy etwas kleinere Schrift */
+@media (max-width: 699px) {
+  .nav__link { font-size: 1rem; letter-spacing: -0.01em; }
+  .nav__icon { width: 44px; }
+}
+@media (max-width: 360px) {
+  .nav__link { font-size: 0.95rem; letter-spacing: -0.02em; }
+  .nav__icon { width: 38px; }
+  .nav__icon .art { width: 30px; height: 30px; }
+}
+.pin-secret { display: inline-flex; align-items: center; gap: 2px; min-width: 0; max-width: 100%; }
+.pin-secret .secret { min-width: 0; text-align: left; }

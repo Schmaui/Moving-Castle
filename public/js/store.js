@@ -25,6 +25,8 @@ export const state = {
   meals: [],
   wishes: [],
   links: [],
+  notes: [],
+  noteFiles: [],
 };
 
 const listeners = new Set();
@@ -140,6 +142,8 @@ export async function logout() {
   state.recipes = [];
   state.meals = [];
   state.wishes = [];
+  state.notes = [];
+  state.noteFiles = [];
   requireLogin();
 }
 
@@ -405,4 +409,49 @@ export function deleteWish(wish) {
 
 export function restoreWish(wish) {
   return addWish(wish.name, wish.amount, wish.recipeId);
+}
+
+// ---------- Pinnwand ----------
+const findNote = (id) => state.notes.find((n) => n.id === id);
+
+export function addNote(data) {
+  return mutate(null, () => api.create('notes', data));
+}
+
+export function updateNote(note, patch) {
+  return mutate(
+    () => Object.assign(findNote(note.id) || {}, patch),
+    () => api.update('notes', note.id, patch)
+  );
+}
+
+/** Zettel abnehmen (angehängte Dateien werden mit gelöscht). */
+export function deleteNote(note) {
+  return mutate(
+    () => {
+      state.notes = state.notes.filter((n) => n.id !== note.id);
+      state.noteFiles = state.noteFiles.filter((f) => f.noteId !== note.id);
+    },
+    () => api.remove('notes', note.id)
+  );
+}
+
+/** Abgenommenen Zettel wieder anpinnen (für "Rückgängig", nur ohne Dateien). */
+export function restoreNote(note) {
+  const { kind, title, body, secret, data, sort } = note;
+  return mutate(null, () => api.create('notes', { kind, title, body, secret, data, sort }));
+}
+
+/** Dateien eines Zettels (älteste zuerst). */
+export const filesOf = (note) => (state.noteFiles || []).filter((f) => f.noteId === note.id);
+
+export function uploadNoteFile(note, blob, name) {
+  return mutate(null, () => api.uploadNoteFile(note, blob, name));
+}
+
+export function deleteNoteFile(file) {
+  return mutate(
+    () => { state.noteFiles = state.noteFiles.filter((f) => f.id !== file.id); },
+    () => api.remove('note-files', file.id)
+  );
 }

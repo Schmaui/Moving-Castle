@@ -326,6 +326,87 @@ test('Rezept per Link holen (schema.org/Recipe)', async () => {
   }
 });
 
+test('Pinnwand: Notfall-Nummern sind schon angepinnt', async () => {
+  const { body } = await json('GET', '/api/state');
+  const notfall = body.notes.find((n) => n.kind === 'nummern');
+  assert.equal(notfall.title, 'Notfälle');
+  assert.ok(notfall.data.entries.some((e) => e.number === '112'));
+  assert.deepEqual(body.noteFiles, []);
+});
+
+test('Pinnwand: WLAN, Nummern und Zettel anlegen und prüfen', async () => {
+  const wlan = await as(1, 'POST', '/api/notes', {
+    kind: 'wlan', title: 'WLAN für Gäste', secret: 'geheim;123', data: { ssid: 'Schloss', security: 'WPA', unbekannt: 1 },
+  });
+  assert.equal(wlan.status, 201);
+  assert.equal(wlan.body.createdBy, 1);
+  assert.deepEqual(wlan.body.data, { ssid: 'Schloss', security: 'WPA' });
+  assert.equal(wlan.body.secret, 'geheim;123');
+
+  const nums = await json('POST', '/api/notes', {
+    kind: 'nummern', title: 'Haus', data: { entries: [{ name: 'Hausmeister', number: '+49 170 / 123-45' }] },
+  });
+  assert.equal(nums.status, 201);
+  assert.equal((await json('PATCH', `/api/notes/${nums.body.id}`, { data: { entries: [{ name: 'x', number: 'javascript:alert(1)' }] } })).status, 400);
+  assert.equal((await json('POST', '/api/notes', { kind: 'nummern', title: 'x', data: { entries: [{ name: 'x', number: '' }] } })).status, 400);
+  assert.equal((await json('POST', '/api/notes', { kind: 'wlan', title: 'x', data: { security: 'offen' } })).status, 400);
+  assert.equal((await json('POST', '/api/notes', { kind: 'brief', title: 'x' })).status, 400);
+  assert.equal((await json('POST', '/api/notes', { kind: null, title: 'x' })).status, 400);
+  assert.equal((await json('POST', '/api/notes', { kind: 'zettel' })).status, 400);
+
+  const zettel = await json('POST', '/api/notes', { title: 'Fahrradkeller', body: 'Zeile 1\nZeile 2', secret: '4711' });
+  assert.equal(zettel.body.kind, 'zettel');
+  assert.equal(zettel.body.body, 'Zeile 1\nZeile 2');
+  for (const n of [wlan, nums, zettel]) assert.equal((await json('DELETE', `/api/notes/${n.body.id}`)).status, 200);
+});
+
+test('Pinnwand: PDF und Foto anhängen, ansehen, umbenennen, abnehmen', async () => {
+  const doc = await json('POST', '/api/notes', { kind: 'dokument', title: 'Mietvertrag' });
+  const upload = (type, body, name = '') => fetch(`${BASE}/api/notes/${doc.body.id}/dateien?name=${encodeURIComponent(name)}`, {
+    method: 'POST', headers: { 'Content-Type': type, 'X-Person': '2' }, body,
+  });
+  const fakePdf = Buffer.concat([Buffer.from('%PDF-1.4\n'), Buffer.alloc(200, 32)]);
+  const r1 = await upload('application/pdf', fakePdf, 'C:\\Users\\Kait\\Mietvertrag Wohnung.pdf');
+  assert.equal(r1.status, 201);
+  const pdf = await r1.json();
+  assert.equal(pdf.name, 'Mietvertrag Wohnung.pdf');
+  assert.equal(pdf.type, 'pdf');
+  assert.equal(pdf.addedBy, 2);
+  assert.equal(pdf.noteId, doc.body.id);
+
+  const r2 = await upload('image/jpeg', fakeJpeg, 'Seite 2.HEIC');
+  assert.equal(r2.status, 201);
+  const jpg = await r2.json();
+  assert.equal(jpg.name, 'Seite 2.jpg');
+
+  // Falscher Inhalt / falscher Typ / unbekannter Zettel
+  assert.equal((await upload('application/pdf', fakeJpeg)).status, 400);
+  assert.equal((await upload('text/html', '<script>alert(1)</script>'.repeat(10))).status, 415);
+  assert.equal((await fetch(`${BASE}/api/notes/9999/dateien`, { method: 'POST', headers: { 'Content-Type': 'application/pdf' }, body: fakePdf })).status, 404);
+  assert.equal((await json('POST', '/api/note-files', { name: 'x' })).status, 405);
+
+  const get = await fetch(`${BASE}/api/note-files/${pdf.id}/datei`);
+  assert.equal(get.status, 200);
+  assert.equal(get.headers.get('content-type'), 'application/pdf');
+  assert.match(get.headers.get('content-disposition'), /^inline; filename="Mietvertrag Wohnung.pdf"/);
+  assert.deepEqual(Buffer.from(await get.arrayBuffer()), fakePdf);
+
+  const renamed = await json('PATCH', `/api/note-files/${pdf.id}`, { name: 'Mietvertrag 2026.jpg' });
+  assert.equal(renamed.body.name, 'Mietvertrag 2026.pdf', 'Endung bleibt passend');
+  assert.equal((await json('PATCH', `/api/note-files/${pdf.id}`, { noteId: 1 })).status, 400);
+
+  assert.equal((await json('DELETE', `/api/note-files/${jpg.id}`)).status, 200);
+  assert.equal((await fetch(`${BASE}/api/note-files/${jpg.id}/datei`)).status, 404);
+  const pdfFile = path.join(dataDir, 'dokumente');
+  assert.equal(fs.readdirSync(pdfFile).length, 1);
+
+  // Zettel abnehmen -> Dateien weg (in DB und auf der Platte)
+  await json('DELETE', `/api/notes/${doc.body.id}`);
+  const { body } = await json('GET', '/api/state');
+  assert.deepEqual(body.noteFiles, []);
+  assert.equal(fs.readdirSync(pdfFile).length, 0);
+});
+
 // ---------- Anmeldung (zweiter Server mit Passwort) ----------
 test('Anmeldung mit Haushalts-Passwort', async () => {
   const port = PORT + 1;

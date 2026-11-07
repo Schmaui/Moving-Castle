@@ -57,6 +57,11 @@ export const api = {
   importRecipe: async (url) => (await request('POST', '/api/recipes/import', { url })).data,
   cooked: async (recipe) => (await request('POST', `/api/recipes/${recipe.id}/gekocht`, {})).data,
 
+  // Pinnwand: Datei (PDF oder JPEG) an einen Zettel hängen
+  uploadNoteFile: (note, blob, name) => uploadFile(
+    `/api/notes/${note.id}/dateien?name=${encodeURIComponent(name)}`, blob, blob.type === 'application/pdf' ? 'application/pdf' : 'image/jpeg'),
+  noteFileUrl: (file) => `/api/note-files/${file.id}/datei`,
+
   patchSettings: async (patch) => (await request('PATCH', '/api/settings', patch)).data,
 
   // Generische Funktionen für jede Ressource ('items', 'categories', später z. B. 'tasks')
@@ -67,12 +72,15 @@ export const api = {
 };
 
 /** Bild als JPEG-Datei hochladen (nicht als JSON). */
-async function uploadJpeg(url, blob) {
+const uploadJpeg = (url, blob) => uploadFile(url, blob, 'image/jpeg');
+
+/** Datei hochladen (Body = die Datei selbst). */
+async function uploadFile(url, blob, type) {
   const res = await fetch(url, {
     // Als fertige Bytes schicken statt als Blob – manche Handy-Browser
     // haben beim Blob-Upload sonst einen leeren Inhalt geschickt.
     method: 'POST',
-    headers: { 'Content-Type': 'image/jpeg', ...personHeader() },
+    headers: { 'Content-Type': type, ...personHeader() },
     body: await blob.arrayBuffer(),
   });
   const data = await res.json().catch(() => null);

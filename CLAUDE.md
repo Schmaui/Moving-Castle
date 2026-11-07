@@ -59,12 +59,21 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   - Link-Import konnte nur mit Testseiten geprüft werden (Rezeptseiten aus der Cloud-Session
     gesperrt) – bei Problemen Nutzer nach Link + Fehlermeldung fragen.
 - **Alles oben ist live und von den Nutzern getestet („funktioniert“), auch der Link-Import.**
-- **Als Nächstes: Infos-Pinnwand.** Die Nutzer arbeiten gern mit Fragen zum Anklicken
-  (AskUserQuestion) und wollen ausführlich gefragt werden. Noch zu klären (wurde vorbereitet,
-  aber noch nicht beantwortet): welche Inhalte (WLAN-Gast mit QR-Code, wichtige Nummern zum
-  Antippen, Zählerstände mit Verlauf, Müll & Verträge), Aufbau (freie Zettel + Spezial-Zettel vs.
-  feste Bereiche), Ort (Vorschlag: „Mehr“ wird Übersicht mit Pinnwand + Einstellungen, Leiste
-  bleibt bei 5 Knöpfen), Geheimes (Vorschlag: verdeckt, antippen zeigt/kopiert).
+- **Infos-Pinnwand: gebaut, wartet auf „passt“** (Branch `claude/vigilant-noether-1h6c6p`, noch NICHT auf main).
+  Entscheidungen der Nutzer (7.11.2026, per Klick-Fragen):
+  - Inhalte: WLAN für Gäste (QR), wichtige Nummern, Verträge & Dokumente. KEINE Zählerstände, KEIN Müll.
+  - Aufbau: freie Zettel + Spezial-Zettel; an der Pinnwand nach Art gruppiert (WLAN, Nummern, Verträge &
+    Dokumente, Zettel).
+  - Ort: eigener Knopf „Pinnwand“ in der Leiste vor „Mehr“ (jetzt 6 Knöpfe, Schrift am Handy kleiner).
+  - Geheimes (WLAN-Passwort, PIN): verdeckt, antippen zeigt (20 s), Kopieren-Knopf.
+  - Nummern: als Gruppen (mehrere Nummern-Zettel), antippen ruft an; „Notfälle“ (112, 110, 116117,
+    116116) per Migration 8 vorausgefüllt.
+  - Verträge: nur Name + Notiz + Dateien (PDF hochladen oder Foto von Papier) – keine Kosten/Fristen.
+  - QR: klein auf dem Zettel, antippen = groß zum Scannen.
+  Technik: `server/modules/notes.js` + `note-files.js` (Dateien in `data/dokumente/`, im Backup dabei),
+  QR-Erzeuger ohne Pakete `public/js/ui/qr.js` (mit zxing geprüft), Ansicht `public/js/views/pinnwand.js`.
+  Offen zum Testen durch die Nutzer: PDF öffnen auf dem iPhone (öffnet neuen Tab – bei App vom
+  Home-Bildschirm evtl. Anmeldung nötig?), QR mit echtem Handy scannen.
 - Ganz am Ende (Wunsch der Nutzer): automatische Sicherung auf den Mac der Nutzer. Plan: Skript
   `scripts/mac-backup-einrichten.sh` (SSH-Schlüssel einrichten, LaunchAgent täglich, `rsync` von
   `root@2.31.137.100:/opt/haushalt/data/backups/` nach `~/moving-castle-backup/` – nicht nach

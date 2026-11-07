@@ -12,5 +12,7 @@ import recipes from './recipes.js';
 import meals from './meals.js';
 import wishes from './wishes.js';
 import links from './links.js';
+import notes from './notes.js';
+import noteFiles from './note-files.js';
 
-export const MODULES = [people, categories, items, photos, settings, tasks, recipes, meals, wishes, links];
+export const MODULES = [people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, noteFiles];

@@ -5,6 +5,7 @@ import liste from './liste.js';
 import vorrat from './vorrat.js';
 import aufgaben from './aufgaben.js';
 import kochen from './kochen.js';
+import pinnwand from './pinnwand.js';
 import einstellungen from './einstellungen.js';
 
-export const VIEWS = [liste, vorrat, kochen, aufgaben, einstellungen];
+export const VIEWS = [liste, vorrat, kochen, aufgaben, pinnwand, einstellungen];
