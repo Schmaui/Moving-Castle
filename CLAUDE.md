@@ -7,7 +7,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
 ## Technik (Kurzfassung – Details in README.md und docs/ANPASSEN.md)
 - Node.js ≥ 22.13 ohne npm-Abhängigkeiten, eingebautes `node:sqlite`. Start: `npm start`, Tests: `npm test`.
 - Frontend: Vanilla JS (ES-Module), kein Build. Design-Variablen in `public/css/tokens.css`.
-- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs, calendar). Ansichten: `public/js/views/*`.
+- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs, calendar, movies). Ansichten: `public/js/views/*`.
 - Migrationen: `server/migrations.js` – nur NEUE Einträge anhängen, alte nie ändern.
 - Gezeichnete Symbole statt Emojis: `public/js/ui/art.js`. Szenen-SVGs: `scripts/make-art.py`.
 - Strenge CSP (keine Inline-Styles/-Scripts), alle Ausgaben über `h()` (XSS-sicher).
@@ -28,9 +28,12 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   SSH geprüft: Cron korrekt, erste Sicherung von Hand erfolgreich (vorher lief noch keine, Server war neu).
 
 ## Arbeitsweise (wichtig)
-- **Seit 7.11.2026 (Wunsch der Nutzer):** Fertige Features NICHT mehr erst als Vorschau zeigen, sondern
-  nach grünen Tests direkt nach `main` mergen und pushen (= live). Die Nutzer testen dann live und
-  melden Verbesserungen. Weiterhin auf eigenem Branch entwickeln und vorher per Klick-Fragen klären.
+- **IMMER DIREKT LIVE (ausdrücklicher Wunsch der Nutzer, 7.11.2026):** Fertige Änderungen nach grünen
+  Tests SOFORT nach `main` mergen und pushen (= live). NICHT vorher fragen „passt es so?“, KEINE
+  Vorher-Nachher-Bilder zur Freigabe schicken und nicht auf „passt“ warten – auch nicht bei Design-/
+  Geschmacksfragen. Danach kurz erklären, was neu ist, und ein paar Screenshots zeigen; die Nutzer testen
+  live und melden Verbesserungen. Weiterhin auf eigenem Branch entwickeln und VOR dem Bauen per
+  Klick-Fragen klären, was gewünscht ist.
 - Vor dem Mergen: `npm test` und `scripts/screenshots.cjs` müssen grün sein (lokales `main` kann veraltet
   sein – für den Update-Test `origin/main` nehmen).
 - Die Nutzer wollen vor jedem Feature **ausführlich per Klick-Fragen (AskUserQuestion)** gefragt werden
@@ -41,7 +44,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   `.flat()` einmal) – verschachtelte Listen in ein `h('div')` packen. `data-focus-key` muss über ALLE
   Ansichten eindeutig sein (alle Ansichten werden immer gerendert, nur versteckt).
 
-## Stand (zuletzt aktualisiert: 7.11.2026, Filmabend) – alles live auf `main`
+## Stand (zuletzt aktualisiert: 7.11.2026, Ende der Session) – alles live auf `main`
 Leiste unten (5 Knöpfe): **Liste · Küche · Planer · Pinnwand · Mehr**. Views in `public/js/views/index.js`;
 Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
 
@@ -59,7 +62,7 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   Nur lesen. Server holt alle 15 Min. (`server/modules/calendar.js`, Leser `server/ical.js`).
   **Noch nicht mit echten Links verbunden** – beim ersten Verbinden begleiten (iCloud aus der Cloud-Session
   nicht testbar), bei Fehler nach Meldung/Screenshot fragen.
-- **Pinnwand** (#/pinnwand): 4 Kacheln. WLAN / Nummern / Notizen je auf Korkbrett (Pinnadeln);
+- **Pinnwand** (#/pinnwand): 5 Kacheln (inkl. Filmabend). WLAN / Nummern / Notizen je auf Korkbrett (Pinnadeln);
   WLAN mit QR (`public/js/ui/qr.js`), Geheimes verdeckt (antippen zeigt 20 s); Nummern-Gruppen, antippen
   ruft an, „Notfälle“ vorausgefüllt. **Ordner** (#/pinnwand/ordner): Unterordner (eine Ebene, Start
   „Verträge“, „Wohnung“), PDF/Foto + Name + Notiz, verschieben, Suche. Dateien in `data/ordner/`.
@@ -97,8 +100,7 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
 
 ## Offen
 - Filmabend, Animationen, verstreute Fotos, Zuklappen, Galerie: live, Feedback der Nutzer abwarten.
-- Ausnahme von „direkt live“: Bei Geschmacksfragen (Aufräumen/Design) Vorher-Nachher-Bild schicken und
-  auf „passt“ warten – so am 7.11. beim Zuklappen gemacht, kam gut an.
+- **Als Nächstes vorgeschlagen:** „Nachricht an die Tür“ (Nutzer hat noch nicht zugestimmt – erst fragen).
 - **Nächste gewünschte Ideen** (Nutzer am 7.11. gewählt, vorher per Klick-Fragen klären):
   **Nachricht an die Tür** (handgeschriebene Nachricht als Magnet für den anderen),
   **Benachrichtigungen** (Web-Push, iPhone nur als Home-Bildschirm-App ab iOS 16.4; z. B. „X hat Milch auf
