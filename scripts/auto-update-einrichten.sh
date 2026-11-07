@@ -13,6 +13,7 @@
 #  Daten (data/) und Einstellungen (.env) bleiben unberührt.
 # =====================================================================
 set -euo pipefail
+trap 'echo "FEHLER in Zeile $LINENO: $BASH_COMMAND" >&2' ERR
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 REPO="${1:-}"
 KEY=/root/.ssh/haushalt_deploy
@@ -40,8 +41,10 @@ touch /root/.ssh/config
 grep -q "Host github-haushalt" /root/.ssh/config || cat /root/.ssh/config.d-haushalt >> /root/.ssh/config
 rm -f /root/.ssh/config.d-haushalt
 chmod 600 /root/.ssh/config
-ssh-keyscan -q github.com >> /root/.ssh/known_hosts 2>/dev/null
-sort -u -o /root/.ssh/known_hosts /root/.ssh/known_hosts
+# Offizielle Kennung von github.com (https://docs.github.com/de/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints)
+GH_HOSTKEY="github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl"
+touch /root/.ssh/known_hosts
+grep -qxF "$GH_HOSTKEY" /root/.ssh/known_hosts || echo "$GH_HOSTKEY" >> /root/.ssh/known_hosts
 
 if ! git ls-remote "git@github-haushalt:$REPO.git" >/dev/null 2>&1; then
   echo

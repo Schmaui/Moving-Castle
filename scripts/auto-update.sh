@@ -7,6 +7,7 @@
 #  Log: /var/log/haushalt-update.log
 # =====================================================================
 set -euo pipefail
+trap 'echo "$(date "+%F %T") FEHLER in Zeile $LINENO: $BASH_COMMAND" >&2' ERR
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$APP_DIR"
 
