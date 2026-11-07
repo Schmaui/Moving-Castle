@@ -9,7 +9,8 @@ import { renderLogin } from './ui/login.js';
 import { icon } from './ui/art.js';
 import { h } from './util.js';
 import { showToast } from './ui/toast.js';
-import { afterRender, pageIn, doorOpen } from './ui/fx.js';
+import { afterRender, pageIn } from './ui/fx.js';
+import { doorStart } from './ui/door.js';
 
 const navList = document.getElementById('nav-list');
 const viewsEl = document.getElementById('views');
@@ -178,5 +179,5 @@ window.addEventListener('resize', () => {
 });
 applyRoute();
 render();
-doorOpen();
+doorStart(); // Kühlschranktür: erst zu (Nachrichten!), dann auf – siehe ui/door.js
 startSync();

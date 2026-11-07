@@ -14,7 +14,7 @@
 //   flyTo(el, target)      Kopie von el fliegt zu target (Abhaken -> Korb)
 //   hearts(el)             kleine Herzen steigen auf (Aufgabe erledigt)
 //   pageIn(el, dir)        Seite rutscht herein wie beim Umblättern (dir 1 = von rechts, -1 = von links)
-//   doorOpen()             Kühlschranktür schwingt beim Start auf
+//   (Kühlschranktür beim Start + Nachrichten an der Tür: siehe ui/door.js)
 //
 // Alle Animationen entfallen, wenn am Gerät "Bewegung reduzieren" eingeschaltet ist.
 import { h } from '../util.js';
@@ -186,23 +186,4 @@ export function wiggle(el) {
     { transform: 'rotate(-3deg) scale(1.03)', offset: 0.7 },
     { transform: 'rotate(0) scale(1)' },
   ], { duration: 380, easing: 'ease-in-out' }).finished.then(() => {}, () => {});
-}
-
-/** Beim Start: Kühlschranktür schwingt einmal auf. Antippen überspringt. */
-export function doorOpen() {
-  if (calm()) return;
-  const door = h('div', { class: 'fx-door', 'aria-hidden': 'true' },
-    h('div', { class: 'fx-door__panel' }, h('span', { class: 'fx-door__handle' })),
-  );
-  document.body.append(door);
-  const panel = door.firstChild;
-  const swing = panel.animate([
-    { transform: 'perspective(1400px) rotateY(0deg)' },
-    { transform: 'perspective(1400px) rotateY(-12deg)', offset: 0.25 },
-    { transform: 'perspective(1400px) rotateY(-96deg)' },
-  ], { duration: 900, delay: 150, easing: 'cubic-bezier(.55,.05,.4,1)', fill: 'both' });
-  const shade = door.animate([{ opacity: 1 }, { opacity: 1, offset: 0.6 }, { opacity: 0 }], { duration: 1050, fill: 'both' });
-  const finish = () => door.remove();
-  door.addEventListener('pointerdown', () => { swing.finish(); shade.finish(); });
-  Promise.allSettled([swing.finished, shade.finished]).then(finish);
 }

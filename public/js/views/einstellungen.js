@@ -13,9 +13,10 @@ import { api } from '../api.js';
 import { shrink, openLightbox } from '../ui/photos.js';
 import { showToast } from '../ui/toast.js';
 import { calendarSetup } from './kalender.js';
+import { messageNote, drawingSvg, openPad, PAPERS } from '../ui/door.js';
 import {
   addPhoto, deletePhoto, updatePhoto, sortedPhotos, updateSettings, logout,
-  updatePerson, uploadAvatar, removeAvatar,
+  updatePerson, uploadAvatar, removeAvatar, addMessage, deleteMessage, messagesFromMe, me,
 } from '../store.js';
 
 // Farben der Kühlschranktür (die echten Farbwerte stehen in css/tokens.css)
@@ -38,6 +39,7 @@ const draft = { blob: null, url: null, caption: '', busy: false };
 const captions = {};   // angefangene Änderungen an Bildunterschriften
 const names = {};      // angefangene Änderungen an Namen
 const uploading = new Set(); // Profilfotos, die gerade hochgeladen werden
+const note = { body: '', drawing: [], paper: 'gelb', busy: false }; // angefangene Nachricht an die Tür
 
 export default {
   id: 'einstellungen',
@@ -50,6 +52,7 @@ export default {
     return [
       viewHeader({ id: 'title-einstellungen', title: 'Einstellungen', subtitle: 'gilt für euch beide ♡' }),
       h('div', { class: 'settings' },
+        messageSection(state, ctx),
         peopleSection(state, ctx),
         photosSection(ctx),
         calendarSection(state, ctx),
@@ -59,6 +62,77 @@ export default {
     ];
   },
 };
+
+// ---------- Nachricht an die Tür ----------
+// Geht immer an die andere Person. Sie sieht sie beim nächsten Öffnen der App auf der
+// geschlossenen Kühlschranktür (ui/door.js). Nach 24 Stunden ist sie von selbst weg.
+function messageSection(state, ctx) {
+  const mine = me();
+  const other = mine && state.people.find((p) => p.id !== mine.id);
+  const sub = other ? `für ${other.name} – hängt beim nächsten Öffnen an der Tür, 24 Stunden lang` : 'ein kleiner Gruß an der Kühlschranktür';
+  if (!mine || !other) {
+    return section('Nachricht an die Tür', 'stift', sub, 2,
+      h('p', { class: 'muted' }, mine ? 'Es gibt noch niemanden, an den die Nachricht gehen kann.' : 'Wähle unten bei „Dieses Gerät“ erst aus, wer du bist.'));
+  }
+  const send = async (e) => {
+    e.preventDefault();
+    if (note.busy) return;
+    const body = note.body.trim();
+    if (!body && !note.drawing.length) {
+      showToast('Schreib oder mal erst etwas ♡');
+      return;
+    }
+    note.busy = true;
+    const ok = await addMessage({ body: body || null, drawing: note.drawing.length ? note.drawing : null, paper: note.paper, toPerson: other.id });
+    note.busy = false;
+    if (ok) {
+      Object.assign(note, { body: '', drawing: [] });
+      showToast(`Hängt an der Tür – ${other.name} sieht sie beim nächsten Öffnen ♡`);
+    }
+    ctx.rerender();
+  };
+  const sent = messagesFromMe();
+  return section('Nachricht an die Tür', 'stift', sub, 2,
+    h('form', { class: 'note-compose', onsubmit: send },
+      h('div', { class: ['door-note', 'door-note--compose', `door-note--${note.paper}`] },
+        h('span', { class: 'door-note__magnet', 'data-tone': mine.tone || 1, 'aria-hidden': 'true' }),
+        h('textarea', {
+          class: 'door-note__input', rows: 3, maxlength: 300, placeholder: `Liebe Grüße an ${other.name} …`,
+          'aria-label': 'Nachricht', 'data-focus-key': 'msg-body', value: note.body,
+          oninput: (e) => { note.body = e.target.value; },
+        }),
+        note.drawing.length > 0 && h('button', {
+          type: 'button', class: 'note-compose__drawing', 'aria-label': 'Bild ändern', 'data-focus-key': 'msg-drawing',
+          onclick: () => openPad(note.drawing, (strokes) => { note.drawing = strokes; ctx.rerender(); }),
+        }, drawingSvg(note.drawing, { className: 'door-note__drawing', label: 'dein Bild' })),
+      ),
+      h('div', { class: 'note-compose__papers', role: 'group', 'aria-label': 'Farbe des Zettels' },
+        PAPERS.map((p) => h('button', {
+          type: 'button', class: ['paper-dot', `paper-dot--${p.id}`, p.id === note.paper && 'is-chosen'],
+          'aria-pressed': String(p.id === note.paper), 'aria-label': `Zettel ${p.label}`, title: p.label,
+          'data-focus-key': `msg-paper-${p.id}`,
+          onclick: () => { note.paper = p.id; ctx.rerender(); },
+        }))),
+      h('div', { class: 'add-form' },
+        h('button', { type: 'submit', class: 'btn btn--primary', 'data-focus-key': 'msg-send', disabled: note.busy }, iconLabel('herz', 'An die Tür hängen')),
+        h('button', {
+          type: 'button', class: 'btn', 'data-focus-key': 'msg-draw',
+          onclick: () => openPad(note.drawing, (strokes) => { note.drawing = strokes; ctx.rerender(); }),
+        }, note.drawing.length ? 'Bild ändern' : 'Etwas malen'),
+      ),
+    ),
+    sent.length > 0 && h('div', { class: 'note-sent' },
+      h('p', { class: 'choice__legend' }, 'Hängt gerade an der Tür:'),
+      h('ul', { class: 'note-sent__list' }, sent.map((m) => h('li', { class: 'note-sent__item' },
+        messageNote(m, { className: 'door-note--small' }),
+        h('button', {
+          type: 'button', class: 'btn btn--small btn--ghost', 'data-focus-key': `msg-del-${m.id}`,
+          onclick: () => { if (confirm('Diese Nachricht von der Tür abnehmen?')) deleteMessage(m); },
+        }, 'Abnehmen'),
+      ))),
+    ),
+  );
+}
 
 // ---------- Wir zwei (Profile) ----------
 function peopleSection(state, ctx) {

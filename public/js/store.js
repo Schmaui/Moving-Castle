@@ -30,6 +30,7 @@ export const state = {
   docs: [],
   calendar: { connected: false, events: [] },
   movies: [],
+  messages: [],
 };
 
 const listeners = new Set();
@@ -149,6 +150,7 @@ export async function logout() {
   state.folders = [];
   state.docs = [];
   state.movies = [];
+  state.messages = [];
   state.calendar = { connected: false, events: [] };
   requireLogin();
 }
@@ -479,6 +481,32 @@ export function deleteMovie(movie) {
 export function restoreMovie(movie) {
   const { title, kind, service, note, wantedBy, ratings, seenOn } = movie;
   return mutate(null, () => api.create('movies', { title, kind, service, note, wantedBy, ratings, seenOn }));
+}
+
+// ---------- Nachricht an die Tür ----------
+const MESSAGE_MS = 24 * 60 * 60 * 1000; // nach 24 Stunden ist eine Nachricht weg (wie auf dem Server)
+
+/** Nachrichten, die gerade an der Tür hängen (jünger als 24 Std.), älteste zuerst. */
+export const activeMessages = () =>
+  state.messages.filter((m) => Date.now() - Date.parse(m.createdAt) < MESSAGE_MS);
+
+/** Für mich (dieses Gerät) bzw. von mir. */
+export const messagesForMe = () => activeMessages().filter((m) => m.toPerson === myId());
+export const messagesFromMe = () => activeMessages().filter((m) => m.fromPerson === myId());
+
+export function addMessage(data) {
+  return mutate(null, async () => {
+    const msg = await api.create('messages', data);
+    if (msg) state.messages = [...state.messages.filter((m) => m.id !== msg.id), msg];
+    return msg;
+  });
+}
+
+export function deleteMessage(msg) {
+  return mutate(
+    () => { state.messages = state.messages.filter((m) => m.id !== msg.id); },
+    () => api.remove('messages', msg.id)
+  );
 }
 
 // ---------- Ordner (Dokumente) ----------

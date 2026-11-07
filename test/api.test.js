@@ -574,3 +574,48 @@ test('Zu kurzes Passwort verhindert den Start', async () => {
   fs.rmSync(dir, { recursive: true, force: true });
   assert.notEqual(code, 0);
 });
+
+test('Nachricht an die Tür: geht an die andere Person, getippt und/oder gemalt, nach 24 Std. weg', async () => {
+  assert.deepEqual((await json('GET', '/api/state')).body.messages, []);
+  const msg = await as(1, 'POST', '/api/messages', { body: '  Hab dich lieb ♡\nBis heute Abend ', paper: 'rosa' });
+  assert.equal(msg.status, 201);
+  assert.equal(msg.body.body, 'Hab dich lieb ♡\nBis heute Abend');
+  assert.equal(msg.body.fromPerson, 1);
+  assert.equal(msg.body.toPerson, 2);
+  assert.equal(msg.body.paper, 'rosa');
+
+  const drawing = [{ c: 'rot', p: [10, 10, 50, 60, 120, 80] }, { c: 'tinte', p: [200, 150] }];
+  const drawn = await as(2, 'POST', '/api/messages', { drawing });
+  assert.equal(drawn.status, 201);
+  assert.equal(drawn.body.toPerson, 1);
+  assert.equal(drawn.body.paper, 'gelb');
+  assert.deepEqual(drawn.body.drawing, drawing);
+
+  // Prüfungen
+  assert.equal((await json('POST', '/api/messages', { body: 'Wer bin ich?' })).status, 400); // ohne Person
+  assert.equal((await as(1, 'POST', '/api/messages', {})).status, 400);                     // leer
+  assert.equal((await as(1, 'POST', '/api/messages', { body: '   ' })).status, 400);
+  assert.equal((await as(1, 'POST', '/api/messages', { body: 'x', toPerson: 1 })).status, 400); // an sich selbst
+  assert.equal((await as(1, 'POST', '/api/messages', { body: 'x', paper: 'lila' })).status, 400);
+  assert.equal((await as(1, 'POST', '/api/messages', { body: 'x'.repeat(301) })).status, 400);
+  assert.equal((await as(1, 'POST', '/api/messages', { drawing: [{ c: 'lila', p: [1, 1] }] })).status, 400);
+  assert.equal((await as(1, 'POST', '/api/messages', { drawing: [{ c: 'rot', p: [1] }] })).status, 400);
+  assert.equal((await as(1, 'POST', '/api/messages', { drawing: [{ c: 'rot', p: [401, 1] }] })).status, 400);
+  assert.equal((await as(1, 'POST', '/api/messages', { drawing: [{ c: 'rot', p: [1.5, 1] }] })).status, 400);
+  assert.equal((await as(1, 'POST', '/api/messages', { drawing: 'bild' })).status, 400);
+  assert.equal((await as(1, 'PATCH', `/api/messages/${msg.body.id}`, { body: 'geändert' })).status, 405);
+  assert.equal((await json('GET', '/api/state')).body.messages.length, 2);
+
+  // Nach 24 Stunden ist eine Nachricht von selbst weg
+  const { DatabaseSync } = await import('node:sqlite');
+  const db = new DatabaseSync(path.join(dataDir, 'haushalt.db'));
+  db.prepare('UPDATE door_messages SET created_at = ? WHERE id = ?')
+    .run(new Date(Date.now() - 25 * 3600 * 1000).toISOString(), msg.body.id);
+  db.close();
+  await as(1, 'POST', '/api/messages', { body: 'noch eine' }); // ändert den Stand -> neu laden
+  const left = (await json('GET', '/api/state')).body.messages;
+  assert.deepEqual(left.map((m) => m.body ?? 'gemalt'), ['gemalt', 'noch eine']);
+
+  for (const m of left) assert.equal((await json('DELETE', `/api/messages/${m.id}`)).status, 200);
+  assert.deepEqual((await json('GET', '/api/state')).body.messages, []);
+});

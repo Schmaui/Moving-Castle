@@ -360,6 +360,22 @@ export const MIGRATIONS = [
   );
   `,
 
+  // 13: Nachricht an die Tür – kurzer Gruß an den/die andere, hängt beim Öffnen der App an der
+  //     geschlossenen Kühlschranktür. Getippt (body) und/oder gemalt (drawing = Striche als JSON).
+  //     Nach 24 Stunden verschwindet sie von selbst (server/modules/messages.js räumt auf).
+  `
+  CREATE TABLE door_messages (
+    id          INTEGER PRIMARY KEY,
+    from_person INTEGER REFERENCES people(id) ON DELETE CASCADE,
+    to_person   INTEGER REFERENCES people(id) ON DELETE CASCADE,
+    body        TEXT,                                 -- getippter Text (Handschrift-Look)
+    drawing     TEXT,                                 -- JSON: [{ c: Farbe, p: [x, y, x, y, …] }, …]
+    paper       TEXT,                                 -- Farbe des Zettels
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];

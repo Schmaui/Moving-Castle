@@ -743,6 +743,81 @@ function check(cond, msg) {
   check(await page.waitForFunction(() => document.querySelector('.view.is-active')?.getAnimations().length > 0, null, { timeout: 2000, polling: 16 }).then(() => true), 'Seitenwechsel: Seite gleitet herein');
   await moving.close();
 
+  // ---------- Nachricht an die Tür ----------
+  console.log('Nachricht an die Tür:');
+  const writer = await device({ ...devices['iPhone 13'] }, 2);
+  page = await writer.newPage(); watch(page);
+  await page.goto(BASE + '/#/einstellungen');
+  await page.waitForSelector('[data-focus-key="msg-body"]');
+  check(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), '„Mehr“ ist am Handy nicht breiter als der Bildschirm');
+  await page.fill('[data-focus-key="msg-body"]', 'Hab einen schönen Tag ♡\nBin um 18 Uhr da');
+  await page.click('[data-focus-key="msg-paper-rosa"]');
+  await page.click('[data-focus-key="msg-draw"]');
+  await page.waitForSelector('.pad__canvas');
+  const padBox = await page.locator('.pad__canvas').boundingBox();
+  check(padBox.x + padBox.width <= 390, 'Malfläche passt aufs Handy');
+  const heart = [];
+  for (let t = 0; t <= Math.PI * 2 + 0.01; t += 0.2) {
+    const x = 16 * Math.sin(t) ** 3;
+    const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t));
+    heart.push([padBox.x + padBox.width / 2 + x * 6, padBox.y + padBox.height / 2 + y * 6]);
+  }
+  await page.click('.pad__ink--rot');
+  await page.mouse.move(...heart[0]);
+  await page.mouse.down();
+  for (const pt of heart) await page.mouse.move(...pt, { steps: 2 });
+  await page.mouse.up();
+  await page.screenshot({ path: path.join(OUT, 'handy-nachricht-malen.jpg'), quality: 85 });
+  await page.click('[data-pad="done"]');
+  await page.waitForSelector('.note-compose__drawing');
+  await page.screenshot({ path: path.join(OUT, 'handy-nachricht-schreiben.jpg'), quality: 85 });
+  await page.click('[data-focus-key="msg-send"]');
+  await page.waitForSelector('.note-sent__item');
+  const sentMsgs = (await api('GET', '/api/state')).messages;
+  check(sentMsgs.length === 1 && sentMsgs[0].toPerson === 1 && sentMsgs[0].drawing.length === 1 && sentMsgs[0].paper === 'rosa', 'Nachricht geschrieben + gemalt, geht an Kait');
+  check(await page.locator('.fx-door').count() === 0, 'Eigene Nachricht schließt die eigene Tür nicht');
+
+  const reader = await device({ ...devices['iPhone 13'] }, 1);
+  page = await reader.newPage(); watch(page);
+  await page.goto(BASE + '/#/vorrat');
+  await page.waitForSelector('.fx-door--messages .door-note');
+  check(await page.locator('.fx-door .door-note__drawing .ink--rot').count() === 1, 'Kait: Tür bleibt zu, Nachricht mit Bild hängt dran');
+  await page.screenshot({ path: path.join(OUT, 'handy-tuer-nachricht.jpg'), quality: 85 });
+  await page.waitForTimeout(1500);
+  check(await page.locator('.fx-door').count() === 1, 'Tür geht nicht von selbst auf');
+  await page.locator('.fx-door').click();
+  await page.waitForSelector('.fx-door', { state: 'detached' });
+  check(await page.locator('#view-vorrat .card').count() > 0, 'Antippen öffnet die Tür, dahinter die Küche');
+  await api('POST', '/api/messages', { body: 'Milch ist alle – bringst du welche mit?', paper: 'mint' }, 2);
+  await page.waitForSelector('.toast:has-text("Nachricht an die Tür")', { timeout: 15000 });
+  check(await page.locator('.fx-door').count() === 0, 'Neue Nachricht während man die App benutzt: nur ein Hinweis …');
+  await page.click('.toast__action');
+  await page.waitForSelector('.fx-door--messages');
+  check(await page.locator('.fx-door .door-note').count() === 2, '… „Ansehen“ zeigt beide an der Tür');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('.fx-door', { state: 'detached' });
+  await reader.close();
+
+  const readerPc = await device({ viewport: { width: 1280, height: 800 }, colorScheme: 'dark' }, 1);
+  page = await readerPc.newPage(); watch(page);
+  await page.goto(BASE + '/#/vorrat');
+  await page.waitForSelector('.fx-door--messages .door-note');
+  await page.screenshot({ path: path.join(OUT, 'pc-tuer-nachricht-dunkel.jpg'), quality: 85 });
+  check(true, 'PC: Nachrichten nebeneinander an der Tür');
+  await readerPc.close();
+
+  // Schmaui (ohne Nachricht für sich): kurz „Hallo“, dann geht die Tür von selbst auf
+  const hello = await device({ ...devices['iPhone 13'], reducedMotion: 'no-preference' }, 2);
+  page = await hello.newPage(); watch(page);
+  await page.goto(BASE + '/#/liste');
+  await page.waitForSelector('.fx-door__hello');
+  await page.screenshot({ path: path.join(OUT, 'handy-tuer-hallo.jpg'), quality: 85 });
+  await page.waitForSelector('.fx-door', { state: 'detached', timeout: 4000 });
+  check(true, 'Ohne Nachricht: „Hallo Schmaui“, dann geht die Tür von selbst auf');
+  await hello.close();
+  for (const m of (await api('GET', '/api/state')).messages) await api('DELETE', `/api/messages/${m.id}`);
+  await writer.close();
+
   await browser.close();
   calServer.close();
   check(errors.length === 0, `keine Fehler in der Browser-Konsole ${errors.length ? JSON.stringify(errors) : ''}`);

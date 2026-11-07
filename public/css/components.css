@@ -1985,7 +1985,7 @@ body.is-split .view--split-aside .list-section { font-size: 1.4rem; margin-top: 
 .cal-person__text { display: grid; flex: 1 1 180px; min-width: 0; }
 .cal-person__text strong { overflow-wrap: anywhere; }
 .cal-person__actions { display: flex; gap: var(--space-1); }
-.cal-person__form { flex: 1 1 240px; display: grid; gap: var(--space-1); min-width: 0; }
+.cal-person__form { flex: 1 1 240px; display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-1); min-width: 0; }
 .cal-person__label { font-weight: var(--font-weight-medium); }
 .cal-person__form .input { flex: 1; min-width: 0; }
 .cal-howto summary { cursor: pointer; font-weight: var(--font-weight-medium); margin-bottom: var(--space-2); }
@@ -2286,3 +2286,194 @@ body.is-split .view--split-aside .list-section { font-size: 1.4rem; margin-top: 
   background: var(--handle);
   box-shadow: 2px 3px 6px rgb(0 0 0 / 0.3);
 }
+
+/* =====================================================================
+   Nachricht an die Tür (siehe public/js/ui/door.js, Schreiben unter „Mehr“)
+   ===================================================================== */
+/* Zettel-Farben: bleiben auch im Dunkelmodus helles Papier (wie echte Haftnotizen) */
+.door-note {
+  --note-paper: #fbefb4;
+  position: relative;
+  width: 100%;
+  margin: 0;
+  padding: 26px 18px 12px;
+  border-radius: 3px 3px 10px 3px;
+  background: var(--note-paper);
+  background-image: var(--texture-grain);
+  color: #3b2d33;
+  box-shadow: 0 10px 18px -8px rgb(40 20 30 / 0.45), 0 2px 3px rgb(40 20 30 / 0.12);
+}
+.door-note--gelb { --note-paper: #fbefb4; }
+.door-note--rosa { --note-paper: #f8d3d9; }
+.door-note--mint { --note-paper: #d2ecd9; }
+.door-note--blau { --note-paper: #d3e4f3; }
+.door-note--n0 { rotate: -2deg; }
+.door-note--n1 { rotate: 1.6deg; }
+.door-note--n2 { rotate: -0.8deg; }
+.door-note__magnet {
+  position: absolute;
+  top: -9px;
+  left: 50%;
+  width: 24px;
+  height: 24px;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.65), transparent 45%), var(--card-tone, #c9d8b0);
+  box-shadow: 0 3px 4px rgb(0 0 0 / 0.3), inset 0 -2px 3px rgb(0 0 0 / 0.15);
+}
+.door-note__text {
+  margin: 0;
+  font-family: var(--font-hand);
+  font-size: 1.9rem;
+  line-height: 1.15;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.door-note__drawing { display: block; width: 100%; height: auto; margin-top: 4px; }
+.door-note__text + .door-note__drawing { margin-top: 8px; }
+.door-note__from {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-top: 8px;
+  font-size: var(--font-size-sm);
+  color: #6d5961;
+}
+.door-note--small { padding: 18px 12px 8px; }
+.door-note--small .door-note__text { font-size: 1.4rem; }
+.door-note--small .door-note__magnet { width: 18px; height: 18px; top: -7px; }
+
+/* Gemalte Striche */
+.drawing .ink { fill: none; stroke: currentColor; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+.ink--tinte { color: #2e2a4f; }
+.ink--rot   { color: #c4384a; }
+.ink--blau  { color: #2d64a8; }
+.ink--gruen { color: #3c7d4c; }
+.ink-probe { position: absolute; visibility: hidden; }
+
+/* Geschlossene Tür beim Start */
+.fx-door__content {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: calc(env(safe-area-inset-top) + var(--space-6)) 64px calc(env(safe-area-inset-bottom) + var(--space-6)) var(--space-5);
+  overflow-y: auto;
+  color: var(--on-fridge, var(--color-text));
+  text-align: center;
+}
+.fx-door--messages { cursor: pointer; }
+.fx-door--messages .fx-door__content { justify-content: safe center; }
+.fx-door__hello { margin: 0; font-family: var(--font-hand); font-size: 2.8rem; line-height: 1.1; }
+.fx-door__date { margin: 0; font-size: var(--font-size-sm); opacity: 0.8; }
+.fx-door__title { margin: 0; font-family: var(--font-hand); font-size: 2rem; line-height: 1.1; }
+.fx-door__notes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+  width: min(100%, 340px);
+  padding-top: var(--space-3);
+  text-align: left;
+}
+.fx-door__open {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-5);
+  border: 1.5px dashed currentColor;
+  border-radius: var(--radius-chip);
+  background: rgb(255 255 255 / 0.18);
+  color: inherit;
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  cursor: pointer;
+}
+@media (min-width: 700px) {
+  .fx-door__notes { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: flex-start; width: min(100%, 980px); }
+  .fx-door__notes .door-note { width: 300px; }
+}
+
+/* Schreiben unter „Mehr“ */
+.note-compose { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-4); }
+.door-note--compose { max-width: 420px; rotate: -0.6deg; }
+.door-note__input {
+  display: block;
+  width: 100%;
+  min-height: 3.6em;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-family: var(--font-hand);
+  font-size: 1.7rem;
+  line-height: 1.15;
+  resize: vertical;
+}
+.door-note__input::placeholder { color: #8d7880; }
+.door-note__input:focus-visible { outline: 2px dashed #8d7880; outline-offset: 4px; }
+.note-compose__drawing { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: pointer; }
+.note-compose__papers { display: flex; gap: var(--space-2); }
+.note-compose .add-form { margin-top: 0; flex-wrap: wrap; }
+.paper-dot {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1.5px solid color-mix(in srgb, var(--color-ink) 30%, transparent);
+  border-radius: 4px;
+  background: var(--note-paper);
+}
+.paper-dot--gelb { --note-paper: #fbefb4; }
+.paper-dot--rosa { --note-paper: #f8d3d9; }
+.paper-dot--mint { --note-paper: #d2ecd9; }
+.paper-dot--blau { --note-paper: #d3e4f3; }
+.paper-dot.is-chosen { border: 2.5px solid var(--color-ink); scale: 1.12; rotate: -6deg; }
+.note-sent { margin-top: var(--space-5); }
+.note-sent__list { display: flex; flex-wrap: wrap; gap: var(--space-5); margin: var(--space-3) 0 0; padding: 0; list-style: none; }
+.note-sent__item { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); width: min(100%, 220px); }
+
+/* Malfläche */
+.pad {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  padding: var(--space-4);
+  background: rgb(30 15 25 / 0.72);
+}
+.pad__sheet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(100%, 560px);
+  padding: var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-float);
+}
+.pad__title { margin: 0; font-family: var(--font-hand); font-size: 1.8rem; }
+.pad__paper { border-radius: 4px; background: #fbefb4; background-image: var(--texture-grain); box-shadow: inset 0 0 0 1.5px rgb(0 0 0 / 0.08); }
+.pad__canvas { display: block; width: 100%; aspect-ratio: 4 / 3; touch-action: none; cursor: crosshair; }
+.pad__tools { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.pad__inks { display: flex; gap: var(--space-2); margin-right: auto; }
+.pad__ink {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 2px solid var(--color-surface);
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 1.5px color-mix(in srgb, var(--color-ink) 30%, transparent);
+}
+.pad__ink--tinte { color: #2e2a4f; }
+.pad__ink--rot   { color: #c4384a; }
+.pad__ink--blau  { color: #2d64a8; }
+.pad__ink--gruen { color: #3c7d4c; }
+.pad__ink[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--color-ink); scale: 1.1; }
+.pad__actions { margin-top: 0; }
+.fx-door .door-note__drawing { max-height: 30dvh; }
+.settings > * { min-width: 0; } /* nichts darf die Seite am Handy breiter machen */
