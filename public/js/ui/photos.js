@@ -7,6 +7,7 @@ import { api } from '../api.js';
 import { sortedPhotos, personById } from '../store.js';
 import { avatar } from './people.js';
 import { icon } from './art.js';
+import { enter } from './fx.js';
 
 const MAX_SIZE = 1600;
 
@@ -20,6 +21,7 @@ export function polaroid(photo, i = 0, { className } = {}) {
   return h('figure', {
     class: ['polaroid', i % 2 ? 'polaroid--left' : 'polaroid--right', className],
     'data-tone': (i % 6) + 1,
+    ...enter(`photo-${photo.id}${className ? `-${className}` : ''}`, photo.createdAt),
   },
     h('button', {
       type: 'button',

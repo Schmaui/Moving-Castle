@@ -8,6 +8,7 @@ import { renderLogin } from './ui/login.js';
 import { icon } from './ui/art.js';
 import { h } from './util.js';
 import { showToast } from './ui/toast.js';
+import { afterRender, pageIn, doorOpen } from './ui/fx.js';
 
 const navList = document.getElementById('nav-list');
 const viewsEl = document.getElementById('views');
@@ -76,6 +77,7 @@ function applyRoute() {
     else p.link.removeAttribute('aria-current');
   }
   if (changed) window.scrollTo(0, 0);
+  return changed;
 }
 
 // ---------- Zeichnen ----------
@@ -133,6 +135,7 @@ function render() {
       p.section.replaceChildren(...[p.view.render(state, ctx)].flat().filter(Boolean));
     }
   });
+  afterRender(viewsEl); // laufende Animationen an den neu gezeichneten Elementen fortsetzen
   for (const p of parts.values()) {
     const n = p.view.badge?.(state) || 0;
     p.badge.hidden = n === 0;
@@ -145,7 +148,13 @@ function render() {
 // ---------- Start ----------
 onError((msg) => showToast(msg, { variant: 'error' }));
 subscribe(render);
-window.addEventListener('hashchange', () => { applyRoute(); render(); });
+window.addEventListener('hashchange', () => {
+  const changed = applyRoute();
+  render();
+  // neue Seite gleitet sanft herein (auf dem PC nicht die Liste daneben)
+  if (changed) pageIn(document.querySelector('.view.is-active'));
+});
 applyRoute();
 render();
+doorOpen();
 startSync();

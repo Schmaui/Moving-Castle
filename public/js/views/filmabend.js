@@ -10,6 +10,7 @@ import { viewHeader, iconLabel } from '../ui/components.js';
 import { icon } from '../ui/art.js';
 import { avatar, byline } from '../ui/people.js';
 import { showToast } from '../ui/toast.js';
+import { play, fxKey, enter } from '../ui/fx.js';
 import { state as store, me, personById, addMovie, updateMovie, deleteMovie, restoreMovie } from '../store.js';
 
 export const SERVICES = [
@@ -85,6 +86,7 @@ export function filmabendPage(state, ctx, backLink) {
 
   return [
     backLink,
+    h('div', { class: 'curtain-band', 'aria-hidden': 'true' }),
     viewHeader({
       id: 'title-pinnwand', title: 'Filmabend', subtitle: 'Filme & Serien, die ihr zusammen gucken wollt',
       actions: [!creating && h('button', {
@@ -93,20 +95,18 @@ export function filmabendPage(state, ctx, backLink) {
       }, iconLabel('plus', 'Film oder Serie'))],
     }),
     h('div', { class: 'cinema' },
-      h('div', { class: 'cinema__curtain', 'aria-hidden': 'true' }),
-
       creating && h('div', { class: 'cinema__form' }, movieForm(null, people, ctx)),
 
       // Was gucken wir heute?
       h('div', { class: 'cinema__marquee' },
         h('button', {
-          type: 'button', class: 'marquee', 'data-focus-key': 'film-pick', disabled: ui.shuffling,
+          type: 'button', class: ['marquee', ui.shuffling && 'is-rolling'], 'data-focus-key': 'film-pick', disabled: ui.shuffling,
           onclick: () => pickRandom(ctx),
         },
           h('span', { class: 'marquee__icon' }, icon('wuerfel', { wash: false })),
           h('span', { class: 'marquee__text' }, 'Was gucken wir heute?'),
         ),
-        h('div', { class: 'pills cinema__filter', role: 'group', 'aria-label': 'Filme oder Serien' }, KINDS.map((k) => h('button', {
+        h('div', { class: 'pills pills--filter cinema__filter', role: 'group', 'aria-label': 'Filme oder Serien' }, KINDS.map((k) => h('button', {
           type: 'button', class: ['pill', ui.filter === k.id && 'is-chosen'], 'aria-pressed': String(ui.filter === k.id),
           'data-focus-key': `film-filter-${k.id}`,
           onclick: () => { ui.filter = k.id; ui.pickId = null; ctx.rerender(); },
@@ -131,7 +131,7 @@ export function filmabendPage(state, ctx, backLink) {
         h('h2', { class: 'cinema__heading' }, 'Gesehen'),
         h('div', { class: 'tickets' }, restShown.map((m) => ticket(m, people, ctx))),
         rest.length > SEEN_SHORT && h('button', {
-          type: 'button', class: 'btn btn--ghost cinema__more', 'data-focus-key': 'film-more',
+          type: 'button', class: 'btn cinema__more', 'data-focus-key': 'film-more',
           onclick: () => { ui.showAllSeen = !ui.showAllSeen; ctx.rerender(); },
         }, ui.showAllSeen ? 'Weniger zeigen' : `Alle ${rest.length} zeigen`),
       ],
@@ -152,32 +152,32 @@ function pickRandom(ctx) {
   // Was alle sehen wollen, kommt doppelt so oft dran. Nicht zweimal hintereinander dasselbe.
   const weighted = pool.flatMap((m) => (everyoneWants(m, people) ? [m, m] : [m]));
   const choices = pool.length > 1 ? weighted.filter((m) => m.id !== ui.pickId) : weighted;
-  const final = choices[Math.floor(Math.random() * choices.length)];
+  ui.pickId = choices[Math.floor(Math.random() * choices.length)].id;
 
   const calm = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-  if (calm || pool.length === 1) {
-    ui.pickId = final.id;
-    ctx.rerender();
-    return;
-  }
-  // Kurzes "Trommelwirbel"-Durchblättern, dann steht es fest
+  if (calm) { ctx.rerender(); return; }
+  // Würfel rollt, Vorhang ist zu … dann geht er auf
   ui.shuffling = true;
-  let step = 0;
-  const steps = 9;
-  const tick = () => {
-    step++;
-    ui.pickId = step < steps ? pool[Math.floor(Math.random() * pool.length)].id : final.id;
-    if (step >= steps) ui.shuffling = false;
+  ctx.rerender();
+  document.querySelector('.pick')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  setTimeout(() => {
+    ui.shuffling = false;
+    play('pick-curtain-left', 'curtain-left');
+    play('pick-curtain-right', 'curtain-right');
     ctx.rerender();
-    if (step < steps) setTimeout(tick, 60 + step * 18);
-  };
-  tick();
+  }, 900);
 }
 
 function pickResult(movie, people, ctx) {
   return h('section', { class: ['pick', ui.shuffling && 'is-shuffling'], 'aria-live': 'polite' },
     h('p', { class: 'pick__label' }, ui.shuffling ? 'Trommelwirbel …' : 'Heute läuft:'),
-    ticket(movie, people, ctx, { big: true }),
+    h('div', { class: 'pick__stage' },
+      ui.shuffling
+        ? h('div', { class: 'pick__placeholder' })
+        : ticket(movie, people, ctx, { big: true }),
+      h('div', { class: 'pick__curtain pick__curtain--left', 'aria-hidden': 'true', ...fxKey('pick-curtain-left') }),
+      h('div', { class: 'pick__curtain pick__curtain--right', 'aria-hidden': 'true', ...fxKey('pick-curtain-right') }),
+    ),
     !ui.shuffling && h('div', { class: 'pick__actions' },
       h('button', {
         type: 'button', class: 'btn btn--small', 'data-focus-key': 'film-pick-again',
@@ -208,6 +208,7 @@ function ticket(movie, people, ctx, { big = false } = {}) {
   return h('article', {
     class: ['ticket', big && 'ticket--big', movie.seenOn && 'ticket--seen'],
     'data-service': movie.service || 'keiner',
+    ...(big ? {} : enter(`movie-${movie.id}`, movie.createdAt)),
   },
     h('div', { class: 'ticket__stub', 'aria-hidden': 'true' },
       icon(movie.kind === 'serie' ? 'filmklappe' : 'popcorn', { wash: false }),
@@ -280,7 +281,12 @@ function ratingRow(person, value, key, onRate) {
       type: 'button', class: ['corn', n <= value && 'is-on'],
       'aria-label': `${n} von 5 Popcorn`, 'aria-pressed': String(n === value), title: `${n} von 5`,
       'data-focus-key': `${key}-${n}`,
-      onclick: () => onRate(n === value ? 0 : n),
+      ...fxKey(`${key}-${n}`),
+      onclick: () => {
+        // alle Popcorn bis zum angetippten ploppen nacheinander
+        if (n !== value) for (let i = 1; i <= n; i++) setTimeout(() => play(`${key}-${i}`, 'pop'), (i - 1) * 60);
+        onRate(n === value ? 0 : n);
+      },
     }, icon('popcorn')))),
   );
 }

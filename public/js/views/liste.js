@@ -7,6 +7,7 @@ import { stepper } from './kochen.js';
 import { formatQty } from '../recipes.js';
 import { avatar, byline } from '../ui/people.js';
 import { icon } from '../ui/art.js';
+import { flyTo } from '../ui/fx.js';
 import { showToast } from '../ui/toast.js';
 
 const CHECK_ANIMATION_MS = 350;
@@ -111,6 +112,7 @@ function buy(item, ctx) {
   ctx.rerender();
   const before = item.quantity;
   setTimeout(() => {
+    toBasket(`liste-${item.id}`);
     checking.delete(item.id);
     if (counted(item)) {
       const bought = buyAmount[item.id] ?? defaultBuy(item);
@@ -128,6 +130,12 @@ function buy(item, ctx) {
       onAction: () => setMissing(item, true),
     });
   }, CHECK_ANIMATION_MS);
+}
+
+/** Abgehakter Artikel fliegt in den Korb (Knopf „Liste“). */
+function toBasket(focusKey) {
+  const row = document.querySelector(`[data-focus-key="${focusKey}"]`);
+  flyTo(row, document.querySelector('.nav__link[href="#/liste"] .nav__icon'));
 }
 
 /** Gezeichnetes Häkchen – "zeichnet sich" beim Abhaken selbst (CSS in components.css). */
@@ -230,6 +238,7 @@ function buyWish(w, ctx) {
   checking.add(key);
   ctx.rerender();
   setTimeout(() => {
+    toBasket(`wish-${w.id}`);
     checking.delete(key);
     deleteWish(w);
     showToast(`„${w.name}“ gekauft`, { actionLabel: 'Rückgängig', onAction: () => restoreWish(w) });

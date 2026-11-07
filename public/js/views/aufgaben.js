@@ -8,6 +8,7 @@ import { viewHeader, emptyState, loading, iconLabel, plannerTabs } from '../ui/c
 import { icon } from '../ui/art.js';
 import { avatar, byline } from '../ui/people.js';
 import { showToast } from '../ui/toast.js';
+import { hearts } from '../ui/fx.js';
 import {
   me, personById, addTask, updateTask, completeTask, reopenTask, deleteTask, restoreTask,
 } from '../store.js';
@@ -307,6 +308,7 @@ function complete(task, ctx) {
   if (ui.checking.has(task.id)) return;
   ui.checking.add(task.id);
   ctx.rerender();
+  hearts(document.querySelector(`[data-focus-key="task-check-${task.id}"]`));
   setTimeout(async () => {
     ui.checking.delete(task.id);
     const nextDue = task.repeat ? nextDueOf(task) : null;

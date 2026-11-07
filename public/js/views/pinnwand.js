@@ -18,6 +18,7 @@ import { shrink } from '../ui/photos.js';
 import { qrSvg, wifiText } from '../ui/qr.js';
 import { api } from '../api.js';
 import { filmabendPage, filmTile } from './filmabend.js';
+import { enter } from '../ui/fx.js';
 import {
   addNote, updateNote, deleteNote, restoreNote,
   folderById, docsIn, addFolder, updateFolder, deleteFolder, uploadDoc, updateDoc, deleteDoc,
@@ -175,7 +176,7 @@ function noteCard(note, ctx) {
       noteForm(note, ctx),
     );
   }
-  return h('section', { class: ['card', 'card--note', 'pin', `pin--${note.kind}`], 'data-tone': b.tone },
+  return h('section', { class: ['card', 'card--note', 'pin', `pin--${note.kind}`], 'data-tone': b.tone, ...enter(`note-${note.id}`, note.createdAt) },
     h('div', { class: 'card__header' },
       h('span', { class: 'card__icon' }, icon(b.icon)),
       h('h3', { class: 'card__title' }, note.title),

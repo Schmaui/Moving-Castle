@@ -68,7 +68,15 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   Migration 12): Kino-Look (Vorhang, Kinokarten), Film/Serie, „Wo läuft's?“ (Netflix, Prime Video,
   Disney+, HBO, Kino, Sonstiges), „Wer will's sehen?“ (Beide wollen ♡), Zufallsknopf „Was gucken wir
   heute?“ (was beide wollen, kommt doppelt so oft), „Gesehen“ mit 1–5 Popcorn je Person, Schnitt ≥ 4
-  = „Unsere Lieblinge“. Neu live am 7.11. – auf Feedback der Nutzer warten.
+  = „Unsere Lieblinge“. Karten hängen direkt an der Tür (Nutzer mochten den dunklen „KI-blocky“-Kasten
+  NICHT – keine großen dunklen Container mehr), oben nur ein schmales Vorhang-Band.
+- **Animationen** (`public/js/ui/fx.js`, Web Animations API): Tür schwingt beim Start auf, Seiten gleiten,
+  Abhaken in der Liste fliegt in den Korb, Aufgabe erledigt -> Herzen, neue Zettel/Fotos/Kinokarten
+  kleben sich an (`enter(key, createdAt)`, nur frisch angelegte), Zufall: Würfel rollt + Vorhang geht auf,
+  Popcorn ploppt. WICHTIG: app.js zeichnet alles neu -> keine CSS-Einblend-Animationen an neu gezeichneten
+  Elementen (laufen sonst bei jedem Abgleich neu), stattdessen `play()`/`enter()` aus fx.js.
+  „Bewegung reduzieren“ schaltet alles ab; screenshots.cjs läuft deshalb mit reducedMotion und prüft
+  Animationen in einem eigenen Abschnitt.
 - **Mehr** (#/einstellungen): Wir zwei (Profile: Name, Figur/Foto, Farbe), Fotos, Kalender verbinden,
   Türfarbe, dieses Gerät (wer bin ich), Abmelden.
 - Profile: jedes Gerät fragt einmal „Wer bist du?“ und schickt `X-Person` mit (wer-hat-was).

@@ -142,14 +142,14 @@ function check(cond, msg) {
   };
   // Neues "Gerät", auf dem schon jemand ausgewählt ist (sonst kommt erst "Wer bist du?")
   const device = async (options, person = 2) => {
-    const ctx = await browser.newContext(options);
+    const ctx = await browser.newContext({ reducedMotion: 'reduce', ...options });
     await ctx.addInitScript((id) => { try { localStorage.setItem('haushalt_person', String(id)); } catch {} }, person);
     return ctx;
   };
 
   // ---------- Handy ----------
   console.log('Handy:');
-  const phone = await browser.newContext({ ...devices['iPhone 13'] });
+  const phone = await browser.newContext({ ...devices['iPhone 13'], reducedMotion: 'reduce' });
   let page = await phone.newPage(); watch(page);
   await page.goto(BASE + '/#/liste');
   await page.waitForSelector('.who');
@@ -615,6 +615,55 @@ function check(cond, msg) {
   await page.goto(BASE + '/#/pinnwand/filmabend');
   await page.waitForSelector('#view-pinnwand .ticket');
   await page.screenshot({ path: path.join(OUT, 'pc-filmabend-dunkel.jpg'), quality: 85 });
+
+  // ---------- Animationen (sonst überall mit „Bewegung reduzieren“, damit Screenshots ruhig sind) ----------
+  console.log('Animationen:');
+  const moving = await device({ ...devices['iPhone 13'], reducedMotion: 'no-preference' }, 1);
+  page = await moving.newPage(); watch(page);
+  await page.goto(BASE + '/#/liste');
+  await page.waitForSelector('.fx-door', { state: 'attached' });
+  await page.waitForTimeout(450);
+  await page.screenshot({ path: path.join(OUT, 'handy-animation-tuer.jpg'), quality: 85 });
+  await page.waitForSelector('.fx-door', { state: 'detached', timeout: 4000 });
+  check(true, 'Start: Kühlschranktür schwingt auf und verschwindet');
+  await page.waitForSelector('#view-liste .check-row');
+  await page.locator('#view-liste .check-row').first().click();
+  await page.waitForSelector('.fx-ghost', { state: 'attached', timeout: 2000 });
+  await page.waitForTimeout(200);
+  await page.screenshot({ path: path.join(OUT, 'handy-animation-korb.jpg'), quality: 85 });
+  await page.waitForSelector('.fx-ghost', { state: 'detached', timeout: 3000 });
+  check(true, 'Liste: abgehakter Artikel fliegt in den Korb');
+  await page.goto(BASE + '/#/aufgaben');
+  await page.waitForSelector('#view-aufgaben .task__check');
+  await page.locator('#view-aufgaben .task__check').first().click();
+  await page.waitForSelector('.fx-heart', { state: 'attached', timeout: 2000 });
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: path.join(OUT, 'handy-animation-herzen.jpg'), quality: 85 });
+  check(true, 'Aufgabe erledigt: Herzen steigen auf');
+  await page.goto(BASE + '/#/pinnwand/filmabend');
+  await page.waitForSelector('#view-pinnwand .ticket');
+  await page.locator('[data-focus-key="film-pick"]').click();
+  await page.waitForSelector('#view-pinnwand .pick.is-shuffling');
+  await page.screenshot({ path: path.join(OUT, 'handy-animation-wuerfel.jpg'), quality: 85 });
+  await page.waitForSelector('#view-pinnwand .pick:not(.is-shuffling) .ticket', { timeout: 3000 });
+  check(await page.evaluate(() => document.querySelector('.pick__curtain--left').getAnimations().length > 0), 'Zufall: Würfel rollt, dann geht der Vorhang auf');
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: path.join(OUT, 'handy-animation-vorhang.jpg'), quality: 85 });
+  const corn = page.locator('#view-pinnwand .ticket--seen', { hasText: 'Oppenheimer' }).locator('[aria-label="5 von 5 Popcorn"]').first();
+  await corn.click();
+  check(await page.waitForFunction(() => [...document.querySelectorAll('.ticket--seen .corn')].some((c) => c.getAnimations().length > 0)).then(() => true), 'Bewerten: Popcorn ploppt');
+  await page.goto(BASE + '/#/pinnwand/notizen');
+  await page.waitForSelector('#view-pinnwand .pin--zettel');
+  await api('POST', '/api/notes', { kind: 'zettel', title: 'Frisch angeklebt', body: 'vom anderen Handy' }, 2);
+  await page.waitForFunction(() => {
+    const el = [...document.querySelectorAll('.pin--zettel')].find((n) => n.textContent.includes('Frisch angeklebt'));
+    return el && el.getAnimations().length > 0;
+  }, null, { timeout: 15000 });
+  check(true, 'Neuer Zettel (vom anderen Handy) klebt sich an die Tür');
+  check(await page.evaluate(() => document.querySelectorAll('.pin--zettel')[0].getAnimations().length === 0), 'Alte Zettel bleiben ruhig');
+  await page.locator('.back-link').click();
+  check(await page.waitForFunction(() => document.querySelector('.view.is-active')?.getAnimations().length > 0, null, { timeout: 2000, polling: 16 }).then(() => true), 'Seitenwechsel: Seite gleitet herein');
+  await moving.close();
 
   await browser.close();
   calServer.close();
