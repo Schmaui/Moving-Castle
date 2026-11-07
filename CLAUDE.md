@@ -29,7 +29,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   hell + dunkel) schicken, erst nach „passt“ nach `main` mergen.
 - Vor dem Mergen: `npm test` und `scripts/screenshots.cjs` müssen grün sein.
 
-## Stand / offen (zuletzt aktualisiert: 7.11.2026)
+## Stand / offen (zuletzt aktualisiert: 7.11.2026, Ende der Session)
 - `main` (live): Zeichnungs-Design, Login, Auto-Update **und seit 7.11.2026 das Kühlschrank-Design**
   (vom Branch `design-kuehlschrank` gemergt):
   - Kühlschranktür-Design in Mauve, schräge Zettel mit Washi-Tape.
@@ -58,8 +58,16 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
     „Soßen“ (+Mayo, Ketchup, Salsa verschoben), Olivenöl -> Gewürze, Reis -> Nudeln & Co.
   - Link-Import konnte nur mit Testseiten geprüft werden (Rezeptseiten aus der Cloud-Session
     gesperrt) – bei Problemen Nutzer nach Link + Fehlermeldung fragen.
-- Nächste Wünsche (Reihenfolge der Nutzer): Infos-Pinnwand (WLAN-QR, Nummern, Zählerstände, Müll …), dann Kalender
+- **Alles oben ist live und von den Nutzern getestet („funktioniert“), auch der Link-Import.**
+- **Als Nächstes: Infos-Pinnwand.** Die Nutzer arbeiten gern mit Fragen zum Anklicken
+  (AskUserQuestion) und wollen ausführlich gefragt werden. Noch zu klären (wurde vorbereitet,
+  aber noch nicht beantwortet): welche Inhalte (WLAN-Gast mit QR-Code, wichtige Nummern zum
+  Antippen, Zählerstände mit Verlauf, Müll & Verträge), Aufbau (freie Zettel + Spezial-Zettel vs.
+  feste Bereiche), Ort (Vorschlag: „Mehr“ wird Übersicht mit Pinnwand + Einstellungen, Leiste
+  bleibt bei 5 Knöpfen), Geheimes (Vorschlag: verdeckt, antippen zeigt/kopiert).
+- Offen nebenbei: Backup einmal mit den Nutzern prüfen (per SSH, Schritt für Schritt);
+  README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen ergänzen.
+- Danach (Reihenfolge der Nutzer): Kalender
   (Abo-Link für Apple-Kalender, ggf. iCloud-Kalender lesend anzeigen).
 - Später: NFC-Sticker (Anleitung `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`),
-  evtl. später Aufgaben/Infos/Rezepte (Beispiel in docs/ANPASSEN.md).
 - Hinweis: Bilder, die Nutzer im Chat schicken, kamen zuletzt teilweise leer an → ggf. nachfragen.
