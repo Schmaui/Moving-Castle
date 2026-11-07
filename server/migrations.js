@@ -327,12 +327,14 @@ export const MIGRATIONS = [
       AND NOT EXISTS (SELECT 1 FROM items i WHERE i.category_id = c.id AND i.name = v.name COLLATE NOCASE);
   `,
 
-  // 11: Kalender – geheimer Link zum "Öffentlichen Kalender" von Apple + zuletzt geholte Datei
+  // 11: Kalender – je Person ein Apple-Kalender (geheimer Link zum "Öffentlichen Kalender")
+  //     + zuletzt geholte Datei. Die App zeigt alle zusammen als einen Kalender.
   `
-  CREATE TABLE calendar_feed (
-    id          INTEGER PRIMARY KEY CHECK (id = 1),   -- es gibt genau einen Kalender
-    url         TEXT,                                 -- geheim! wird nie an die Geräte geschickt
-    name        TEXT,                                 -- z. B. "Wir zwei"
+  CREATE TABLE calendar_feeds (
+    id          INTEGER PRIMARY KEY,
+    person_id   INTEGER NOT NULL UNIQUE REFERENCES people(id) ON DELETE CASCADE,
+    url         TEXT    NOT NULL,                     -- geheim! wird nie an die Geräte geschickt
+    name        TEXT,                                 -- z. B. "Kait privat"
     ics         TEXT,                                 -- Inhalt der Kalender-Datei
     synced_at   TEXT,                                 -- zuletzt erfolgreich geholt
     error       TEXT,                                 -- letzter Fehler (oder leer)

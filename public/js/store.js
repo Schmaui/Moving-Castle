@@ -494,17 +494,19 @@ export function deleteDoc(doc) {
 }
 
 // ---------- Kalender (Apple, nur lesen) ----------
-/** Link zum "Öffentlichen Kalender" speichern. Wirft bei Fehler (Meldung für die Anzeige). */
-export async function connectCalendar(url) {
-  const cal = await api.putCalendar(url);
+/** Link zum "Öffentlichen Kalender" einer Person speichern. Wirft bei Fehler (Meldung für die Anzeige). */
+export async function connectCalendar(personId, url) {
+  const cal = await api.putCalendar(personId, url);
   state.calendar = cal;
   emit();
   refresh();
   return cal;
 }
 
-export function disconnectCalendar() {
-  return mutate(() => { state.calendar = { connected: false, events: [] }; }, () => api.putCalendar(null));
+export async function disconnectCalendar(personId) {
+  const cal = await mutate(null, () => api.putCalendar(personId, null));
+  if (cal) { state.calendar = cal; emit(); }
+  return cal;
 }
 
 /** Jetzt neu holen (sonst macht der Server das alle 15 Minuten von selbst). */

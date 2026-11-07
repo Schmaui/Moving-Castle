@@ -425,12 +425,17 @@ test('Ordner: anlegen, PDF und Foto hochladen, ansehen, ändern, verschieben, l�
   assert.equal((await json('DELETE', `/api/folders/${folder.body.id}`)).status, 200, 'leerer Ordner lässt sich löschen');
 });
 
-test('Kalender: Link verbinden, Termine in /api/state, Link bleibt geheim, trennen', async () => {
+test('Kalender: zwei Personen verbinden, zusammengeführt, Doppelte einmal, Links bleiben geheim', async () => {
   const day = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10).replaceAll('-', '');
-  let ics = ['BEGIN:VCALENDAR', 'X-WR-CALNAME:Wir zwei', 'BEGIN:VEVENT', 'UID:x1',
-    `DTSTART;TZID=Europe/Berlin:${day}T100000`, `DTEND;TZID=Europe/Berlin:${day}T110000`, 'SUMMARY:Friseur', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const cal = (name, events) => ['BEGIN:VCALENDAR', `X-WR-CALNAME:${name}`, ...events.flatMap(([uid, start, title]) => ['BEGIN:VEVENT', `UID:${uid}`,
+    `DTSTART;TZID=Europe/Berlin:${day}T${start}`, `DTEND;TZID=Europe/Berlin:${day}T${String(Number(start.slice(0, 2)) + 1).padStart(2, '0')}0000`,
+    `SUMMARY:${title}`, 'END:VEVENT']), 'END:VCALENDAR'].join('\r\n');
+  const files = {
+    '/kait.ics': cal('Kait', [['k1', '100000', 'Friseur'], ['k2', '200000', 'Kino']]),
+    '/schmaui.ics': cal('Schmaui', [['s1', '080000', 'Arzt'], ['s2', '200000', 'kino ']]),
+  };
   const site = http.createServer((req, res) => {
-    if (req.url === '/kalender.ics') { res.writeHead(200, { 'Content-Type': 'text/calendar' }); res.end(ics); return; }
+    if (files[req.url]) { res.writeHead(200, { 'Content-Type': 'text/calendar' }); res.end(files[req.url]); return; }
     res.writeHead(200, { 'Content-Type': 'text/html' }); res.end('<html>keine Termine</html>');
   });
   await new Promise((r) => site.listen(0, '127.0.0.1', r));
@@ -438,32 +443,34 @@ test('Kalender: Link verbinden, Termine in /api/state, Link bleibt geheim, trenn
   try {
     assert.equal((await json('GET', '/api/state')).body.calendar.connected, false);
     assert.equal((await json('POST', '/api/calendar/sync')).status, 409);
-    assert.equal((await json('PUT', '/api/calendar', { url: 'kein link' })).status, 400);
-    assert.equal((await json('PUT', '/api/calendar', { url: `${base}/seite` })).status, 422, 'HTML statt Kalender');
+    assert.equal((await json('PUT', '/api/calendar/1', { url: 'kein link' })).status, 400);
+    assert.equal((await json('PUT', '/api/calendar/99', { url: `${base}/kait.ics` })).status, 404);
+    assert.equal((await json('PUT', '/api/calendar/1', { url: `${base}/seite` })).status, 422, 'HTML statt Kalender');
     assert.equal((await json('GET', '/api/state')).body.calendar.connected, false, 'falscher Link wird nicht gespeichert');
 
-    const ok = await json('PUT', '/api/calendar', { url: `${base}/kalender.ics` });
-    assert.equal(ok.status, 200);
-    assert.equal(ok.body.connected, true);
-    assert.equal(ok.body.name, 'Wir zwei');
+    const one = await json('PUT', '/api/calendar/1', { url: `${base}/kait.ics` });
+    assert.equal(one.status, 200);
+    assert.deepEqual(one.body.feeds.map((f) => [f.personId, f.name]), [[1, 'Kait']]);
+    const two = await json('PUT', '/api/calendar/2', { url: `${base}/schmaui.ics` });
+    assert.deepEqual(two.body.events.map((e) => [e.title, e.people]), [['Arzt', [2]], ['Friseur', [1]], ['Kino', [1, 2]]],
+      'zusammengeführt, gleicher Termin nur einmal (mit beiden Personen)');
     const { body } = await json('GET', '/api/state');
-    assert.equal(body.calendar.events.length, 1);
-    assert.equal(body.calendar.events[0].title, 'Friseur');
-    assert.match(body.calendar.events[0].start, /T10:00$/);
-    assert.ok(!JSON.stringify(body).includes('/kalender.ics'), 'der geheime Link kommt nie bei den Geräten an');
+    assert.equal(body.calendar.feeds.length, 2);
+    assert.ok(!JSON.stringify(body).includes('.ics'), 'die geheimen Links kommen nie bei den Geräten an');
 
-    // Termin kommt dazu -> nach "jetzt aktualisieren" sichtbar
-    ics = ics.replace('END:VCALENDAR', ['BEGIN:VEVENT', 'UID:x2', `DTSTART;VALUE=DATE:${day}`, 'SUMMARY:Müll', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n'));
+    // neuer Termin -> nach "jetzt aktualisieren" sichtbar
+    files['/kait.ics'] = files['/kait.ics'].replace('END:VCALENDAR', ['BEGIN:VEVENT', 'UID:k3', `DTSTART;VALUE=DATE:${day}`, 'SUMMARY:Müll', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n'));
     const synced = await json('POST', '/api/calendar/sync');
-    assert.deepEqual(synced.body.events.map((e) => e.title), ['Müll', 'Friseur'], 'ganztägig zuerst');
+    assert.equal(synced.body.events[0].title, 'Müll', 'ganztägig zuerst');
 
     // Server weg -> alte Termine bleiben, Fehler wird gemeldet
     site.close();
     const failed = await json('POST', '/api/calendar/sync');
-    assert.equal(failed.body.events.length, 2);
-    assert.ok(failed.body.error);
+    assert.equal(failed.body.events.length, 4);
+    assert.ok(failed.body.feeds.every((f) => f.error));
 
-    const off = await json('PUT', '/api/calendar', { url: null });
+    await json('PUT', '/api/calendar/2', { url: null });
+    const off = await json('PUT', '/api/calendar/1', { url: null });
     assert.equal(off.body.connected, false);
   } finally {
     site.close();

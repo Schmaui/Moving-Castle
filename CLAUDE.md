@@ -108,17 +108,21 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen, Pinnwand ergänzen.
 - **Kalender (7.11.2026): gebaut, wartet auf „passt“** (Branch `claude/vigilant-noether-1h6c6p`, noch NICHT
   auf main). Entscheidungen (Klick-Fragen):
-  - EIN gemeinsamer Apple-Kalender, NUR anzeigen (kein Eintragen), keine App-Termine (Aufgaben/Essen)
-    im Kalender, kein Abo in die andere Richtung.
+  - Beide haben je einen eigenen Apple-Kalender (gegenseitig geteilt) → **je Person ein Link**, die App
+    zeigt alles zusammen als EINEN Kalender. Termine in der **Profil-Farbe** der Person mit Profilbild;
+    gleicher Termin (Titel + Zeit) in beiden Kalendern → nur einmal, mit beiden Bildern.
+  - NUR anzeigen (kein Eintragen), keine App-Termine (Aufgaben/Essen) im Kalender, kein Abo zurück.
   - Weg: „Öffentlicher Kalender“ in der Kalender-App → geheimer webcal-Link. Wird einmal in der App
-    eingefügt (Planer → Kalender oder Mehr → Kalender), liegt nur auf dem Server (Tabelle
-    `calendar_feed`, Migration 11), geht nie an die Geräte. Server holt alle 15 Min. neu (+ Knopf).
+    eingefügt (Planer → Kalender oder Mehr), liegt nur auf dem Server (Tabelle `calendar_feeds`,
+    Migration 11, eine Zeile je Person), geht nie an die Geräte. Server holt alle 15 Min. neu (+ Knopf).
+    API: `PUT /api/calendar/:personId { url }` (null = trennen), `POST /api/calendar/sync`.
   - Leiste: „Aufgaben“ heißt jetzt **„Planer“** (View `kalender`, navAlso `aufgaben`), Reiter oben
     Kalender · Aufgaben (`plannerTabs`). Start = Woche, umschaltbar auf Monat (`#/kalender/monat`).
     Badge am Planer = heutige Aufgaben. Termin antippen = Details (Ort → Apple Karten, Notiz).
   - Technik: `server/ical.js` (iCalendar-Leser ohne Pakete: Zeitzonen, ganztägig, RRULE, EXDATE,
     RECURRENCE-ID, Absagen; Tests in `test/ical.test.js`), `server/modules/calendar.js`,
-    `public/js/views/kalender.js`. Zeitraum: 400 Tage zurück bis 760 Tage voraus.
+    `public/js/views/kalender.js` (`calendarSetup` auch in Einstellungen). Zeitraum: 400 Tage zurück
+    bis 760 Tage voraus.
   - Konnte NICHT mit echtem iCloud-Link getestet werden (Cloud-Session) – Nutzer beim ersten Verbinden
     begleiten, bei Fehler nach Meldung/Screenshot fragen.
   Update-Pfad Migration 10 → 11 mit alter DB getestet.

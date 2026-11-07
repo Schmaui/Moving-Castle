@@ -1,4 +1,5 @@
-// Ansicht "Kalender" (/#/kalender): euer gemeinsamer Apple-Kalender, nur zum Anschauen.
+// Ansicht "Kalender" (/#/kalender): eure Apple-Kalender (je Person einer) zusammen als EIN
+// Kalender, nur zum Anschauen. Termine in der Farbe der Person (mit Profilbild).
 //   #/kalender         Woche (mit Uhrzeiten)
 //   #/kalender/monat   Monat (Tag antippen zeigt die Termine darunter)
 // Liegt in der Leiste unter "Planer" (Reiter oben: Kalender · Aufgaben).
@@ -8,7 +9,8 @@ import { h, today, addDays, mondayOf, formatWhen } from '../util.js';
 import { viewHeader, loading, iconLabel, plannerTabs } from '../ui/components.js';
 import { icon } from '../ui/art.js';
 import { showToast } from '../ui/toast.js';
-import { connectCalendar, syncCalendar } from '../store.js';
+import { connectCalendar, disconnectCalendar, syncCalendar, personById } from '../store.js';
+import { avatar } from '../ui/people.js';
 import aufgaben from './aufgaben.js';
 
 const subroute = () => location.hash.replace(/^#\/?/, '').split(/[/?]/).slice(1);
@@ -18,8 +20,10 @@ const ui = {
   weekOffset: 0,
   monthOffset: 0,
   selectedDay: null,   // Monat: angetippter Tag
-  link: '',            // Eingabe beim Verbinden
-  connecting: false,
+  links: {},           // Eingaben beim Verbinden (je Person)
+  editing: new Set(),  // Personen, deren Link gerade geändert wird
+  connecting: new Set(),
+  manage: false,       // "Kalender verwalten" aufgeklappt
   syncing: false,
 };
 
@@ -67,20 +71,30 @@ export default {
 
   render(state, ctx) {
     if (!state.loaded) return loading();
-    const cal = state.calendar || { connected: false, events: [] };
+    const cal = state.calendar || { connected: false, events: [], feeds: [] };
     const month = subroute()[0] === 'monat';
     if (!cal.connected) {
-      return [plannerTabs('kalender'), viewHeader({ id: 'title-kalender', title: 'Kalender', subtitle: 'euer Apple-Kalender in der App' }), setupCard(ctx)];
+      return [
+        plannerTabs('kalender'),
+        viewHeader({ id: 'title-kalender', title: 'Kalender', subtitle: 'eure Apple-Kalender in der App' }),
+        calendarSetup(state, ctx),
+      ];
     }
+    const names = (cal.feeds || []).map((f) => personById(f.personId)?.name).filter(Boolean);
     return [
       plannerTabs('kalender'),
-      viewHeader({ id: 'title-kalender', title: 'Kalender', subtitle: cal.name ? `„${cal.name}“ aus Apple-Kalender` : 'aus Apple-Kalender' }),
+      viewHeader({ id: 'title-kalender', title: 'Kalender', subtitle: names.length > 1 ? `${names.join(' & ')} zusammen` : `aus ${names[0] || 'Apple'}s Kalender` }),
       toolbar(month, ctx),
       month ? monthView(cal.events, ctx) : weekView(cal.events),
-      statusLine(cal, ctx),
+      statusLine(state, cal, ctx),
+      ui.manage && calendarSetup(state, ctx, { withSteps: false }),
     ];
   },
 };
+
+/** Farbe eines Termins = Farbe der Person (bei beiden: neutral). */
+const toneOf = (e) => (e.people?.length === 1 ? personById(e.people[0])?.tone || 4 : 3);
+const whoOf = (e) => h('span', { class: 'cal-who' }, (e.people || []).map((id) => avatar(personById(id), { size: 'xs' })));
 
 // ---------- Kopfzeile: Woche/Monat, vor/zurück, Heute ----------
 function toolbar(month, ctx) {
@@ -142,10 +156,11 @@ function weekView(events) {
 
 function eventItem(e, day) {
   return h('li', {},
-    h('button', { type: 'button', class: ['cal-event', e.allDay && 'cal-event--allday'], onclick: () => openEvent(e, day) },
+    h('button', { type: 'button', class: ['cal-event', e.allDay && 'cal-event--allday'], 'data-tone': toneOf(e), onclick: () => openEvent(e, day) },
       h('span', { class: 'cal-event__time' }, timeLabel(e, day)),
       h('span', { class: 'cal-event__title' }, e.title),
       e.location && h('span', { class: 'cal-event__place' }, e.location.split('\n')[0]),
+      whoOf(e),
     ));
 }
 
@@ -182,9 +197,9 @@ function monthView(events, ctx) {
         },
           h('span', { class: 'cal-cell__num' }, fmt(day, { day: 'numeric' })),
           // Handy: Punkte, PC: kurze Titel
-          list.length > 0 && h('span', { class: 'cal-cell__dots', 'aria-hidden': 'true' }, list.slice(0, 3).map(() => h('span', { class: 'cal-cell__dot' }))),
+          list.length > 0 && h('span', { class: 'cal-cell__dots', 'aria-hidden': 'true' }, list.slice(0, 3).map((e) => h('span', { class: 'cal-cell__dot', 'data-tone': toneOf(e) }))),
           list.length > 0 && h('span', { class: 'cal-cell__titles', 'aria-hidden': 'true' },
-            list.slice(0, 3).map((e) => h('span', { class: ['cal-cell__title', e.allDay && 'is-allday'] }, e.allDay || dayOf(e.start) !== day ? e.title : `${timeOf(e.start)} ${e.title}`)),
+            list.slice(0, 3).map((e) => h('span', { class: ['cal-cell__title', e.allDay && 'is-allday'], 'data-tone': toneOf(e) }, e.allDay || dayOf(e.start) !== day ? e.title : `${timeOf(e.start)} ${e.title}`)),
             list.length > 3 && h('span', { class: 'cal-cell__more' }, `+${list.length - 3}`)),
         );
       }))),
@@ -213,12 +228,14 @@ function openEvent(e, day) {
     class: 'sheet-screen',
     onclick: (ev) => { if (ev.target === ev.currentTarget) close(); },
   },
-    h('div', { class: 'card card--note sheet cal-sheet', 'data-tone': 4, role: 'dialog', 'aria-modal': 'true', 'aria-label': e.title },
+    h('div', { class: 'card card--note sheet cal-sheet', 'data-tone': toneOf(e), role: 'dialog', 'aria-modal': 'true', 'aria-label': e.title },
       h('div', { class: 'sheet__head' },
         h('h2', { class: 'card__title' }, e.title),
         h('button', { type: 'button', class: 'btn btn--icon btn--ghost', 'aria-label': 'Schließen', onclick: close }, icon('kreuz', { wash: false })),
       ),
       h('p', { class: 'cal-sheet__row' }, icon('kalender', { wash: false }), h('span', {}, when)),
+      h('p', { class: 'cal-sheet__row cal-sheet__who' }, whoOf(e),
+        h('span', {}, `aus ${(e.people || []).map((id) => personById(id)?.name).filter(Boolean).join(' & ')}s Kalender`.replace(' & ', ' und '))),
       e.location && h('p', { class: 'cal-sheet__row' }, icon('pinnwand', { wash: false }),
         h('a', { href: `https://maps.apple.com/?q=${encodeURIComponent(e.location)}`, target: '_blank', rel: 'noopener' }, e.location)),
       e.notes && h('p', { class: 'cal-sheet__notes' }, e.notes),
@@ -231,63 +248,106 @@ function openEvent(e, day) {
   return day;
 }
 
-// ---------- Zuletzt aktualisiert ----------
-function statusLine(cal, ctx) {
+// ---------- Zuletzt aktualisiert / verwalten ----------
+function statusLine(state, cal, ctx) {
+  const synced = (cal.feeds || []).map((f) => f.syncedAt).filter(Boolean).sort()[0];
+  const errors = (cal.feeds || []).filter((f) => f.error);
+  const missing = state.people.filter((p) => !(cal.feeds || []).some((f) => f.personId === p.id));
   return h('div', { class: 'cal-status' },
-    cal.error && h('p', { class: 'hint cal-status__error' }, `Letztes Abholen hat nicht geklappt: ${cal.error}`),
-    h('span', {}, cal.syncedAt ? `aktualisiert ${formatWhen(cal.syncedAt)} · alle 15 Min. automatisch` : 'noch nicht abgeholt'),
+    errors.map((f) => h('p', { class: 'hint cal-status__error' }, `${personById(f.personId)?.name || 'Kalender'}: Letztes Abholen hat nicht geklappt – ${f.error}`)),
+    h('span', {}, synced ? `aktualisiert ${formatWhen(synced)} · alle 15 Min. automatisch` : 'noch nicht abgeholt'),
     h('button', {
       type: 'button', class: 'btn btn--small btn--ghost', disabled: ui.syncing, 'data-focus-key': 'cal-sync',
       onclick: async () => {
         ui.syncing = true; ctx.rerender();
         const cal2 = await syncCalendar();
         ui.syncing = false; ctx.rerender();
-        if (cal2 && !cal2.error) showToast('Kalender ist aktuell ♡');
+        if (cal2 && !(cal2.feeds || []).some((f) => f.error)) showToast('Kalender ist aktuell ♡');
       },
     }, iconLabel('wiederholen', ui.syncing ? 'holt …' : 'Jetzt aktualisieren')),
+    h('button', {
+      type: 'button', class: 'btn btn--small btn--ghost', 'aria-expanded': String(ui.manage), 'data-focus-key': 'cal-manage',
+      onclick: () => { ui.manage = !ui.manage; ctx.rerender(); },
+    }, missing.length && !ui.manage ? iconLabel('plus', `${missing.map((p) => p.name).join(' & ')}s Kalender verbinden`) : iconLabel('zahnrad', ui.manage ? 'fertig' : 'Kalender verwalten')),
   );
 }
 
-// ---------- Einrichten (einmalig) ----------
-export function setupCard(ctx, { compact = false, onDone } = {}) {
+// ---------- Einrichten: je Person ein Kalender ----------
+const STEPS = () => h('ol', { class: 'cal-steps' },
+  h('li', {}, 'Auf dem iPhone die ', h('strong', {}, 'Kalender'), '-App öffnen und unten auf ', h('strong', {}, '„Kalender“'), ' tippen.'),
+  h('li', {}, 'Beim eigenen Kalender (den ihr miteinander teilt) auf das ', h('strong', {}, 'ⓘ'), ' rechts tippen.'),
+  h('li', {}, 'Ganz unten ', h('strong', {}, '„Öffentlicher Kalender“'), ' einschalten.'),
+  h('li', {}, 'Auf ', h('strong', {}, '„Link teilen …“'), ' → ', h('strong', {}, '„Kopieren“'), ' tippen.'),
+  h('li', {}, 'Hier beim eigenen Namen einfügen und auf ', h('strong', {}, '„Verbinden“'), ' tippen. Dann macht die andere Person das Gleiche.'),
+);
+
+/** Karte mit einer Zeile je Person (verbunden: Name + Ändern/Trennen, sonst: Link einfügen). */
+export function calendarSetup(state, ctx, { withSteps = true, scope = 'cal' } = {}) {
+  const cal = state.calendar || { feeds: [] };
   return h('section', { class: 'card card--note cal-setup', 'data-tone': 4 },
     h('div', { class: 'card__header' },
       h('span', { class: 'card__icon' }, icon('kalender')),
-      h('h2', { class: 'card__title' }, 'Apple-Kalender verbinden'),
+      h('h2', { class: 'card__title' }, cal.connected ? 'Eure Kalender' : 'Apple-Kalender verbinden'),
     ),
-    !compact && h('ol', { class: 'cal-steps' },
-      h('li', {}, 'Auf dem iPhone die ', h('strong', {}, 'Kalender'), '-App öffnen und unten auf ', h('strong', {}, '„Kalender“'), ' tippen.'),
-      h('li', {}, 'Beim gemeinsamen Kalender auf das ', h('strong', {}, 'ⓘ'), ' rechts tippen.'),
-      h('li', {}, 'Ganz unten ', h('strong', {}, '„Öffentlicher Kalender“'), ' einschalten (geht nur bei der Person, die den Kalender angelegt hat).'),
-      h('li', {}, 'Auf ', h('strong', {}, '„Link teilen …“'), ' → ', h('strong', {}, '„Kopieren“'), ' tippen.'),
-      h('li', {}, 'Hier unten einfügen und auf ', h('strong', {}, '„Verbinden“'), ' tippen.'),
-    ),
-    h('p', { class: 'muted cal-setup__note' }, 'Der Link ist geheim: Er wird nur auf eurem Server gespeichert und hier nie wieder angezeigt.'),
+    withSteps ? STEPS() : h('details', { class: 'cal-howto' }, h('summary', {}, 'So bekommt ihr den Link'), STEPS()),
+    h('ul', { class: 'cal-people' }, state.people.map((p) => personRow(p, (cal.feeds || []).find((f) => f.personId === p.id), ctx, scope))),
+    h('p', { class: 'muted cal-setup__note' }, 'Die Links sind geheim: Sie werden nur auf eurem Server gespeichert und hier nie wieder angezeigt.'),
+  );
+}
+
+function personRow(person, feed, ctx, scope) {
+  const busy = ui.connecting.has(person.id);
+  if (feed && !ui.editing.has(person.id)) {
+    return h('li', { class: 'cal-person' },
+      avatar(person, { size: 'sm' }),
+      h('div', { class: 'cal-person__text' },
+        h('strong', {}, `${person.name}: „${feed.name || 'Kalender'}“`),
+        h('span', { class: 'muted' }, feed.error ? `Fehler: ${feed.error}` : feed.syncedAt ? `verbunden · aktualisiert ${formatWhen(feed.syncedAt)}` : 'verbunden'),
+      ),
+      h('div', { class: 'cal-person__actions' },
+        h('button', { type: 'button', class: 'btn btn--small btn--ghost', 'data-focus-key': `${scope}-change-${person.id}`, onclick: () => { ui.editing.add(person.id); ctx.rerender(); } }, 'Link ändern'),
+        h('button', {
+          type: 'button', class: 'btn btn--small btn--danger', 'data-focus-key': `${scope}-off-${person.id}`,
+          onclick: () => {
+            if (confirm(`${person.name}s Kalender trennen? Die Termine verschwinden dann aus der App (im Apple-Kalender bleibt alles).`)) disconnectCalendar(person.id);
+          },
+        }, 'Trennen'),
+      ),
+    );
+  }
+  return h('li', { class: 'cal-person' },
+    avatar(person, { size: 'sm' }),
     h('form', {
-      class: 'add-form',
+      class: 'cal-person__form',
       onsubmit: async (e) => {
         e.preventDefault();
-        if (!ui.link.trim() || ui.connecting) return;
-        ui.connecting = true; ctx.rerender();
+        const link = (ui.links[person.id] || '').trim();
+        if (!link || busy) return;
+        ui.connecting.add(person.id); ctx.rerender();
         try {
-          const cal = await connectCalendar(ui.link.trim());
-          ui.link = '';
-          onDone?.();
-          showToast(`Verbunden mit „${cal.name || 'Kalender'}“ ♡`);
+          const cal = await connectCalendar(person.id, link);
+          ui.links[person.id] = '';
+          ui.editing.delete(person.id);
+          const f = cal.feeds.find((x) => x.personId === person.id);
+          showToast(`${person.name}s Kalender „${f?.name || 'Kalender'}“ ist verbunden ♡`);
         } catch (err) {
           showToast(err.message || 'Verbinden hat nicht geklappt', { variant: 'error' });
         } finally {
-          ui.connecting = false; ctx.rerender();
+          ui.connecting.delete(person.id); ctx.rerender();
         }
       },
     },
-      h('input', {
-        class: 'input', type: 'url', inputmode: 'url', placeholder: 'webcal://p…-caldav.icloud.com/published/2/…',
-        'aria-label': 'Link zum öffentlichen Kalender', autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false',
-        'data-focus-key': 'cal-link', value: ui.link,
-        oninput: (e) => { ui.link = e.target.value; },
-      }),
-      h('button', { type: 'submit', class: 'btn btn--primary', disabled: ui.connecting, 'data-focus-key': 'cal-connect' }, ui.connecting ? 'prüft …' : 'Verbinden'),
+      h('label', { class: 'cal-person__label', for: `${scope}-link-${person.id}` }, `Kalender von ${person.name}`),
+      h('div', { class: 'add-form add-form--tight' },
+        h('input', {
+          id: `${scope}-link-${person.id}`, class: 'input', type: 'url', inputmode: 'url', placeholder: 'webcal://p…-caldav.icloud.com/published/2/…',
+          autocomplete: 'off', autocapitalize: 'off', spellcheck: 'false',
+          'data-focus-key': `${scope}-link-${person.id}`, value: ui.links[person.id] || '',
+          oninput: (e) => { ui.links[person.id] = e.target.value; },
+        }),
+        h('button', { type: 'submit', class: 'btn btn--primary', disabled: busy, 'data-focus-key': `${scope}-connect-${person.id}` }, busy ? 'prüft …' : 'Verbinden'),
+        feed && h('button', { type: 'button', class: 'btn btn--ghost', onclick: () => { ui.editing.delete(person.id); ctx.rerender(); } }, 'Abbrechen'),
+      ),
     ),
   );
 }

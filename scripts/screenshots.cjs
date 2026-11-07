@@ -104,20 +104,25 @@ function check(cond, msg) {
   // Test-Kalender (so wie ihn Apple als "Öffentlichen Kalender" liefert), Termine rund um heute
   const ical = (n) => day(n).replaceAll('-', '');
   const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return Math.round((d - new Date()) / 86400000); })();
-  const ICS = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'X-WR-CALNAME:Wir zwei', 'X-WR-TIMEZONE:Europe/Berlin',
-    'BEGIN:VEVENT', 'UID:t1', `DTSTART;TZID=Europe/Berlin:${ical(0)}T093000`, `DTEND;TZID=Europe/Berlin:${ical(0)}T103000`,
-    'SUMMARY:Zahnarzt Kait', 'LOCATION:Praxis Dr. Müller\\, Hauptstraße 5', 'DESCRIPTION:Versichertenkarte mitnehmen', 'END:VEVENT',
-    'BEGIN:VEVENT', 'UID:t2', `DTSTART;VALUE=DATE:${ical(monday + 5)}`, `DTEND;VALUE=DATE:${ical(monday + 7)}`, 'SUMMARY:Wochenende bei Oma', 'END:VEVENT',
-    'BEGIN:VEVENT', 'UID:t3', `DTSTART;TZID=Europe/Berlin:${ical(monday)}T190000`, `DTEND;TZID=Europe/Berlin:${ical(monday)}T200000`,
-    'RRULE:FREQ=WEEKLY;BYDAY=MO,TH', 'SUMMARY:Yoga', 'LOCATION:Studio am Park', 'END:VEVENT',
-    'BEGIN:VEVENT', 'UID:t4', `DTSTART;TZID=Europe/Berlin:${ical(monday + 2)}T200000`, `DTEND;TZID=Europe/Berlin:${ical(monday + 2)}T223000`, 'SUMMARY:Kino mit Lea & Tom', 'END:VEVENT',
-    'BEGIN:VEVENT', 'UID:t5', `DTSTART;TZID=Europe/Berlin:${ical(monday + 1)}T123000`, `DTEND;TZID=Europe/Berlin:${ical(monday + 1)}T133000`, 'SUMMARY:Mittag mit Mama', 'END:VEVENT',
-    'BEGIN:VEVENT', 'UID:t6', `DTSTART;VALUE=DATE:${ical(monday + 10)}`, 'RRULE:FREQ=YEARLY', 'SUMMARY:Geburtstag Schmaui', 'END:VEVENT',
-    'BEGIN:VEVENT', 'UID:t7', `DTSTART;TZID=Europe/Berlin:${ical(monday + 15)}T080000`, `DTEND;TZID=Europe/Berlin:${ical(monday + 15)}T090000`, 'SUMMARY:Handwerker Heizung', 'END:VEVENT',
-    'END:VCALENDAR'].join('\r\n');
-  const calServer = http.createServer((req, res) => { res.writeHead(200, { 'Content-Type': 'text/calendar' }); res.end(ICS); });
+  const head = (name) => ['BEGIN:VCALENDAR', 'VERSION:2.0', `X-WR-CALNAME:${name}`, 'X-WR-TIMEZONE:Europe/Berlin'];
+  const kino = ['BEGIN:VEVENT', 'UID:kino', `DTSTART;TZID=Europe/Berlin:${ical(monday + 2)}T200000`, `DTEND;TZID=Europe/Berlin:${ical(monday + 2)}T223000`, 'SUMMARY:Kino mit Lea & Tom', 'END:VEVENT'];
+  const CALS = {
+    '/kait.ics': [...head('Kait'),
+      'BEGIN:VEVENT', 'UID:t1', `DTSTART;TZID=Europe/Berlin:${ical(0)}T093000`, `DTEND;TZID=Europe/Berlin:${ical(0)}T103000`,
+      'SUMMARY:Zahnarzt', 'LOCATION:Praxis Dr. Müller\\, Hauptstraße 5', 'DESCRIPTION:Versichertenkarte mitnehmen', 'END:VEVENT',
+      'BEGIN:VEVENT', 'UID:t5', `DTSTART;TZID=Europe/Berlin:${ical(monday + 1)}T123000`, `DTEND;TZID=Europe/Berlin:${ical(monday + 1)}T133000`, 'SUMMARY:Mittag mit Mama', 'END:VEVENT',
+      ...kino, 'END:VCALENDAR'].join('\r\n'),
+    '/schmaui.ics': [...head('Schmaui'),
+      'BEGIN:VEVENT', 'UID:t2', `DTSTART;VALUE=DATE:${ical(monday + 5)}`, `DTEND;VALUE=DATE:${ical(monday + 7)}`, 'SUMMARY:Wochenende bei Oma', 'END:VEVENT',
+      'BEGIN:VEVENT', 'UID:t3', `DTSTART;TZID=Europe/Berlin:${ical(monday)}T190000`, `DTEND;TZID=Europe/Berlin:${ical(monday)}T200000`,
+      'RRULE:FREQ=WEEKLY;BYDAY=MO,TH', 'SUMMARY:Yoga', 'LOCATION:Studio am Park', 'END:VEVENT',
+      'BEGIN:VEVENT', 'UID:t6', `DTSTART;VALUE=DATE:${ical(monday + 10)}`, 'RRULE:FREQ=YEARLY', 'SUMMARY:Geburtstag Oma', 'END:VEVENT',
+      'BEGIN:VEVENT', 'UID:t7', `DTSTART;TZID=Europe/Berlin:${ical(monday + 15)}T080000`, `DTEND;TZID=Europe/Berlin:${ical(monday + 15)}T090000`, 'SUMMARY:Handwerker Heizung', 'END:VEVENT',
+      ...kino, 'END:VCALENDAR'].join('\r\n'),
+  };
+  const calServer = http.createServer((req, res) => { res.writeHead(200, { 'Content-Type': 'text/calendar' }); res.end(CALS[req.url] || ''); });
   await new Promise((r) => calServer.listen(0, '127.0.0.1', r));
-  const calUrl = `http://127.0.0.1:${calServer.address().port}/published/2/geheim.ics`;
+  const calBase = `http://127.0.0.1:${calServer.address().port}`;
 
   const browser = await chromium.launch();
   const errors = [];
@@ -219,15 +224,24 @@ function check(cond, msg) {
   await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 10000 });
   check(await page.locator('.nav__link', { hasText: 'Planer' }).getAttribute('aria-current') === 'page', 'Knopf „Planer“ leuchtet im Kalender');
   await page.screenshot({ path: path.join(OUT, 'handy-kalender-verbinden.jpg'), quality: 85, fullPage: true });
-  await page.locator('#view-kalender [data-focus-key="cal-link"]').fill(calUrl);
-  await page.locator('#view-kalender [data-focus-key="cal-connect"]').click();
+  await page.locator('#view-kalender [data-focus-key="cal-link-1"]').fill(`${calBase}/kait.ics`);
+  await page.locator('#view-kalender [data-focus-key="cal-link-1"]').press('Enter');
   await page.waitForSelector('#view-kalender .cal-week');
-  check(await page.locator('#view-kalender .cal-day.is-today .cal-event', { hasText: 'Zahnarzt Kait' }).count() === 1, 'Kalender verbunden: heutiger Termin steht in der Woche');
+  check(await page.locator('#view-kalender .cal-day.is-today .cal-event', { hasText: 'Zahnarzt' }).count() === 1, 'Kaits Kalender verbunden: heutiger Termin steht in der Woche');
+  await page.locator('#view-kalender [data-focus-key="cal-manage"]', { hasText: 'Schmaui' }).click();
+  await page.locator('#view-kalender [data-focus-key="cal-link-2"]').fill(`${calBase}/schmaui.ics`);
+  await page.locator('#view-kalender [data-focus-key="cal-link-2"]').press('Enter');
+  await page.waitForSelector('#view-kalender .cal-event:has-text("Yoga")');
+  check(await page.locator('#view-kalender .cal-event', { hasText: 'Kino' }).count() === 1, 'Zweiter Kalender dazu – gemeinsamer Termin „Kino“ nur einmal');
+  check(await page.locator('#view-kalender .cal-event', { hasText: 'Kino' }).locator('.avatar').count() === 2, '… mit beiden Profilbildern');
+  await page.locator('#view-kalender .cal-setup').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'handy-kalender-verwalten.jpg'), quality: 85 });
+  await page.locator('#view-kalender [data-focus-key="cal-manage"]').click();
   check(await page.locator('#view-kalender .cal-event', { hasText: 'Yoga' }).count() === 2, 'Wiederholung (Mo + Do) erscheint zweimal');
   await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 10000 });
   await page.screenshot({ path: path.join(OUT, 'handy-kalender-woche.jpg'), quality: 85 });
   await page.screenshot({ path: path.join(OUT, 'handy-kalender-woche-ganz.jpg'), quality: 85, fullPage: true });
-  await page.locator('#view-kalender .cal-event', { hasText: 'Zahnarzt Kait' }).click();
+  await page.locator('#view-kalender .cal-event', { hasText: 'Zahnarzt' }).click();
   await page.waitForSelector('.cal-sheet');
   check(await page.locator('.cal-sheet', { hasText: 'Hauptstraße 5' }).count() === 1, 'Termin antippen zeigt Ort und Notiz');
   await page.screenshot({ path: path.join(OUT, 'handy-kalender-termin.jpg'), quality: 85 });
