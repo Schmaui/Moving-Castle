@@ -176,6 +176,18 @@ function check(cond, msg) {
 
   await page.goto(BASE + '/#/vorrat');
   await page.waitForSelector('.chip');
+  // Zettel sind zugeklappt: nur was fehlt ist zu sehen
+  check(await page.evaluate(() => [...document.querySelectorAll('#view-vorrat .fridge-board .card:not(.card--due) .chip')].every((c) => c.classList.contains('is-missing'))), 'Küche: Zettel zugeklappt, zeigen nur was fehlt');
+  check(await page.locator('#view-vorrat .card__all-there').count() > 0, 'Zettel ohne Fehlendes: „alles da“');
+  await page.screenshot({ path: path.join(OUT, 'handy-vorrat-zugeklappt.jpg'), quality: 85, fullPage: true });
+  await page.locator('#view-vorrat .card__toggle', { hasText: 'Konserven' }).click();
+  check(await page.locator('#view-vorrat .chip', { hasText: 'Champignons' }).count() === 1, 'Überschrift antippen klappt den Zettel auf');
+  await page.locator('#view-vorrat .card__toggle', { hasText: 'Konserven' }).click();
+  check(await page.locator('#view-vorrat .chip', { hasText: 'Champignons' }).count() === 0, '… und wieder zu');
+  await page.locator('[data-focus-key="open-all-vorrat"]').click();
+  await page.reload();
+  await page.waitForSelector('#view-vorrat .chip:has-text("Champignons")');
+  check(true, '„Alle auf“ – und das Gerät merkt es sich');
   await page.locator('.chip', { hasText: 'Kidneybohnen' }).click();
   await page.waitForTimeout(400);
   check(await page.locator('.chip.is-missing', { hasText: 'Kidneybohnen' }).count() === 1, 'Chip antippen markiert als fehlt');
@@ -213,6 +225,8 @@ function check(cond, msg) {
   check(await page.locator('.nav__link').count() === 5, 'Leiste hat 5 Knöpfe');
   check(await page.locator('.nav__link[href="#/vorrat"]').getAttribute('aria-current') === 'page', 'Knopf „Küche“ leuchtet im Vorrat');
   await page.locator('#view-vorrat .kitchen-tabs__tab', { hasText: 'Haushalt' }).click();
+  await page.waitForSelector('#view-haushalt .card__all-there');
+  await page.locator('[data-focus-key="open-all-haushalt"]').click();
   await page.waitForSelector('#view-haushalt .chip');
   check(await page.locator('.nav__link[href="#/vorrat"]').getAttribute('aria-current') === 'page', 'Knopf „Küche“ leuchtet auch im Haushalt');
   await page.locator('#view-haushalt .chip', { hasText: 'Zahnpasta' }).click();
@@ -373,10 +387,20 @@ function check(cond, msg) {
     return { photos: photos.length, clashes: photos.filter((p) => keep.some((k) => hit(p, k))).length, bad };
   });
   await page.goto(BASE + '/#/vorrat');
-  await page.waitForSelector('#view-vorrat .polaroid--magnet');
+  await page.waitForFunction(() => document.querySelectorAll('#view-vorrat .polaroid--magnet').length === 3, null, { timeout: 15000 });
   let clash = await photoClash();
-  check(clash.photos === 4 && clash.clashes === 0, `Handy: 4 Fotos verstreut an der Tür, keins verdeckt Artikel/Knöpfe (${JSON.stringify(clash)})`);
+  check(clash.photos === 3 && clash.clashes === 0, `Handy: 3 von 4 Fotos zufällig an der Tür, keins verdeckt Artikel/Knöpfe (${JSON.stringify(clash)})`);
   await page.screenshot({ path: path.join(OUT, 'handy-vorrat-fotos.jpg'), quality: 85, fullPage: true });
+  await page.locator('[data-focus-key="open-all-vorrat"]').click(); // alle wieder zu
+  await page.waitForSelector('#view-vorrat .card--closed');
+  clash = await photoClash();
+  check(clash.photos === 3 && clash.clashes === 0, `Zugeklappt: Fotos verteilen sich neu, keins verdeckt etwas (${JSON.stringify(clash)})`);
+  await page.screenshot({ path: path.join(OUT, 'handy-vorrat-zugeklappt-fotos.jpg'), quality: 85, fullPage: true });
+  await page.goto(BASE + '/#/einstellungen');
+  await page.waitForSelector('.gallery__item');
+  check(await page.locator('.gallery__item').count() === 4, 'Galerie unter „Mehr“ zeigt alle 4 Fotos');
+  await page.locator('.gallery').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'handy-galerie.jpg'), quality: 85 });
 
   await page.goto(BASE + '/#/pinnwand');
   await page.waitForSelector('#view-pinnwand .pin-tile');
@@ -561,6 +585,9 @@ function check(cond, msg) {
   page = await desktop.newPage(); watch(page);
   await page.goto(BASE + '/#/vorrat');
   await page.waitForSelector('.chip');
+  await page.screenshot({ path: path.join(OUT, 'pc-vorrat-zugeklappt.jpg'), quality: 85, fullPage: true });
+  await page.locator('[data-focus-key="open-all-vorrat"]').click();
+  await page.waitForSelector('#view-vorrat .chip:has-text("Erdnussbutter")');
   check(await page.locator('#view-liste').isVisible(), 'Liste und Vorrat nebeneinander');
   // Hover-Effekt und Tastatur-Fokus sichtbar machen
   await page.keyboard.press('Tab');

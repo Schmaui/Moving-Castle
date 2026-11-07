@@ -14,7 +14,7 @@ import { shrink, openLightbox } from '../ui/photos.js';
 import { showToast } from '../ui/toast.js';
 import { calendarSetup } from './kalender.js';
 import {
-  addPhoto, deletePhoto, updatePhoto, movePhoto, sortedPhotos, updateSettings, logout,
+  addPhoto, deletePhoto, updatePhoto, sortedPhotos, updateSettings, logout,
   updatePerson, uploadAvatar, removeAvatar,
 } from '../store.js';
 
@@ -141,47 +141,40 @@ function personRow(person, ctx) {
 // ---------- Fotos ----------
 function photosSection(ctx) {
   const photos = sortedPhotos();
-  return section('Unsere Fotos', 'kamera', 'hängen zwischen den Zetteln im Vorrat', 1,
-    photos.length === 0 && !draft.blob && h('p', { class: 'muted' }, 'Noch keine Fotos – häng das erste auf!'),
-    h('ul', { class: 'photo-list' }, photos.map((photo, i) => photoRow(photo, i, photos.length))),
+  return section('Galerie', 'kamera', photos.length
+    ? `${photos.length} ${photos.length === 1 ? 'Foto' : 'Fotos'} – an der Küchentür hängen immer ein paar davon, bei jedem Öffnen andere`
+    : 'an der Küchentür hängen immer ein paar davon, bei jedem Öffnen andere', 1,
+    photos.length === 0 && !draft.blob && h('p', { class: 'muted' }, 'Noch keine Fotos – lad das erste hoch!'),
+    h('ul', { class: 'gallery' }, photos.map((photo) => photoRow(photo))),
     draft.blob ? draftForm(ctx) : addButton(ctx),
   );
 }
 
-function photoRow(photo, i, count) {
+function photoRow(photo) {
   const key = `cap-${photo.id}`;
   const save = () => {
     const value = (captions[photo.id] ?? photo.caption ?? '').trim();
     delete captions[photo.id];
     if (value !== (photo.caption || '')) updatePhoto(photo, { caption: value || null });
   };
-  return h('li', { class: 'photo-row' },
+  return h('li', { class: 'gallery__item' },
     h('button', {
-      type: 'button', class: 'photo-row__thumb', 'aria-label': 'Foto groß ansehen',
+      type: 'button', class: 'gallery__thumb', 'aria-label': 'Foto groß ansehen',
       onclick: () => openLightbox(photo),
     }, h('img', { src: api.photoUrl(photo), alt: '', loading: 'lazy' })),
     h('input', {
-      class: 'input photo-row__caption', type: 'text', maxlength: 60, placeholder: 'Unterschrift …',
+      class: 'gallery__caption', type: 'text', maxlength: 60, placeholder: 'Unterschrift …',
       'aria-label': 'Bildunterschrift', 'data-focus-key': key, autocomplete: 'off', enterkeyhint: 'done',
       value: captions[photo.id] ?? photo.caption ?? '',
       oninput: (e) => { captions[photo.id] = e.target.value; },
       onkeydown: (e) => { if (e.key === 'Enter') { e.preventDefault(); e.target.blur(); } },
       onblur: save,
     }),
-    h('div', { class: 'photo-row__actions' },
-      h('button', {
-        type: 'button', class: 'btn btn--icon btn--ghost', 'aria-label': 'Nach vorn', title: 'Nach vorn',
-        disabled: i === 0, 'data-focus-key': `up-${photo.id}`, onclick: () => movePhoto(photo, -1),
-      }, icon('hoch', { wash: false })),
-      h('button', {
-        type: 'button', class: 'btn btn--icon btn--ghost', 'aria-label': 'Nach hinten', title: 'Nach hinten',
-        disabled: i === count - 1, 'data-focus-key': `down-${photo.id}`, onclick: () => movePhoto(photo, 1),
-      }, icon('runter', { wash: false })),
-      h('button', {
-        type: 'button', class: 'btn btn--icon btn--danger', 'aria-label': 'Foto abnehmen', title: 'Abnehmen',
-        onclick: () => { if (confirm('Dieses Foto abnehmen?')) deletePhoto(photo); },
-      }, icon('muell', { wash: false })),
-    ),
+    h('button', {
+      type: 'button', class: 'btn btn--icon btn--danger gallery__remove', 'aria-label': 'Foto löschen', title: 'Löschen',
+      'data-focus-key': `photo-del-${photo.id}`,
+      onclick: () => { if (confirm('Dieses Foto aus der Galerie löschen?')) deletePhoto(photo); },
+    }, icon('muell', { wash: false })),
   );
 }
 
@@ -204,7 +197,7 @@ function addButton(ctx) {
   });
   return h('div', { class: 'add-form' },
     h('button', { type: 'button', class: 'btn btn--primary', 'data-focus-key': 'photo-add', onclick: () => input.click() },
-      iconLabel('plus', 'Foto hinzufügen')),
+      iconLabel('plus', 'Foto hochladen')),
     input,
   );
 }

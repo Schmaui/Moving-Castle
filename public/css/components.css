@@ -681,6 +681,42 @@
   .polaroid { width: 165px; }
 }
 
+/* Küche: Zettel zuklappbar (zugeklappt = nur Überschrift + was fehlt) */
+.card__header--toggle { cursor: pointer; }
+.card__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.card__chevron { width: 20px; height: 20px; flex: 0 0 auto; stroke-width: 3; opacity: 0.55; transition: rotate var(--transition); }
+.card__chevron.is-open { rotate: 180deg; }
+.card--closed > .card__header { margin-bottom: var(--space-2); }
+.card--closed > .chips { margin-top: 0; }
+.card__all-there {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-hand);
+  font-size: 1.25rem;
+  cursor: pointer;
+}
+.card__all-there .art { width: 18px; height: 18px; stroke-width: 3.2; color: var(--color-accent); }
+@media (hover: hover) {
+  .card__header--toggle:hover .card__chevron { opacity: 1; }
+  .card__all-there:hover { color: var(--color-text); }
+}
+
 /* Fotos wie Magnete verstreut über der Tür (Position setzt scatterPhotos in js/ui/photos.js) */
 .fridge-board { position: relative; }
 .photo-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
@@ -723,35 +759,35 @@
 .settings__sub { font-family: var(--font-hand); font-size: 1.2rem; color: var(--color-text-muted); line-height: 1; }
 .settings .card__header { align-items: center; padding-right: 0; }
 
-.photo-list { display: grid; gap: var(--space-2); margin-bottom: var(--space-3); }
-.photo-row {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) 0;
-  border-bottom: 1.5px dashed var(--color-border);
+.gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: var(--space-4) var(--space-3);
+  margin: var(--space-2) 0 var(--space-4);
+  padding: 0;
+  list-style: none;
 }
-.photo-row__thumb {
-  flex: 0 0 auto;
-  width: 56px; height: 56px;
-  padding: 3px 3px 9px;
+.gallery__item { position: relative; display: grid; gap: 2px; padding: 5px 5px 2px; background: #fffdf8; box-shadow: 0 1px 1px rgb(0 0 0 / 0.12), 0 8px 14px -8px rgb(40 15 30 / 0.45); }
+.gallery__item:nth-child(3n+1) { rotate: -1.5deg; }
+.gallery__item:nth-child(3n+2) { rotate: 1.2deg; }
+.gallery__thumb { display: block; width: 100%; aspect-ratio: 1; padding: 0; border: 0; background: #eee5dc; cursor: zoom-in; }
+.gallery__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.gallery__caption {
+  width: 100%;
+  min-height: 30px;
+  padding: 0 2px;
   border: 0;
-  background: #fffdf8;
-  box-shadow: 0 2px 5px rgb(0 0 0 / 0.2);
-  rotate: -3deg;
+  border-bottom: 1.5px dashed transparent;
+  background: transparent;
+  color: #3a2430;
+  font-family: var(--font-hand);
+  font-size: 1.1rem;
+  text-align: center;
 }
-.photo-row:nth-child(even) .photo-row__thumb { rotate: 3deg; }
-.photo-row__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.photo-row__caption { min-height: 40px; font-family: var(--font-hand); font-size: 1.25rem; }
-.photo-row__actions { display: flex; flex: 0 0 auto; }
-.photo-row__actions .btn--icon { width: 36px; min-height: 36px; }
-.photo-row__actions .btn--icon .art { width: 22px; height: 22px; }
-.photo-row__actions .btn:disabled { opacity: 0.3; }
-@media (max-width: 420px) {
-  .photo-row { flex-wrap: wrap; }
-  .photo-row__caption { flex: 1 1 calc(100% - 72px); }
-  .photo-row__actions { margin-left: auto; }
-}
+.gallery__caption::placeholder { color: #a8958a; }
+.gallery__caption:focus-visible { outline: none; border-bottom-color: var(--color-accent); }
+.gallery__remove { position: absolute; top: -10px; right: -10px; width: 32px; min-height: 32px; border-radius: 50%; background: #fffdf8; }
+.gallery__remove .art { width: 18px; height: 18px; }
 .photo-draft { display: grid; justify-items: center; gap: var(--space-2); margin-top: var(--space-3); }
 .photo-draft .add-form { margin-top: 0; }
 

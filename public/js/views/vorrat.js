@@ -3,16 +3,20 @@
 // (Reiter oben: Vorrat · Haushalt · Kochen, siehe kitchenTabs in ui/components.js).
 // Antippen = fehlt (rot, landet auf der Einkaufsliste). Nochmal = doch da.
 // "Bearbeiten" schaltet den Bearbeiten-Modus ein.
+// Zettel sind zugeklappt (zeigen nur, was fehlt) – Überschrift antippen klappt auf.
+// Welche Zettel offen sind, merkt sich jedes Gerät selbst (localStorage).
 import { h, sameName } from '../util.js';
 import { viewHeader, categoryHeader, loading, toneOf, iconLabel, kitchenTabs } from '../ui/components.js';
 import { icon, PICKABLE } from '../ui/art.js';
-import { photoLayer, photoHint } from '../ui/photos.js';
+import { photoLayer, photoHint, doorPhotos } from '../ui/photos.js';
 import { dueNoteCard } from './aufgaben.js';
 import { todayMealCard } from './kochen.js';
 import { formatQty } from '../recipes.js';
 import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory, updateItem, updateCategory, areaOf, sortedPhotos } from '../store.js';
 import { showToast } from '../ui/toast.js';
 import { CONFIG } from '../config.js';
+
+const OPEN_KEY = 'haushalt_offene_zettel'; // muss VOR ui stehen (loadOpen läuft beim Start)
 
 // Zustand nur dieser Ansicht (bleibt beim Neuzeichnen erhalten)
 const ui = {
@@ -22,7 +26,22 @@ const ui = {
   newCategoryOpen: false,
   justToggled: null,    // Artikel, der gerade angetippt wurde (kurzes Wippen)
   editing: null,        // Artikel, der gerade bearbeitet wird: { id, name, quantity, minQty, unit }
+  open: loadOpen(),     // aufgeklappte Zettel (Kategorie-IDs)
 };
+
+// ---------- Auf-/Zuklappen (nur auf diesem Gerät gespeichert) ----------
+function loadOpen() {
+  try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || '[]').filter(Number.isSafeInteger)); } catch { return new Set(); }
+}
+function saveOpen() {
+  try { localStorage.setItem(OPEN_KEY, JSON.stringify([...ui.open])); } catch { /* egal */ }
+}
+const isOpen = (cat) => ui.editMode || ui.open.has(cat.id) || ui.addOpen.has(cat.id);
+function toggleOpen(cat, ctx) {
+  if (ui.open.has(cat.id)) { ui.open.delete(cat.id); ui.addOpen.delete(cat.id); } else ui.open.add(cat.id);
+  saveOpen();
+  ctx.rerender();
+}
 
 // Vorschläge für Einheiten (man kann auch etwas anderes eintippen)
 const UNIT_SUGGESTIONS = ['Stück', 'Dose', 'Packung', 'Glas', 'Flasche', 'Becher', 'g', 'kg', 'ml', 'l'];
@@ -51,6 +70,19 @@ function stockView({ id, area, title, icon: iconName, intro, navLabel, navAlso, 
           ? 'Tippe an, was du ändern oder löschen willst …'
           : `${intro} ~ ${missingCount} von ${items.length} fehlen`,
         actions: [
+          !ui.editMode && categories.length > 0 && (() => {
+            const allOpen = categories.every((c) => ui.open.has(c.id));
+            return h('button', {
+              type: 'button', class: 'btn btn--ghost', 'data-focus-key': `open-all-${id}`,
+              'aria-label': allOpen ? 'Alle Zettel zuklappen' : 'Alle Zettel aufklappen',
+              onclick: () => {
+                for (const c of categories) { if (allOpen) ui.open.delete(c.id); else ui.open.add(c.id); }
+                if (allOpen) ui.addOpen.clear();
+                saveOpen();
+                ctx.rerender();
+              },
+            }, allOpen ? iconLabel('hoch', 'Alle zu') : iconLabel('runter', 'Alle auf'));
+          })(),
           h('button', {
             type: 'button',
             class: ['btn', ui.editMode && 'btn--active'],
@@ -69,7 +101,7 @@ function stockView({ id, area, title, icon: iconName, intro, navLabel, navAlso, 
       // Fotos hängen wie Magnete verstreut über der Tür (Position: scatterPhotos in ui/photos.js).
       // Einstellung "Fotos an der Tür": 0 = aus.
       const showPhotos = (state.settings?.photoEvery ?? 2) > 0;
-      const photos = showPhotos ? sortedPhotos() : [];
+      const photos = showPhotos ? doorPhotos(sortedPhotos()) : [];
       // Fällige Aufgaben und das heutige Essen hängen als erste Zettel an der Tür
       const board = [dueNoteCard(state, ctx), todayMealCard(state)].filter(Boolean);
       cards.forEach((card, i) => {
@@ -97,9 +129,10 @@ export const haushalt = stockView({
 function categoryCard(cat, items, ctx) {
   const missing = items.filter((i) => i.missing).length;
   const canDeleteCategory = ui.editMode && items.length === 0;
+  const open = isOpen(cat);
+  const shown = open ? items : items.filter((i) => i.missing);
 
-  return h('section', { class: 'card', 'data-tone': toneOf(cat) },
-    categoryHeader(cat,
+  const header = categoryHeader(cat,
       missing > 0 && h('span', { class: 'badge badge--soft' }, `${missing} ${missing === 1 ? 'fehlt' : 'fehlen'}`),
       ui.editMode && h('button', {
         type: 'button',
@@ -128,10 +161,27 @@ function categoryCard(cat, items, ctx) {
         'data-focus-key': `plus-${cat.id}`,
         onclick: () => toggleAdd(cat.id, ctx),
       }, icon(ui.addOpen.has(cat.id) ? 'minus' : 'plus', { wash: false })),
-    ),
-    items.length > 0
-      ? h('div', { class: 'chips' }, items.map((item) => chip(item, ctx)))
-      : h('p', { class: 'muted' }, 'Noch keine Artikel.'),
+  );
+  // Überschrift antippen = auf-/zuklappen (Knöpfe darin behalten ihre eigene Aufgabe)
+  if (!ui.editMode) {
+    header.classList.add('card__header--toggle');
+    header.addEventListener('click', (e) => { if (!e.target.closest('button, a, input')) toggleOpen(cat, ctx); });
+    header.querySelector('.card__title')?.replaceChildren(h('button', {
+      type: 'button', class: 'card__toggle', 'aria-expanded': String(open), 'data-focus-key': `toggle-${cat.id}`,
+      onclick: () => toggleOpen(cat, ctx),
+    }, cat.name, icon('runter', { wash: false, className: ['card__chevron', open && 'is-open'].filter(Boolean).join(' ') })));
+  }
+
+  return h('section', { class: ['card', !open && 'card--closed'], 'data-tone': toneOf(cat) },
+    header,
+    items.length === 0
+      ? h('p', { class: 'muted' }, 'Noch keine Artikel.')
+      : shown.length > 0
+        ? h('div', { class: 'chips' }, shown.map((item) => chip(item, ctx)))
+        : h('button', {
+          type: 'button', class: 'card__all-there', 'data-focus-key': `all-there-${cat.id}`,
+          onclick: () => toggleOpen(cat, ctx),
+        }, icon('haken', { wash: false }), `alles da · ${items.length} Artikel`),
     ui.editMode && ui.editing && items.some((i) => i.id === ui.editing.id) && itemEditor(items.find((i) => i.id === ui.editing.id), ctx),
     ui.addOpen.has(cat.id) && addForm(cat, items, ctx),
   );

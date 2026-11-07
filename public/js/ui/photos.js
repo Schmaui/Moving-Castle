@@ -18,6 +18,24 @@ export function photoTiles() {
   return sortedPhotos().map((photo, i) => polaroid(photo, i));
 }
 
+// ---------- Welche Fotos hängen an der Tür? ----------
+// Galerie = alle Fotos (unter "Mehr"). An der Tür hängen nur ein paar, zufällig ausgewählt –
+// bei jedem Öffnen der App andere, solange die App offen ist aber immer dieselben (nichts springt).
+const SESSION_SEED = Math.floor(Math.random() * 1e9);
+const JUST_ADDED_MS = 90000;
+
+/** Wie viele Fotos an die Tür passen: Handy 3, Tablet/PC 5. */
+export const doorPhotoCount = () => (window.matchMedia?.('(min-width: 700px)').matches ? 5 : 3);
+
+/** Zufällige Auswahl für die Tür. Gerade hochgeladene Fotos sind immer dabei. */
+export function doorPhotos(all, count = doorPhotoCount()) {
+  const score = (p) => seeded((p.id * 7919) ^ SESSION_SEED)();
+  const fresh = (p) => Date.now() - Date.parse(p.createdAt || '') < JUST_ADDED_MS;
+  return [...all]
+    .sort((a, b) => (fresh(b) - fresh(a)) || (score(a) - score(b)))
+    .slice(0, count);
+}
+
 /** Ebene über den Zetteln, auf der die Fotos verstreut hängen (Position: scatterPhotos). */
 export function photoLayer(photos) {
   return h('div', { class: 'photo-layer' }, photos.map((photo, i) => polaroid(photo, i, { className: 'polaroid--magnet' })));
