@@ -31,8 +31,12 @@ export function actorOf(db, req) {
  *   messages – { duplicate, inUse } eigene Fehlermeldungen
  *   hooks    – { beforeWrite(values, existing, { actor }) } um abgeleitete Felder zu setzen
  *              (actor = id der Person, die gerade etwas ändert, oder null)
+ *
+ * Nach jedem Anlegen/Ändern/Löschen meldet sich der Helfer auf ctx.events
+ * ('write', { table, before, after, actor }) – z. B. für Benachrichtigungen (modules/push.js).
  */
-export function registerCrud({ db, router }, def) {
+export function registerCrud(ctx, def) {
+  const { db, router, events } = ctx;
   const { path, table, fields, orderBy = 'id', hooks = {}, messages = {} } = def;
   const entries = Object.entries(fields);
 
@@ -130,7 +134,9 @@ export function registerCrud({ db, router }, def) {
       db.prepare(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`)
         .run(...cols.map((c) => values[c])).lastInsertRowid
     );
-    return { status: 201, body: get(Number(id)) };
+    const created = get(Number(id));
+    events?.emit('write', { table, before: null, after: created, actor: actorOf(db, req) });
+    return { status: 201, body: created };
   });
 
   router.patch(`${path}/:id`, async ({ req, params }) => {
@@ -144,12 +150,15 @@ export function registerCrud({ db, router }, def) {
       db.prepare(`UPDATE ${table} SET ${cols.map((c) => `${c} = ?`).join(', ')} WHERE id = ?`)
         .run(...cols.map((c) => values[c]), existing.id)
     );
-    return get(existing.id);
+    const updated = get(existing.id);
+    events?.emit('write', { table, before: existing, after: updated, actor: actorOf(db, req) });
+    return updated;
   });
 
-  router.delete(`${path}/:id`, ({ params }) => {
+  router.delete(`${path}/:id`, ({ req, params }) => {
     const existing = getOr404(params.id);
     write(() => db.prepare(`DELETE FROM ${table} WHERE id = ?`).run(existing.id));
+    events?.emit('write', { table, before: existing, after: null, actor: actorOf(db, req) });
     return existing;
   });
 

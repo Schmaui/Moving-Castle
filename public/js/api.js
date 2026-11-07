@@ -67,6 +67,18 @@ export const api = {
   putCalendar: async (personId, url) => (await request('PUT', `/api/calendar/${personId}`, { url })).data,
   syncCalendar: async () => (await request('POST', '/api/calendar/sync', {})).data,
 
+  // Benachrichtigungen (siehe js/push.js)
+  pushKey: async () => (await request('GET', '/api/push/key')).data,
+  pushAbo: async (data) => (await request('POST', '/api/push/abo', data)).data,
+  pushAboAus: async (endpoint) => (await request('POST', '/api/push/abo/aus', { endpoint })).data,
+  pushTest: async (endpoint) => (await request('POST', '/api/push/test', { endpoint })).data,
+
+  // iPhone-Widget (siehe server/modules/widget.js)
+  widgetInfo: async () => (await request('GET', '/api/widget')).data,
+  widgetKey: async () => (await request('POST', '/api/widget/schluessel', {})).data,
+  widgetRemove: async () => (await request('DELETE', '/api/widget/schluessel')).data,
+  widgetShow: async (show) => (await request('PUT', '/api/widget', { show })).data,
+
   patchSettings: async (patch) => (await request('PATCH', '/api/settings', patch)).data,
 
   // Generische Funktionen für jede Ressource ('items', 'categories', später z. B. 'tasks')

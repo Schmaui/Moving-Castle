@@ -22,7 +22,7 @@ const json = (method, url, body) =>
 before(async () => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'haushalt-test-'));
   proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'server/server.js'], {
-    env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir, IMPORT_ALLOW_PRIVATE: '1' },
+    env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir, IMPORT_ALLOW_PRIVATE: '1', PUSH_ALLOW_LOCAL: '1', PUSH_TICK_MS: '100', PUSH_LIST_DELAY_MS: '400' },
     stdio: 'ignore',
   });
   for (let i = 0; i < 50; i++) {
@@ -618,4 +618,187 @@ test('Nachricht an die Tür: geht an die andere Person, getippt und/oder gemalt,
 
   for (const m of left) assert.equal((await json('DELETE', `/api/messages/${m.id}`)).status, 200);
   assert.deepEqual((await json('GET', '/api/state')).body.messages, []);
+});
+
+// ---------- Benachrichtigungen (Web-Push) ----------
+// Ein nachgebauter Push-Dienst (wie Apples) nimmt die verschlüsselten Nachrichten an;
+// der Test entschlüsselt sie wie ein Handy (RFC 8291) und prüft den Absender-Ausweis (VAPID).
+import crypto from 'node:crypto';
+
+function fakeDevice() {
+  const ecdh = crypto.createECDH('prime256v1');
+  const pub = ecdh.generateKeys();
+  const auth = crypto.randomBytes(16);
+  const decrypt = (body) => {
+    const salt = body.subarray(0, 16);
+    const idlen = body[20];
+    const asPub = body.subarray(21, 21 + idlen);
+    const ct = body.subarray(21 + idlen);
+    const shared = ecdh.computeSecret(asPub);
+    const ikm = Buffer.from(crypto.hkdfSync('sha256', shared, auth, Buffer.concat([Buffer.from('WebPush: info\0'), pub, asPub]), 32));
+    const cek = Buffer.from(crypto.hkdfSync('sha256', ikm, salt, Buffer.from('Content-Encoding: aes128gcm\0'), 16));
+    const nonce = Buffer.from(crypto.hkdfSync('sha256', ikm, salt, Buffer.from('Content-Encoding: nonce\0'), 12));
+    const d = crypto.createDecipheriv('aes-128-gcm', cek, nonce);
+    d.setAuthTag(ct.subarray(ct.length - 16));
+    const plain = Buffer.concat([d.update(ct.subarray(0, ct.length - 16)), d.final()]);
+    assert.equal(plain[plain.length - 1], 2, 'Polsterung am Ende');
+    return JSON.parse(plain.subarray(0, plain.length - 1).toString());
+  };
+  return { keys: { p256dh: pub.toString('base64url'), auth: auth.toString('base64url') }, decrypt };
+}
+
+function fakePushService(publicKey) {
+  const inbox = [];
+  let status = 201;
+  const server = http.createServer((req, res) => {
+    const chunks = [];
+    req.on('data', (c) => chunks.push(c));
+    req.on('end', () => {
+      // Absender-Ausweis prüfen: JWT mit dem öffentlichen Schlüssel der App signiert
+      const m = /^vapid t=([^,]+), k=(.+)$/.exec(req.headers.authorization || '');
+      assert.ok(m, 'VAPID-Header fehlt');
+      assert.equal(m[2], publicKey);
+      const [h, c, sig] = m[1].split('.');
+      const raw = Buffer.from(publicKey, 'base64url');
+      const key = crypto.createPublicKey({ key: { kty: 'EC', crv: 'P-256', x: raw.subarray(1, 33).toString('base64url'), y: raw.subarray(33).toString('base64url') }, format: 'jwk' });
+      assert.ok(crypto.verify('sha256', Buffer.from(`${h}.${c}`), { key, dsaEncoding: 'ieee-p1363' }, Buffer.from(sig, 'base64url')), 'Signatur gültig');
+      assert.equal(JSON.parse(Buffer.from(c, 'base64url')).aud, `http://${req.headers.host}`);
+      assert.equal(req.headers['content-encoding'], 'aes128gcm');
+      inbox.push({ path: req.url, body: Buffer.concat(chunks) });
+      res.writeHead(status);
+      res.end();
+    });
+  });
+  return { server, inbox, setStatus: (s) => { status = s; } };
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function waitFor(fn, ms = 3000) {
+  const end = Date.now() + ms;
+  while (Date.now() < end) { const v = fn(); if (v) return v; await sleep(50); }
+  return fn();
+}
+const berlinTime = (offsetMin = 0) => new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' })
+  .format(new Date(Date.now() + offsetMin * 60000));
+
+test('Benachrichtigungen: Liste gesammelt, Nachricht an der Tür, Ruhezeit, Morgens, Test, abgemeldetes Handy', async () => {
+  const { publicKey } = (await json('GET', '/api/push/key')).body;
+  assert.match(publicKey, /^[A-Za-z0-9_-]{87}$/);
+  assert.equal((await json('GET', '/api/push/key')).body.publicKey, publicKey, 'Schlüssel bleibt gleich');
+
+  const push = fakePushService(publicKey);
+  await new Promise((r) => push.server.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${push.server.address().port}`;
+  const kaitPhone = fakeDevice();
+  const endpoint = `${base}/kait`;
+  const abo = (prefs) => as(1, 'POST', '/api/push/abo', { endpoint, keys: kaitPhone.keys, prefs });
+  const received = () => push.inbox.map((m) => ({ path: m.path, ...kaitPhone.decrypt(m.body) }));
+  try {
+    // Prüfungen
+    assert.equal((await as(1, 'POST', '/api/push/abo', { endpoint: 'https://boese.example/x', keys: kaitPhone.keys })).status, 400);
+    assert.equal((await json('POST', '/api/push/abo', { endpoint, keys: kaitPhone.keys })).status, 400); // wer bin ich?
+    assert.equal((await abo({ morning: '25:00' })).status, 400);
+    const ok = await abo({ quiet: { on: false } });
+    assert.equal(ok.status, 200);
+    assert.deepEqual(ok.body.prefs.kinds, { tuer: true, liste: true, aufgaben: true, termine: true });
+
+    // Schmaui setzt zwei Sachen auf die Liste -> EINE Nachricht an Kait
+    const { items } = (await json('GET', '/api/state')).body;
+    const [a, b, c] = items.filter((i) => !i.missing);
+    await as(2, 'PATCH', `/api/items/${a.id}`, { missing: true });
+    await as(2, 'PATCH', `/api/items/${b.id}`, { missing: true });
+    await as(2, 'PATCH', `/api/items/${c.id}`, { missing: true });
+    await as(2, 'PATCH', `/api/items/${c.id}`, { missing: false }); // Rückgängig -> fällt wieder raus
+    await as(1, 'POST', '/api/wishes', { name: 'Eigener Wunsch' });   // eigene Sachen: keine Nachricht
+    await waitFor(() => push.inbox.length >= 1);
+    await sleep(400);
+    assert.equal(push.inbox.length, 1);
+    const list = received()[0];
+    assert.equal(list.path, '/kait');
+    assert.equal(list.title, 'Schmaui hat 2 Sachen auf die Liste gesetzt');
+    assert.equal(list.body, `${a.name}, ${b.name}`);
+    assert.equal(list.url, '/#/liste');
+
+    // Nachricht an die Tür kommt sofort
+    await as(2, 'POST', '/api/messages', { body: 'Hab dich lieb' });
+    await waitFor(() => push.inbox.length >= 2);
+    assert.equal(received()[1].title, 'Schmaui hat dir eine Nachricht an die Tür gehängt ♡');
+    assert.equal(received()[1].body, 'Hab dich lieb');
+
+    // Ruhezeit: wartet …
+    await abo({ quiet: { on: true, from: berlinTime(-60), to: berlinTime(60) } });
+    await as(2, 'POST', '/api/messages', { drawing: [{ c: 'rot', p: [1, 1, 50, 50] }] });
+    await sleep(600);
+    assert.equal(push.inbox.length, 2, 'in der Ruhezeit kommt nichts');
+    // … und kommt danach
+    await abo({ quiet: { on: false } });
+    await waitFor(() => push.inbox.length >= 3);
+    assert.equal(received()[2].body, 'Hat dir etwas gemalt ✎');
+
+    // Ausgeschaltete Art kommt nicht
+    await abo({ kinds: { tuer: false }, quiet: { on: false } });
+    await as(2, 'POST', '/api/messages', { body: 'still' });
+    await sleep(500);
+    assert.equal(push.inbox.length, 3);
+
+    // Morgens: Aufgaben (für Kait oder egal wer), eine Nachricht pro Tag
+    const day = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Berlin' }).format(new Date());
+    await as(2, 'POST', '/api/tasks', { title: 'Blumen gießen', due: day });
+    await as(2, 'POST', '/api/tasks', { title: 'Nur für Schmaui', due: day, assigneeId: 2 });
+    await abo({ quiet: { on: false }, morning: berlinTime(-1) });
+    await waitFor(() => push.inbox.length >= 4);
+    const morning = received()[3];
+    assert.match(morning.title, /^Guten Morgen Kait ♡ Heute: \d+ Aufgaben?$/);
+    assert.match(morning.body, /Blumen gießen/);
+    assert.doesNotMatch(morning.body, /Nur für Schmaui/);
+    await sleep(400);
+    assert.equal(push.inbox.length, 4, 'nur einmal am Tag');
+
+    // Test-Knopf
+    assert.equal((await as(1, 'POST', '/api/push/test', { endpoint })).status, 200);
+    await waitFor(() => push.inbox.length >= 5);
+    assert.equal(received()[4].title, 'Hallo aus dem moving castle ♡');
+
+    // Handy gibt es nicht mehr (410) -> Abo wird gelöscht
+    push.setStatus(410);
+    await as(1, 'POST', '/api/push/test', { endpoint });
+    await sleep(500);
+    assert.equal((await as(1, 'POST', '/api/push/test', { endpoint })).status, 404);
+  } finally {
+    push.server.close();
+  }
+});
+
+test('Widget: Schlüssel, Auswahl, Daten nur mit Schlüssel', async () => {
+  assert.equal((await json('GET', '/api/widget')).status, 400); // wer bin ich?
+  assert.equal((await as(1, 'GET', '/api/widget')).body.hasKey, false);
+  assert.equal((await as(1, 'PUT', '/api/widget', { show: ['liste'] })).status, 409);
+  const { key } = (await as(1, 'POST', '/api/widget/schluessel')).body;
+  assert.match(key, /^[A-Za-z0-9_-]{32}$/);
+  const info = (await as(1, 'GET', '/api/widget')).body;
+  assert.equal(info.hasKey, true);
+  assert.deepEqual(info.show, ['liste', 'aufgaben', 'essen', 'tuer']);
+  assert.equal((await as(1, 'PUT', '/api/widget', { show: ['kino'] })).status, 400);
+  assert.deepEqual((await as(1, 'PUT', '/api/widget', { show: ['tuer', 'liste', 'termine'] })).body.show, ['tuer', 'liste', 'termine']);
+
+  const data = (k) => fetch(BASE + '/api/widget/daten', { headers: k ? { 'X-Widget-Key': k } : {} })
+    .then(async (r) => ({ status: r.status, body: await r.json() }));
+  assert.equal((await data()).status, 401);
+  assert.equal((await data('x'.repeat(32))).status, 401);
+  const d = await data(key);
+  assert.equal(d.status, 200);
+  assert.equal(d.body.person, 'Kait');
+  assert.deepEqual(d.body.show, ['tuer', 'liste', 'termine']);
+  assert.ok(Array.isArray(d.body.liste));
+  assert.ok(d.body.liste.some((i) => i.by === 'Schmaui'));
+  assert.ok(Array.isArray(d.body.aufgaben));
+  assert.equal(d.body.tuer.from, 'Schmaui');
+  assert.equal(d.body.fridgeColor, 'mauve');
+
+  // Neuer Schlüssel -> alter gilt nicht mehr; löschen -> keiner
+  const { key: key2 } = (await as(1, 'POST', '/api/widget/schluessel')).body;
+  assert.equal((await data(key)).status, 401);
+  assert.equal((await data(key2)).status, 200);
+  await as(1, 'DELETE', '/api/widget/schluessel');
+  assert.equal((await data(key2)).status, 401);
 });

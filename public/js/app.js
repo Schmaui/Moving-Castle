@@ -11,6 +11,7 @@ import { h } from './util.js';
 import { showToast } from './ui/toast.js';
 import { afterRender, pageIn } from './ui/fx.js';
 import { doorStart } from './ui/door.js';
+import { registerServiceWorker, refreshPush } from './push.js';
 
 const navList = document.getElementById('nav-list');
 const viewsEl = document.getElementById('views');
@@ -181,3 +182,5 @@ applyRoute();
 render();
 doorStart(); // Kühlschranktür: erst zu (Nachrichten!), dann auf – siehe ui/door.js
 startSync();
+registerServiceWorker(); // für Benachrichtigungen (js/push.js)
+refreshPush();

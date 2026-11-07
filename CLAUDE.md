@@ -7,12 +7,13 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
 ## Technik (Kurzfassung – Details in README.md und docs/ANPASSEN.md)
 - Node.js ≥ 22.13 ohne npm-Abhängigkeiten, eingebautes `node:sqlite`. Start: `npm start`, Tests: `npm test`.
 - Frontend: Vanilla JS (ES-Module), kein Build. Design-Variablen in `public/css/tokens.css`.
-- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs, calendar, movies, messages). Ansichten: `public/js/views/*`.
+- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs, calendar, movies, messages, push, widget). Ansichten: `public/js/views/*`.
+  Module melden Änderungen über `ctx.events` ('write', { table, before, after, actor }) aus `resource.js`.
 - Migrationen: `server/migrations.js` – nur NEUE Einträge anhängen, alte nie ändern.
 - Gezeichnete Symbole statt Emojis: `public/js/ui/art.js`. Szenen-SVGs: `scripts/make-art.py`.
 - Strenge CSP (keine Inline-Styles/-Scripts), alle Ausgaben über `h()` (XSS-sicher).
-- Screenshots/Checks: `scripts/screenshots.cjs` (braucht frischen Server auf :8080 mit leerer DB und
-  `IMPORT_ALLOW_PRIVATE=1`, weil der Test-Kalender von localhost kommt).
+- Screenshots/Checks: `scripts/screenshots.cjs` (braucht frischen Server auf :8080 mit leerer DB,
+  `IMPORT_ALLOW_PRIVATE=1` (Test-Kalender von localhost) und `PUSH_ALLOW_LOCAL=1` (Test-Push-Dienst lokal)).
 
 ## Betrieb (online)
 - Hetzner Cloud, Server „moving-castle“ (CAX11, Ubuntu 24.04, Falkenstein), IP 2.31.137.100.
@@ -46,7 +47,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   `.flat()` einmal) – verschachtelte Listen in ein `h('div')` packen. `data-focus-key` muss über ALLE
   Ansichten eindeutig sein (alle Ansichten werden immer gerendert, nur versteckt).
 
-## Stand (zuletzt aktualisiert: 7.11.2026, abends) – alles live auf `main`
+## Stand (zuletzt aktualisiert: 7.11.2026, spätabends) – alles live auf `main`
 Leiste unten (5 Knöpfe): **Liste · Küche · Planer · Pinnwand · Mehr**. Views in `public/js/views/index.js`;
 Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
 
@@ -105,7 +106,23 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   Hintergrund + neue Nachricht -> Tür wieder zu; neue Nachricht während man die App benutzt -> nur Hinweis mit
   „Ansehen“. Gesehene IDs pro Gerät in localStorage (`haushalt_tuer_gesehen`). „Bewegung reduzieren“: ohne
   Nachricht gar keine Tür, mit Nachricht Tür ohne Animation.
-- **Mehr** (#/einstellungen): Nachricht an die Tür, Wir zwei (Profile: Name, Figur/Foto, Farbe), Fotos, Kalender verbinden,
+- **Benachrichtigungen** (Web-Push, NUR iPhone als Home-Bildschirm-App ab iOS 16.4 – Nutzerwunsch, am Mac nur
+  Hinweis): `server/webpush.js` (RFC 8291/8292 selbst mit node:crypto, keine Pakete; VAPID-Schlüssel in Tabelle
+  `meta`), `server/modules/push.js` (Migration 14: `push_subscriptions` mit prefs pro Handy, `push_queue`),
+  Client `public/js/push.js` + `public/sw.js` (Service Worker OHNE Cache). Arten: tuer (sofort), liste (vom
+  anderen, gesammelt 3 Min. nach letzter Änderung, „Rückgängig“ nimmt raus), aufgaben + termine (eine
+  Morgen-Nachricht zur eingestellten Zeit, bis 4 Std. danach, nur wenn etwas ansteht). Ruhezeit pro Handy
+  (wartet bis danach). Nur echte Push-Dienste erlaubt (Apple/Google/Mozilla/Microsoft). Aus der Cloud-Session
+  nicht am echten iPhone testbar – Nutzer beim ersten Einschalten begleiten (Home-Bildschirm-App!).
+- **Widget** (iPhone + Mac-Schreibtisch ab Sonoma über „iPhone-Widgets“): über die kostenlose App
+  **Scriptable**. Skript `public/widget/moving-castle-widget.js` (App setzt Adresse + geheimen Schlüssel ein,
+  „Skript kopieren“ unter Mehr → Widget). Server `modules/widget.js`: Schlüssel pro Person (Hash in
+  `widget_tokens`), `/api/widget/daten` ohne Anmeldung, nur mit Header `X-Widget-Key` (in `auth.js` freigegeben).
+  Auswahl der Zettel (Liste, Aufgaben, Essen, Tür-Nachricht, Termine) in der App; pro Widget per „Parameter“
+  (z. B. `tuer,essen`) änderbar. Klein 1, Mittel 2, Groß bis 4 Zettel, Türfarbe als Hintergrund.
+  Getestet mit Nachbau `scripts/scriptable-nachbau.cjs` (führt Skript aus, zeichnet Vorschau) – echtes
+  Scriptable nicht testbar, Nutzer nach Screenshot fragen. Daten für Morgen-Nachricht + Widget: `server/summary.js`.
+- **Mehr** (#/einstellungen): Nachricht an die Tür, Benachrichtigungen, Widget, Wir zwei (Profile: Name, Figur/Foto, Farbe), Fotos, Kalender verbinden,
   Türfarbe, dieses Gerät (wer bin ich), Abmelden.
 - Profile: jedes Gerät fragt einmal „Wer bist du?“ und schickt `X-Person` mit (wer-hat-was).
 - **Backup** am 7.11.2026 mit den Nutzern geprüft (siehe „Betrieb“).
@@ -114,9 +131,10 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
 ## Offen
 - **Nachricht an die Tür**: von den Nutzern getestet, „perfekt, jetzt ist es super“ (7.11. abends).
 - Filmabend, Animationen, verstreute Fotos, Zuklappen, Galerie: live, Feedback der Nutzer abwarten.
+- **Benachrichtigungen + Widget**: live seit 7.11. spätabends, mit den Nutzern am echten iPhone einrichten
+  (Home-Bildschirm-App, Scriptable) und Feedback abwarten.
 - **Nächste gewünschte Ideen** (Nutzer am 7.11. gewählt, vorher per Klick-Fragen klären):
-  **Benachrichtigungen** (Web-Push, iPhone nur als Home-Bildschirm-App ab iOS 16.4; z. B. „X hat Milch auf
-  die Liste gesetzt“, „Aufgabe heute“), **Wochen-Rückblick** (Sonntags-Zettel: erledigt, gekocht, geguckt).
+  **Wochen-Rückblick** (Sonntags-Zettel: erledigt, gekocht, geguckt).
   Nicht gewählt: Liste nach Laden sortiert, Wetter an der Tür.
 - Ideen-Speicher (Nutzer interessiert, „für später“): **Gemeinsame Ausgaben** (wer hat was bezahlt,
   wer schuldet wem). Nicht gewählt: Ausflugs-/Date-Ideen, Geburtstage & Geschenke, Haltbarkeit im Vorrat,

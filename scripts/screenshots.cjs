@@ -2,7 +2,9 @@
 // Macht Screenshots in Handy-, Tablet- und PC-Größe nach docs/screenshots/
 // und klickt die wichtigsten Abläufe einmal durch (Selbsttest).
 // Aufruf: node scripts/screenshots.cjs [http://localhost:8080]
-// Der Server muss mit IMPORT_ALLOW_PRIVATE=1 laufen (Test-Kalender kommt von diesem Rechner).
+// Der Server muss mit IMPORT_ALLOW_PRIVATE=1 laufen (Test-Kalender kommt von diesem Rechner)
+// und mit PUSH_ALLOW_LOCAL=1 (Test-Benachrichtigungen gehen an einen Push-Dienst auf diesem Rechner):
+//   IMPORT_ALLOW_PRIVATE=1 PUSH_ALLOW_LOCAL=1 DATA_DIR=/tmp/leer npm start
 const { chromium, devices } = require('playwright');
 const path = require('node:path');
 const fs = require('node:fs');
@@ -817,6 +819,88 @@ function check(cond, msg) {
   await hello.close();
   for (const m of (await api('GET', '/api/state')).messages) await api('DELETE', `/api/messages/${m.id}`);
   await writer.close();
+
+  // ---------- Benachrichtigungen + Widget ----------
+  console.log('Benachrichtigungen + Widget:');
+  // Mac: Hinweis „kommen aufs iPhone“
+  const mac = await device({ viewport: { width: 1280, height: 800 }, locale: 'de-DE' }, 1);
+  page = await mac.newPage(); watch(page);
+  await page.goto(BASE + '/#/einstellungen');
+  await page.waitForSelector('#view-einstellungen .settings__card:has-text("Benachrichtigungen")');
+  check(await page.locator('#view-einstellungen', { hasText: 'Benachrichtigungen gibt es nur auf dem iPhone' }).count() === 1, 'Mac: Benachrichtigungen nur aufs iPhone (Hinweis)');
+  await mac.close();
+  // iPhone in Safari: erst zum Home-Bildschirm
+  const safari = await device({ ...devices['iPhone 13'], locale: 'de-DE' }, 1);
+  page = await safari.newPage(); watch(page);
+  await page.goto(BASE + '/#/einstellungen');
+  await page.waitForSelector('#view-einstellungen .settings__card:has-text("Zum Home-Bildschirm")');
+  await page.locator('#view-einstellungen .settings__card:has-text("Zum Home-Bildschirm")').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'handy-benachrichtigungen-home.jpg'), quality: 85 });
+  check(true, 'iPhone in Safari: Anleitung „Zum Home-Bildschirm“');
+  await safari.close();
+
+  // iPhone als Home-Bildschirm-App. Den Push-Dienst von Apple spielt ein kleiner Server hier.
+  const pushInbox = [];
+  const pushServer = http.createServer((req, res) => { req.resume(); req.on('end', () => { pushInbox.push(req.headers.authorization); res.writeHead(201); res.end(); }); });
+  await new Promise((r) => pushServer.listen(0, '127.0.0.1', r));
+  const fakeKeys = (() => {
+    const ecdh = require('node:crypto').createECDH('prime256v1');
+    return { endpoint: `http://127.0.0.1:${pushServer.address().port}/kait`, p256dh: ecdh.generateKeys().toString('base64url'), auth: require('node:crypto').randomBytes(16).toString('base64url') };
+  })();
+  const homeApp = await device({ ...devices['iPhone 13'], locale: 'de-DE' }, 1);
+  await homeApp.addInitScript((k) => {
+    Object.defineProperty(navigator, 'standalone', { get: () => true });
+    const make = () => ({ endpoint: k.endpoint, toJSON() { return { endpoint: k.endpoint, keys: { p256dh: k.p256dh, auth: k.auth } }; }, unsubscribe: async () => { localStorage.removeItem('fake_sub'); return true; } });
+    PushManager.prototype.getSubscription = async () => (localStorage.getItem('fake_sub') ? make() : null);
+    PushManager.prototype.subscribe = async () => { localStorage.setItem('fake_sub', '1'); return make(); };
+    Notification.requestPermission = async () => { localStorage.setItem('fake_perm', 'granted'); return 'granted'; };
+    Object.defineProperty(Notification, 'permission', { get: () => localStorage.getItem('fake_perm') || 'default' });
+  }, fakeKeys);
+  page = await homeApp.newPage(); watch(page);
+  await page.goto(BASE + '/#/einstellungen');
+  await page.waitForSelector('[data-focus-key="push-on"]');
+  await page.click('[data-focus-key="push-on"]');
+  await page.waitForSelector('[data-focus-key="push-test"]');
+  check(true, 'Home-Bildschirm-App: Benachrichtigungen eingeschaltet');
+  await page.click('[data-focus-key="push-kind-liste"]');
+  await page.locator('[data-focus-key="push-kind-tuer"]').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(OUT, 'handy-benachrichtigungen.jpg'), quality: 85 });
+  await page.click('[data-focus-key="push-test"]');
+  for (let i = 0; i < 40 && !pushInbox.length; i++) await page.waitForTimeout(100);
+  check(pushInbox.length === 1 && /^vapid t=/.test(pushInbox[0]), 'Test-Benachrichtigung kommt beim Push-Dienst an');
+  await page.click('[data-focus-key="push-kind-liste"]'); // wieder an (für spätere Läufe egal)
+  await page.click('[data-focus-key="push-off"]');
+  await page.waitForSelector('[data-focus-key="push-on"]');
+  check(true, 'Ausschalten');
+  pushServer.close();
+
+  // Widget einrichten + mit nachgebautem Scriptable ausführen
+  await api('POST', '/api/messages', { body: 'Hab einen schönen Tag ♡', paper: 'rosa', drawing: [{ c: 'rot', p: [120, 90, 160, 60, 200, 90, 240, 60, 280, 90, 200, 200, 120, 90] }] }, 2);
+  await page.click('[data-focus-key="widget-show-termine"]');
+  await page.waitForSelector('[data-focus-key="widget-show-termine"][aria-pressed="true"]');
+  await page.click('[data-focus-key="widget-setup"]');
+  await page.waitForSelector('[data-focus-key="widget-copy"]');
+  await page.locator('.widget-setup').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'handy-widget-einrichten.jpg'), quality: 85 });
+  const widgetSource = await page.inputValue('[data-focus-key="widget-script"]');
+  check(/const KEY = "[A-Za-z0-9_-]{32}";/.test(widgetSource) && !widgetSource.includes('__APP__'), 'Widget-Skript mit Adresse und geheimem Schlüssel');
+  await homeApp.close();
+  const { runWidget, widgetHtml } = require('./scriptable-nachbau.cjs');
+  const widgets = [];
+  for (const [family, label, parameter] of [['small', 'Klein', null], ['medium', 'Mittel', null], ['large', 'Groß', null], ['medium', 'Mittel, Parameter „tuer,termine“', 'tuer,termine']]) {
+    widgets.push({ widget: await runWidget(widgetSource, { family, parameter }), family, label });
+  }
+  const cardsOf = (w) => JSON.stringify(w).match(/"cornerRadius":10/g)?.length || 0;
+  check(cardsOf(widgets[0].widget) === 1 && cardsOf(widgets[1].widget) === 2 && cardsOf(widgets[2].widget) === 4, 'Widget läuft: klein 1, mittel 2, groß 4 Zettel');
+  check(JSON.stringify(widgets[3].widget).includes('Von Schmaui') && JSON.stringify(widgets[3].widget).includes('Termine heute'), 'Widget-Parameter wählt andere Zettel');
+  const preview = await browser.newPage({ viewport: { width: 820, height: 900 }, deviceScaleFactor: 2 }); watch(preview);
+  await preview.route(BASE + '/__widget-vorschau', (r) => r.fulfill({ contentType: 'text/html', body: widgetHtml(widgets, BASE) }));
+  await preview.goto(BASE + '/__widget-vorschau');
+  await preview.evaluate(() => document.fonts.ready);
+  await preview.screenshot({ path: path.join(OUT, 'widget-vorschau.jpg'), quality: 85, fullPage: true });
+  await preview.close();
+  for (const m of (await api('GET', '/api/state')).messages) await api('DELETE', `/api/messages/${m.id}`);
 
   await browser.close();
   calServer.close();

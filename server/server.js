@@ -1,6 +1,7 @@
 // Einstiegspunkt: startet den HTTP-Server.
 import http from 'node:http';
 import crypto from 'node:crypto';
+import { EventEmitter } from 'node:events';
 import { config } from './config.js';
 import { openDatabase, getRev } from './db.js';
 import { seedIfEmpty } from './seed.js';
@@ -14,7 +15,8 @@ seedIfEmpty(db, config.seedFile);
 
 const router = createRouter();
 const auth = setupAuth({ db, router });
-const ctx = { db, router, resources: {} };
+// events: Module melden Änderungen (resource.js), andere hören zu (z. B. Benachrichtigungen)
+const ctx = { db, router, resources: {}, events: new EventEmitter(), auth };
 for (const mod of MODULES) ctx.resources[mod.name] = { mod, api: mod.register(ctx) };
 
 // Zufällige Kennung pro Serverstart: falls die DB z. B. aus einem Backup

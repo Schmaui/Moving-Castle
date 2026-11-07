@@ -21,7 +21,8 @@ const MAX_FAILS_PER_IP = 5;
 const MAX_FAILS_TOTAL = 30;
 
 // API-Pfade, die ohne Anmeldung erreichbar sind
-const PUBLIC_API = new Set(['/api/health', '/api/auth', '/api/login', '/api/logout']);
+// (/api/widget/daten prüft stattdessen einen eigenen Widget-Schlüssel, siehe modules/widget.js)
+const PUBLIC_API = new Set(['/api/health', '/api/auth', '/api/login', '/api/logout', '/api/widget/daten']);
 
 const sha256 = (s) => crypto.createHash('sha256').update(s).digest('hex');
 const scrypt = (password, salt) => crypto.scryptSync(String(password).normalize('NFC'), salt, 32);

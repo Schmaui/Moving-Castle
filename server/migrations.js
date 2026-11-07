@@ -376,6 +376,45 @@ export const MIGRATIONS = [
   );
   `,
 
+  // 14: Benachrichtigungen (Web-Push) + Widget.
+  //     push_subscriptions: ein Eintrag pro Handy, mit den eigenen Einstellungen (prefs, JSON):
+  //       { kinds: { tuer, liste, aufgaben, termine }, quiet: { on, from, to }, morning: "07:30" }
+  //     push_queue: was noch verschickt werden muss (z. B. nachts in der Ruhezeit gesammelt).
+  //     widget_tokens: geheimer Schlüssel pro Person für das iPhone-Widget (nur der Hash liegt hier).
+  `
+  CREATE TABLE push_subscriptions (
+    id           INTEGER PRIMARY KEY,
+    person_id    INTEGER REFERENCES people(id) ON DELETE CASCADE,
+    endpoint     TEXT    NOT NULL UNIQUE,
+    p256dh       TEXT    NOT NULL,
+    auth         TEXT    NOT NULL,
+    prefs        TEXT,
+    last_morning TEXT,                                -- JJJJ-MM-TT: Morgen-Nachricht schon geschickt
+    created_at   TEXT    NOT NULL,
+    updated_at   TEXT    NOT NULL
+  );
+  CREATE TABLE push_queue (
+    id              INTEGER PRIMARY KEY,
+    subscription_id INTEGER NOT NULL REFERENCES push_subscriptions(id) ON DELETE CASCADE,
+    kind            TEXT    NOT NULL,                 -- tuer | liste | morgen | test
+    group_key       TEXT,                             -- z. B. "liste:2": wird zusammengefasst
+    title           TEXT    NOT NULL,
+    body            TEXT,
+    url             TEXT,
+    data            TEXT,                             -- JSON (z. B. Namen der Artikel)
+    due_at          TEXT    NOT NULL,
+    attempts        INTEGER NOT NULL DEFAULT 0,
+    created_at      TEXT    NOT NULL
+  );
+  CREATE TABLE widget_tokens (
+    person_id   INTEGER PRIMARY KEY REFERENCES people(id) ON DELETE CASCADE,
+    token_hash  TEXT    NOT NULL UNIQUE,
+    prefs       TEXT,                                 -- JSON: { show: ["liste", "aufgaben", …] }
+    created_at  TEXT    NOT NULL,
+    used_at     TEXT
+  );
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];
