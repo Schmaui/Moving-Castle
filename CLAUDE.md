@@ -65,6 +65,10 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   Antippen, Zählerstände mit Verlauf, Müll & Verträge), Aufbau (freie Zettel + Spezial-Zettel vs.
   feste Bereiche), Ort (Vorschlag: „Mehr“ wird Übersicht mit Pinnwand + Einstellungen, Leiste
   bleibt bei 5 Knöpfen), Geheimes (Vorschlag: verdeckt, antippen zeigt/kopiert).
+- Ganz am Ende (Wunsch der Nutzer): automatische Sicherung auf den Mac der Nutzer. Plan: Skript
+  `scripts/mac-backup-einrichten.sh` (SSH-Schlüssel einrichten, LaunchAgent täglich, `rsync` von
+  `root@2.31.137.100:/opt/haushalt/data/backups/` nach `~/moving-castle-backup/` – nicht nach
+  ~/Documents, das blockiert macOS für Hintergrundjobs). Nutzer starten es einmal im Terminal.
 - Offen nebenbei: Backup einmal mit den Nutzern prüfen (per SSH, Schritt für Schritt);
   README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen ergänzen.
 - Danach (Reihenfolge der Nutzer): Kalender
