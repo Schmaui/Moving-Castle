@@ -31,105 +31,52 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
 - Neue Features/Designs auf einem **eigenen Branch** bauen, Vorschau-Screenshots (Handy + PC,
   hell + dunkel) schicken, erst nach „passt“ nach `main` mergen.
 - Vor dem Mergen: `npm test` und `scripts/screenshots.cjs` müssen grün sein.
+- Die Nutzer wollen vor jedem Feature **ausführlich per Klick-Fragen (AskUserQuestion)** gefragt werden
+  (gern 2 Runden à 4 Fragen, mit Empfehlung als erste Option).
+- Datenbank-Änderungen: neue Migration anhängen; Update-Pfad mit alter DB testen (alte `main` per
+  `git worktree` starten, Daten anlegen, dann neuen Stand auf derselben DB starten).
+- Fallen, in die ich schon getappt bin: `render()` darf nur EINE Ebene Arrays zurückgeben (app.js macht
+  `.flat()` einmal) – verschachtelte Listen in ein `h('div')` packen. `data-focus-key` muss über ALLE
+  Ansichten eindeutig sein (alle Ansichten werden immer gerendert, nur versteckt).
 
-## Stand / offen (zuletzt aktualisiert: 7.11.2026)
-- `main` (live): Zeichnungs-Design, Login, Auto-Update **und seit 7.11.2026 das Kühlschrank-Design**
-  (vom Branch `design-kuehlschrank` gemergt):
-  - Kühlschranktür-Design in Mauve, schräge Zettel mit Washi-Tape.
-  - Polaroid-Fotos zwischen den Zetteln (Upload, im Browser verkleinert, nur mit Login sichtbar).
-  - Einstellungen-Seite (#/einstellungen, Nav „Mehr“): Fotos verwalten, Türfarbe, Foto-Häufigkeit,
-    Abmelden – gemeinsam für alle Geräte (`server/modules/settings.js`).
-- **Seit 7.11.2026 ebenfalls live** (vom Branch `aufgaben-profile` gemergt):
-  - Profile „Wir zwei“ (Kait, Schmaui): Name, gezeichnete Figur oder eigenes Foto, Farbe
-    (`server/modules/people.js`). Jedes Gerät fragt einmal „Wer bist du?“ (localStorage,
-    `public/js/me.js`) und schickt die Person als Header `X-Person` mit.
-  - Wer-hat-was: Einkaufsliste (wer draufgesetzt, „Zuletzt gekauft“ mit „nochmal“), Fotos (wer aufgehängt).
-  - Aufgaben (#/aufgaben, `server/modules/tasks.js`): fällig am, wer macht’s, wiederholen
-    (täglich/wöchentlich/2 Wochen/monatlich), Notiz, Erledigt-Verlauf; „Heute dran“-Zettel im Vorrat.
-- **Seit 7.11.2026 live** (vom Branch `rezepte` gemergt) – Nav-Knopf „Kochen“ (#/kochen):
-  - Wochenplan nur Abendessen, pro Abend 2 Vorschläge („Das gibt’s“ wählt einen), „Gekocht“ zieht
-    nach Bestätigung Mengen vom Vorrat ab. Reiter Woche / Rezepte / Lieblinge (Herz).
-  - Rezepte: per Link holen (`server/recipe-import.js`, schema.org JSON-LD, SSRF-Schutz) oder selbst
-    schreiben; Zeit, Schlagwörter, Notizen. Kein Foto, kein Portionen-Umrechnen (so gewünscht).
-  - Abgleich mit Vorrat in `public/js/recipes.js` (Parser, Synonyme, Zuordnung merken = `links`).
-    „Fehlendes einkaufen“ pro Rezept: Vorrat -> Einkaufsliste, alles andere -> **Wunschzettel**
-    (eigener Zettel unter der Einkaufsliste, `wishes`).
-  - Vorrat = was immer da sein soll. Mengen optional (Menge, Mindestmenge, Einheit; im Vorrat unter
-    „Bearbeiten“ -> Artikel antippen). Unter Mindestmenge -> fehlt automatisch; beim Abhaken auf
-    der Liste wird auf die Mindestmenge aufgefüllt (+/- zum Erhöhen).
-  - Migration 7 ergänzt Grundzutaten: Kategorien „Backen & Süßes“ (+Ahornsirup verschoben) und
-    „Soßen“ (+Mayo, Ketchup, Salsa verschoben), Olivenöl -> Gewürze, Reis -> Nudeln & Co.
-  - Link-Import konnte nur mit Testseiten geprüft werden (Rezeptseiten aus der Cloud-Session
-    gesperrt) – bei Problemen Nutzer nach Link + Fehlermeldung fragen.
-- **Alles oben ist live und von den Nutzern getestet („funktioniert“), auch der Link-Import.**
-- **Seit 7.11.2026 live: Infos-Pinnwand** (#/pinnwand, vom Branch `claude/vigilant-noether-1h6c6p` gemergt,
-  Nutzer: „passt“ nach Screenshots).
-  Entscheidungen der Nutzer (7.11.2026, per Klick-Fragen):
-  - Inhalte: WLAN für Gäste (QR), wichtige Nummern, Verträge & Dokumente. KEINE Zählerstände, KEIN Müll.
-  - Aufbau: freie Zettel + Spezial-Zettel; an der Pinnwand nach Art gruppiert (WLAN, Nummern, Verträge &
-    Dokumente, Zettel).
-  - Ort: eigener Knopf „Pinnwand“ in der Leiste vor „Mehr“ (jetzt 6 Knöpfe, Schrift am Handy kleiner).
-  - Geheimes (WLAN-Passwort, PIN): verdeckt, antippen zeigt (20 s), Kopieren-Knopf.
-  - Nummern: als Gruppen (mehrere Nummern-Zettel), antippen ruft an; „Notfälle“ (112, 110, 116117,
-    116116) per Migration 8 vorausgefüllt.
-  - Verträge: nur Name + Notiz + Dateien (PDF hochladen oder Foto von Papier) – keine Kosten/Fristen.
-  - QR: klein auf dem Zettel, antippen = groß zum Scannen.
-- **Seit 7.11.2026 live: Umbau Pinnwand** (Wunsch nach Test, Branch `claude/vigilant-noether-1h6c6p`,
-  Nutzer: „passt“ nach Screenshots). Entscheidungen (Klick-Fragen):
-  - #/pinnwand = Übersicht mit 4 Kacheln: WLAN, Nummern, Notizen, Ordner.
-  - WLAN/Nummern/Notizen öffnen je ein **Korkbrett mit Holzrahmen**, Zettel mit Pinnadeln (statt Tape).
-    Routen `#/pinnwand/wlan|nummern|notizen`. Notizen = kind `zettel` (Geheimes verdeckt bleibt).
-  - **Ordner** (`#/pinnwand/ordner`, `…/ordner/:id`): Unterordner selbst anlegen, nur eine Ebene;
-    Start-Ordner „Verträge“, „Wohnung“. Datei = PDF/Foto + Name (aus Dateiname vorausgefüllt) + Notiz;
-    verschieben, umbenennen, löschen; Suche über Name + Notiz aller Dateien. Volle Ordner nicht löschbar.
-  - Dokument-Zettel und Dateien an Zetteln entfallen (Migration 9 löscht die Test-Einträge, Server räumt
-    `data/dokumente/` beim Start weg – Nutzer: „nichts Wichtiges“).
-  Technik: `server/modules/notes.js`, `folders.js`, `docs.js` (Dateien in `data/ordner/`, im Backup),
-  QR-Erzeuger ohne Pakete `public/js/ui/qr.js` (mit zxing geprüft), Ansicht `public/js/views/pinnwand.js`.
-  Update-Pfad von Migration 8 → 9 mit alter DB getestet.
-  Noch von den Nutzern am echten Gerät zu prüfen: PDF öffnen auf dem iPhone (öffnet neuen Tab – bei App vom
-  Home-Bildschirm evtl. Anmeldung nötig?), QR mit echtem Handy scannen.
-- **Seit 7.11.2026 live: Küche + Haushalt** (Branch `claude/vigilant-noether-1h6c6p`, Nutzer: „passt“). Entscheidungen (Klick-Fragen):
-  - Leiste: Liste · Küche · Aufgaben · Pinnwand · Mehr (5 Knöpfe). „Küche“ = View `vorrat`
-    (navLabel), Reiter oben Vorrat · Haushalt · Kochen (`kitchenTabs` in `ui/components.js`).
-    Views `haushalt` und `kochen` haben `inNav: false`; `navAlso` lässt „Küche“ leuchten.
-    Routen `#/vorrat`, `#/haushalt`, `#/kochen` bleiben (NFC!).
-  - Kategorien haben `area` ('kueche' | 'haushalt', Migration 10). Haushalt = gleiche Ansicht wie
-    Vorrat (`stockView` in `views/vorrat.js`), ohne Fotos/Heute-Zettel. Start-Kategorien: Bad &
-    Körperpflege, Putzen & Wäsche, Haushalt & Sonstiges (auch in startdaten.json mit "bereich").
-    Im Bearbeiten-Modus Knopf „→ Haushalt“/„→ Vorrat“ zum Verschieben einer Kategorie.
-  - Einkaufsliste: erst Essen, darunter Abschnitt „Haushalt“. PC: links Vorrat ODER Haushalt
-    (`CONFIG.split.main` ist jetzt eine Liste), rechts die Liste.
-  Update-Pfad Migration 9 → 10 mit alter DB getestet.
-- **Pinnwand (umgebaut) und Küche + Haushalt sind von den Nutzern getestet: „funktioniert alles“.**
-- Zurückgestellt (Nutzer 7.11.2026: „erstmal egal“, nicht von selbst wieder vorschlagen): automatische
-  Sicherung auf den Mac der Nutzer. Plan, falls sie es doch wollen: Skript
-  `scripts/mac-backup-einrichten.sh` (SSH-Schlüssel einrichten, LaunchAgent täglich, `rsync` von
-  `root@2.31.137.100:/opt/haushalt/data/backups/` nach `~/moving-castle-backup/` – nicht nach
-  ~/Documents, das blockiert macOS für Hintergrundjobs). Nutzer starten es einmal im Terminal.
-- Offen nebenbei: README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen, Pinnwand, Kalender ergänzen.
-  Server meldet 3 offene Ubuntu-Updates (`apt upgrade` irgendwann mit den Nutzern; KEIN do-release-upgrade).
-- **Seit 7.11.2026 live: Kalender im „Planer“** (Branch `claude/vigilant-noether-1h6c6p`, Nutzer: „passt“).
-  Noch nicht mit echten Links verbunden – beim ersten Verbinden begleiten. Entscheidungen (Klick-Fragen):
-  - Beide haben je einen eigenen Apple-Kalender (gegenseitig geteilt) → **je Person ein Link**, die App
-    zeigt alles zusammen als EINEN Kalender. Termine in der **Profil-Farbe** der Person mit Profilbild;
-    gleicher Termin (Titel + Zeit) in beiden Kalendern → nur einmal, mit beiden Bildern.
-  - NUR anzeigen (kein Eintragen), keine App-Termine (Aufgaben/Essen) im Kalender, kein Abo zurück.
-  - Weg: „Öffentlicher Kalender“ in der Kalender-App → geheimer webcal-Link. Wird einmal in der App
-    eingefügt (Planer → Kalender oder Mehr), liegt nur auf dem Server (Tabelle `calendar_feeds`,
-    Migration 11, eine Zeile je Person), geht nie an die Geräte. Server holt alle 15 Min. neu (+ Knopf).
-    API: `PUT /api/calendar/:personId { url }` (null = trennen), `POST /api/calendar/sync`.
-  - Leiste: „Aufgaben“ heißt jetzt **„Planer“** (View `kalender`, navAlso `aufgaben`), Reiter oben
-    Kalender · Aufgaben (`plannerTabs`). Start = Woche, umschaltbar auf Monat (`#/kalender/monat`).
-    Badge am Planer = heutige Aufgaben. Termin antippen = Details (Ort → Apple Karten, Notiz).
-  - Technik: `server/ical.js` (iCalendar-Leser ohne Pakete: Zeitzonen, ganztägig, RRULE, EXDATE,
-    RECURRENCE-ID, Absagen; Tests in `test/ical.test.js`), `server/modules/calendar.js`,
-    `public/js/views/kalender.js` (`calendarSetup` auch in Einstellungen). Zeitraum: 400 Tage zurück
-    bis 760 Tage voraus.
-  - Konnte NICHT mit echtem iCloud-Link getestet werden (Cloud-Session) – Nutzer beim ersten Verbinden
-    begleiten, bei Fehler nach Meldung/Screenshot fragen.
-  Update-Pfad Migration 10 → 11 mit alter DB getestet.
-- Zurückgestellt (Nutzer 7.11.2026, nicht von selbst wieder vorschlagen): NFC-Sticker (Anleitung
-  `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`).
-- **Aktuell keine offenen Wünsche** – auf neue Ideen der Nutzer warten, vorher per Klick-Fragen klären.
-- Hinweis: Bilder, die Nutzer im Chat schicken, kamen zuletzt teilweise leer an → ggf. nachfragen.
+## Stand (zuletzt aktualisiert: 7.11.2026, Ende der Session) – alles live auf `main`
+Leiste unten (5 Knöpfe): **Liste · Küche · Planer · Pinnwand · Mehr**. Views in `public/js/views/index.js`;
+Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
+
+- **Liste** (#/liste): fehlende Artikel, erst Essen, darunter Abschnitt „Haushalt“; Wunschzettel,
+  „Zuletzt gekauft“; wer hat was draufgesetzt. PC: Liste rechts neben Vorrat/Haushalt (`CONFIG.split`).
+- **Küche** = View `vorrat`, Reiter (`kitchenTabs`): **Vorrat** (#/vorrat, Essen, Kühlschrank-Design mit
+  Polaroids, „Heute dran“/„Heute gibt’s“-Zettel) · **Haushalt** (#/haushalt, Bad/Putzen/Sonstiges) ·
+  **Kochen** (#/kochen: Wochenplan Abendessen, Rezepte per Link oder selbst, Lieblinge, Abgleich mit Vorrat).
+  Kategorien haben `area` 'kueche' | 'haushalt' (Migration 10), im Bearbeiten-Modus verschiebbar.
+  Mengen optional (Menge/Mindestmenge/Einheit; unter Mindestmenge -> fehlt automatisch).
+- **Planer** = View `kalender`, Reiter (`plannerTabs`): **Kalender** (#/kalender Woche, #/kalender/monat)
+  · **Aufgaben** (#/aufgaben: fällig, wer, wiederholen, Verlauf). Badge = heutige Aufgaben.
+  Kalender: je Person ein Apple-„Öffentlicher Kalender“-Link (geheim, nur auf dem Server, Tabelle
+  `calendar_feeds`), zusammen als EIN Kalender, Farbe = Profil-Farbe + Profilbild, doppelte Termine einmal.
+  Nur lesen. Server holt alle 15 Min. (`server/modules/calendar.js`, Leser `server/ical.js`).
+  **Noch nicht mit echten Links verbunden** – beim ersten Verbinden begleiten (iCloud aus der Cloud-Session
+  nicht testbar), bei Fehler nach Meldung/Screenshot fragen.
+- **Pinnwand** (#/pinnwand): 4 Kacheln. WLAN / Nummern / Notizen je auf Korkbrett (Pinnadeln);
+  WLAN mit QR (`public/js/ui/qr.js`), Geheimes verdeckt (antippen zeigt 20 s); Nummern-Gruppen, antippen
+  ruft an, „Notfälle“ vorausgefüllt. **Ordner** (#/pinnwand/ordner): Unterordner (eine Ebene, Start
+  „Verträge“, „Wohnung“), PDF/Foto + Name + Notiz, verschieben, Suche. Dateien in `data/ordner/`.
+  Noch am echten iPhone zu prüfen: PDF öffnen (neuer Tab, bei Home-Bildschirm-App evtl. Anmeldung?).
+- **Mehr** (#/einstellungen): Wir zwei (Profile: Name, Figur/Foto, Farbe), Fotos, Kalender verbinden,
+  Türfarbe, dieses Gerät (wer bin ich), Abmelden.
+- Profile: jedes Gerät fragt einmal „Wer bist du?“ und schickt `X-Person` mit (wer-hat-was).
+- **Backup** am 7.11.2026 mit den Nutzern geprüft (siehe „Betrieb“).
+- Von den Nutzern getestet: alles bis einschließlich Küche + Haushalt („funktioniert alles“).
+
+## Offen
+- **Keine offenen Wünsche.** Auf neue Ideen der Nutzer warten, vorher per Klick-Fragen klären.
+- Zurückgestellt (Nutzer: „erstmal egal“, NICHT von selbst wieder vorschlagen):
+  - Automatische Sicherung auf den Mac (Plan: `scripts/mac-backup-einrichten.sh`, SSH-Schlüssel,
+    LaunchAgent täglich, `rsync` von `root@2.31.137.100:/opt/haushalt/data/backups/` nach
+    `~/moving-castle-backup/` – nicht ~/Documents, das blockiert macOS für Hintergrundjobs).
+  - NFC-Sticker (Anleitung `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`).
+- Nebenbei, wenn Zeit: README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen, Pinnwand, Kalender
+  ergänzen. Server hat 3 offene Ubuntu-Updates (`apt upgrade` irgendwann mit den Nutzern; KEIN
+  `do-release-upgrade`).
+- Hinweis: Bilder, die Nutzer im Chat schicken, kamen früher teilweise leer an → ggf. nachfragen
+  (in der Session am 7.11. kamen Screenshots gut an).
