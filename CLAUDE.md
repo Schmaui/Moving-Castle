@@ -122,8 +122,8 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   (z. B. `tuer,essen`) änderbar. Klein 1, Mittel 2, Groß bis 4 Zettel, Türfarbe als Hintergrund.
   Getestet mit Nachbau `scripts/scriptable-nachbau.cjs` (führt Skript aus, zeichnet Vorschau) – echtes
   Scriptable nicht testbar, Nutzer nach Screenshot fragen. Daten für Morgen-Nachricht + Widget: `server/summary.js`.
-- **Mehr** (#/einstellungen): Nachricht an die Tür, Benachrichtigungen, Widget, Wir zwei (Profile: Name, Figur/Foto, Farbe), Fotos, Kalender verbinden,
-  Türfarbe, dieses Gerät (wer bin ich), Abmelden.
+- **Mehr** (#/einstellungen), Reihenfolge von den Nutzern festgelegt: Nachricht an die Tür, Wir zwei (Profile),
+  Galerie, Kühlschrank (Türfarbe, Fotos an/aus), Benachrichtigungen, Widget, Kalender, Dieses Gerät (+ Abmelden).
 - Profile: jedes Gerät fragt einmal „Wer bist du?“ und schickt `X-Person` mit (wer-hat-was).
 - **Backup** am 7.11.2026 mit den Nutzern geprüft (siehe „Betrieb“).
 - Von den Nutzern getestet: alles bis einschließlich Küche + Haushalt („funktioniert alles“).
