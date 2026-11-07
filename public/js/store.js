@@ -29,6 +29,7 @@ export const state = {
   folders: [],
   docs: [],
   calendar: { connected: false, events: [] },
+  movies: [],
 };
 
 const listeners = new Set();
@@ -147,6 +148,7 @@ export async function logout() {
   state.notes = [];
   state.folders = [];
   state.docs = [];
+  state.movies = [];
   state.calendar = { connected: false, events: [] };
   requireLogin();
 }
@@ -450,6 +452,33 @@ export function deleteNote(note) {
 export function restoreNote(note) {
   const { kind, title, body, secret, data, sort } = note;
   return mutate(null, () => api.create('notes', { kind, title, body, secret, data, sort }));
+}
+
+// ---------- Filmabend ----------
+const findMovie = (id) => state.movies.find((m) => m.id === id);
+
+export function addMovie(data) {
+  return mutate(null, () => api.create('movies', data));
+}
+
+export function updateMovie(movie, patch) {
+  return mutate(
+    () => Object.assign(findMovie(movie.id) || {}, patch),
+    () => api.update('movies', movie.id, patch)
+  );
+}
+
+export function deleteMovie(movie) {
+  return mutate(
+    () => { state.movies = state.movies.filter((m) => m.id !== movie.id); },
+    () => api.remove('movies', movie.id)
+  );
+}
+
+/** Gelöschten Film wieder eintragen (für "Rückgängig"). */
+export function restoreMovie(movie) {
+  const { title, kind, service, note, wantedBy, ratings, seenOn } = movie;
+  return mutate(null, () => api.create('movies', { title, kind, service, note, wantedBy, ratings, seenOn }));
 }
 
 // ---------- Ordner (Dokumente) ----------

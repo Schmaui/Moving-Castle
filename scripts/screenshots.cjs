@@ -89,6 +89,16 @@ function check(cond, msg) {
   ] } }, 1);
   await api('POST', '/api/notes', { kind: 'zettel', title: 'Fahrradkeller', body: 'Schlüssel hängt am Brett im Flur.\nLicht: Schalter links hinter der Tür.', secret: '4711' }, 2);
   await api('POST', '/api/notes', { kind: 'zettel', title: 'Pflanzen gießen', body: 'Monstera 1× pro Woche,\nKakteen nur alle 3 Wochen!' }, 1);
+  // Filmabend: Merkliste + schon Gesehenes mit Popcorn
+  await api('POST', '/api/movies', { title: 'Chihiros Reise ins Zauberland', service: 'netflix', wantedBy: [1, 2] }, 1);
+  await api('POST', '/api/movies', { title: 'Dark', kind: 'serie', service: 'netflix', wantedBy: [2], note: 'Tipp von Lea – unbedingt mit Untertiteln' }, 2);
+  await api('POST', '/api/movies', { title: 'The Last of Us', kind: 'serie', service: 'hbo', wantedBy: [1] }, 1);
+  await api('POST', '/api/movies', { title: 'Dune: Teil Zwei', service: 'prime', wantedBy: [1, 2] }, 2);
+  const seenMovie = (title, service, ratings, n) => api('POST', '/api/movies', { title, service, ratings, seenOn: day(n), wantedBy: [1, 2] }, 1);
+  await seenMovie('Mein Nachbar Totoro', 'netflix', { 1: 5, 2: 5 }, -3);
+  await seenMovie('Oppenheimer', 'kino', { 1: 3, 2: 4 }, -20);
+  await seenMovie('Encanto', 'disney', { 1: 4, 2: 5 }, -40);
+  await seenMovie('Tenet', 'prime', { 1: 2 }, -60);
   const { folders } = await api('GET', '/api/state');
   const vertraege = folders.find((f) => f.name === 'Verträge');
   const wohnung = folders.find((f) => f.name === 'Wohnung');
@@ -341,7 +351,7 @@ function check(cond, msg) {
 
   await page.goto(BASE + '/#/pinnwand');
   await page.waitForSelector('#view-pinnwand .pin-tile');
-  check(await page.locator('#view-pinnwand .pin-tile').count() === 4, 'Pinnwand: 4 Kacheln (WLAN, Nummern, Notizen, Ordner)');
+  check(await page.locator('#view-pinnwand .pin-tile').count() === 5, 'Pinnwand: 5 Kacheln (WLAN, Nummern, Notizen, Ordner, Filmabend)');
   await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 10000 });
   await page.screenshot({ path: path.join(OUT, 'handy-pinnwand.jpg'), quality: 85 });
 
@@ -428,6 +438,40 @@ function check(cond, msg) {
   await page.waitForFunction(() => document.querySelector('.doc-image')?.naturalWidth > 0);
   check(true, 'Foto eines Papiers lässt sich groß ansehen');
   await page.locator('.lightbox--doc').click();
+
+  // Filmabend
+  await page.goto(BASE + '/#/pinnwand');
+  await page.locator('#view-pinnwand .pin-tile--filmabend').click();
+  await page.waitForSelector('#view-pinnwand .cinema .ticket');
+  check(await page.locator('#view-pinnwand .cinema .ticket').count() === 8, 'Filmabend: Merkliste, Lieblinge und Gesehen');
+  await page.screenshot({ path: path.join(OUT, 'handy-filmabend.jpg'), quality: 85 });
+  await page.locator('[data-focus-key="film-new"]').click();
+  await page.locator('[data-focus-key="film-form-title"]').fill('Das wandelnde Schloss');
+  await page.locator('[data-focus-key="film-form-service-disney"]').click();
+  await page.locator('[data-focus-key="film-form-want-2"]').click();
+  await page.locator('[data-focus-key="film-form-note"]').fill('Für einen gemütlichen Sonntag');
+  await page.screenshot({ path: path.join(OUT, 'handy-filmabend-neu.jpg'), quality: 85 });
+  await page.locator('[data-focus-key="film-form-save"]').click();
+  await page.waitForSelector('#view-pinnwand .ticket:has-text("Das wandelnde Schloss") .ticket__both');
+  check(true, 'Film eingetragen, beide wollen ihn sehen');
+  await page.locator('[data-focus-key="film-filter-serie"]').click();
+  check(await page.locator('#view-pinnwand .tickets').first().locator('.ticket').count() === 2, 'Filter: nur Serien');
+  await page.locator('[data-focus-key="film-filter-alle"]').click();
+  await page.locator('[data-focus-key="film-pick"]').click();
+  await page.waitForSelector('#view-pinnwand .pick:not(.is-shuffling) [data-focus-key="film-pick-again"]');
+  check(await page.locator('#view-pinnwand .pick .ticket').count() === 1, '„Was gucken wir heute?“ wählt etwas aus');
+  await page.locator('#view-pinnwand .pick').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'handy-filmabend-zufall.jpg'), quality: 85 });
+  await page.locator('[data-focus-key="film-pick-close"]').click();
+  const dune = page.locator('#view-pinnwand .ticket', { hasText: 'Dune' });
+  await dune.locator('.ticket__seen').click();
+  await dune.locator('.rate-panel [aria-label="5 von 5 Popcorn"]').first().click();
+  await dune.locator('.rate-panel [aria-label="4 von 5 Popcorn"]').last().click();
+  await dune.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'handy-filmabend-bewerten.jpg'), quality: 85 });
+  await dune.locator('.rate-panel .btn--primary').click();
+  await page.waitForSelector('#view-pinnwand .ticket--seen:has-text("Dune") .ticket__avg');
+  check((await page.locator('#view-pinnwand .ticket--seen', { hasText: 'Dune' }).locator('.ticket__avg').textContent()).includes('4,5'), 'Gesehen: Popcorn von beiden, Schnitt 4,5 -> Lieblinge');
   await phone.close();
 
   // ---------- Handy dunkel ----------
@@ -469,6 +513,9 @@ function check(cond, msg) {
   await page.goto(BASE + '/#/pinnwand/ordner/' + wohnung.id);
   await page.waitForSelector('#view-pinnwand .doc');
   await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-ordner-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/pinnwand/filmabend');
+  await page.waitForSelector('#view-pinnwand .ticket');
+  await page.screenshot({ path: path.join(OUT, 'handy-filmabend-dunkel.jpg'), quality: 85 });
   await dark.close();
 
   // ---------- Tablet ----------
@@ -535,6 +582,9 @@ function check(cond, msg) {
   await page.goto(BASE + '/#/pinnwand/ordner');
   await page.waitForSelector('#view-pinnwand .folder');
   await page.screenshot({ path: path.join(OUT, 'pc-pinnwand-ordner.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/pinnwand/filmabend');
+  await page.waitForSelector('#view-pinnwand .ticket');
+  await page.screenshot({ path: path.join(OUT, 'pc-filmabend.jpg'), quality: 85 });
 
   const desktopDark = await device({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, colorScheme: 'dark' });
   page = await desktopDark.newPage(); watch(page);
@@ -559,6 +609,12 @@ function check(cond, msg) {
   await page.goto(BASE + '/#/pinnwand/ordner/' + vertraege.id);
   await page.waitForSelector('#view-pinnwand .doc');
   await page.screenshot({ path: path.join(OUT, 'pc-pinnwand-ordner-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/pinnwand');
+  await page.waitForSelector('#view-pinnwand .pin-tile');
+  await page.screenshot({ path: path.join(OUT, 'pc-pinnwand-uebersicht-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/pinnwand/filmabend');
+  await page.waitForSelector('#view-pinnwand .ticket');
+  await page.screenshot({ path: path.join(OUT, 'pc-filmabend-dunkel.jpg'), quality: 85 });
 
   await browser.close();
   calServer.close();

@@ -1,13 +1,14 @@
 // Ansicht "Pinnwand" (/#/pinnwand): wichtige Infos für euch beide.
 //
-//   #/pinnwand                 Übersicht: Kacheln WLAN, Nummern, Notizen, Ordner
+//   #/pinnwand                 Übersicht: Kacheln WLAN, Nummern, Notizen, Ordner, Filmabend
 //   #/pinnwand/wlan            Korkbrett mit WLAN-Zetteln (Passwort verdeckt, QR-Code für Gäste)
 //   #/pinnwand/nummern         Korkbrett mit Nummern-Zetteln (Gruppen, antippen = anrufen)
 //   #/pinnwand/notizen         Korkbrett mit freien Notizen (optional etwas Geheimes, z. B. PIN)
 //   #/pinnwand/ordner          Ordner: Unterordner + Suche über alle Dateien
 //   #/pinnwand/ordner/:id      Ein Unterordner: Dateien (PDF/Foto) mit Name + Notiz
+//   #/pinnwand/filmabend       Merkliste für Filme & Serien im Kino-Look (eigene Datei: filmabend.js)
 //
-// Gespeichert wird auf dem Server (server/modules/notes.js, folders.js, docs.js) – gilt für alle Geräte.
+// Gespeichert wird auf dem Server (server/modules/notes.js, folders.js, docs.js, movies.js) – gilt für alle Geräte.
 import { h, formatWhen, plural } from '../util.js';
 import { viewHeader, emptyState, loading, iconLabel } from '../ui/components.js';
 import { icon } from '../ui/art.js';
@@ -16,6 +17,7 @@ import { showToast } from '../ui/toast.js';
 import { shrink } from '../ui/photos.js';
 import { qrSvg, wifiText } from '../ui/qr.js';
 import { api } from '../api.js';
+import { filmabendPage, filmTile } from './filmabend.js';
 import {
   addNote, updateNote, deleteNote, restoreNote,
   folderById, docsIn, addFolder, updateFolder, deleteFolder, uploadDoc, updateDoc, deleteDoc,
@@ -69,6 +71,7 @@ export default {
       return folder ? folderPage(folder, state, ctx) : notFound('Diesen Ordner gibt es nicht (mehr).', 'ordner');
     }
     if (section === 'ordner') return foldersPage(state, ctx);
+    if (section === 'filmabend') return filmabendPage(state, ctx, backLink('#/pinnwand', 'Pinnwand'));
     const board = BOARDS.find((b) => b.id === section);
     if (board) return boardPage(board, state, ctx);
     return overview(state);
@@ -89,9 +92,10 @@ function overview(state) {
     { ...BOARDS[1], info: plural(count('nummern'), 'Gruppe', 'Gruppen'), meta: plural(numbers, 'Nummer', 'Nummern') },
     { ...BOARDS[2], info: count('zettel') ? plural(count('zettel'), 'Notiz', 'Notizen') : 'noch leer', meta: '' },
     { id: 'ordner', title: 'Ordner', icon: 'ordner', tone: 5, info: plural(docs.length, 'Datei', 'Dateien'), meta: plural((state.folders || []).length, 'Ordner', 'Ordner') },
+    filmTile(state),
   ];
   return [
-    viewHeader({ id: 'title-pinnwand', title: 'Pinnwand', subtitle: 'WLAN, Nummern, Notizen & Ordner' }),
+    viewHeader({ id: 'title-pinnwand', title: 'Pinnwand', subtitle: 'WLAN, Nummern, Notizen, Ordner & Filmabend' }),
     h('nav', { class: 'pin-tiles', 'aria-label': 'Bereiche der Pinnwand' }, tiles.map((t) => h('a', {
       class: ['card', 'pin-tile', `pin-tile--${t.id}`], 'data-tone': t.tone, href: `#/pinnwand/${t.id}`,
     },

@@ -28,9 +28,11 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   SSH geprüft: Cron korrekt, erste Sicherung von Hand erfolgreich (vorher lief noch keine, Server war neu).
 
 ## Arbeitsweise (wichtig)
-- Neue Features/Designs auf einem **eigenen Branch** bauen, Vorschau-Screenshots (Handy + PC,
-  hell + dunkel) schicken, erst nach „passt“ nach `main` mergen.
-- Vor dem Mergen: `npm test` und `scripts/screenshots.cjs` müssen grün sein.
+- **Seit 7.11.2026 (Wunsch der Nutzer):** Fertige Features NICHT mehr erst als Vorschau zeigen, sondern
+  nach grünen Tests direkt nach `main` mergen und pushen (= live). Die Nutzer testen dann live und
+  melden Verbesserungen. Weiterhin auf eigenem Branch entwickeln und vorher per Klick-Fragen klären.
+- Vor dem Mergen: `npm test` und `scripts/screenshots.cjs` müssen grün sein (lokales `main` kann veraltet
+  sein – für den Update-Test `origin/main` nehmen).
 - Die Nutzer wollen vor jedem Feature **ausführlich per Klick-Fragen (AskUserQuestion)** gefragt werden
   (gern 2 Runden à 4 Fragen, mit Empfehlung als erste Option).
 - Datenbank-Änderungen: neue Migration anhängen; Update-Pfad mit alter DB testen (alte `main` per
@@ -39,7 +41,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   `.flat()` einmal) – verschachtelte Listen in ein `h('div')` packen. `data-focus-key` muss über ALLE
   Ansichten eindeutig sein (alle Ansichten werden immer gerendert, nur versteckt).
 
-## Stand (zuletzt aktualisiert: 7.11.2026, Ende der Session) – alles live auf `main`
+## Stand (zuletzt aktualisiert: 7.11.2026, Filmabend) – alles live auf `main`
 Leiste unten (5 Knöpfe): **Liste · Küche · Planer · Pinnwand · Mehr**. Views in `public/js/views/index.js`;
 Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
 
@@ -62,6 +64,11 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   ruft an, „Notfälle“ vorausgefüllt. **Ordner** (#/pinnwand/ordner): Unterordner (eine Ebene, Start
   „Verträge“, „Wohnung“), PDF/Foto + Name + Notiz, verschieben, Suche. Dateien in `data/ordner/`.
   Noch am echten iPhone zu prüfen: PDF öffnen (neuer Tab, bei Home-Bildschirm-App evtl. Anmeldung?).
+  **Filmabend** (#/pinnwand/filmabend, 5. Kachel, `public/js/views/filmabend.js`, Server `movies.js`,
+  Migration 12): Kino-Look (Vorhang, Kinokarten), Film/Serie, „Wo läuft's?“ (Netflix, Prime Video,
+  Disney+, HBO, Kino, Sonstiges), „Wer will's sehen?“ (Beide wollen ♡), Zufallsknopf „Was gucken wir
+  heute?“ (was beide wollen, kommt doppelt so oft), „Gesehen“ mit 1–5 Popcorn je Person, Schnitt ≥ 4
+  = „Unsere Lieblinge“. Neu live am 7.11. – auf Feedback der Nutzer warten.
 - **Mehr** (#/einstellungen): Wir zwei (Profile: Name, Figur/Foto, Farbe), Fotos, Kalender verbinden,
   Türfarbe, dieses Gerät (wer bin ich), Abmelden.
 - Profile: jedes Gerät fragt einmal „Wer bist du?“ und schickt `X-Person` mit (wer-hat-was).
@@ -69,7 +76,10 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
 - Von den Nutzern getestet: alles bis einschließlich Küche + Haushalt („funktioniert alles“).
 
 ## Offen
-- **Keine offenen Wünsche.** Auf neue Ideen der Nutzer warten, vorher per Klick-Fragen klären.
+- Filmabend: Verbesserungswünsche der Nutzer abwarten.
+- Ideen-Speicher (Nutzer interessiert, „für später“): **Gemeinsame Ausgaben** (wer hat was bezahlt,
+  wer schuldet wem). Nicht gewählt: Ausflugs-/Date-Ideen, Geburtstage & Geschenke, Haltbarkeit im Vorrat,
+  Serien-Fortschritt, Snacks auf Einkaufsliste, Filmabend planen, Poster automatisch (TMDB).
 - Zurückgestellt (Nutzer: „erstmal egal“, NICHT von selbst wieder vorschlagen):
   - Automatische Sicherung auf den Mac (Plan: `scripts/mac-backup-einrichten.sh`, SSH-Schlüssel,
     LaunchAgent täglich, `rsync` von `root@2.31.137.100:/opt/haushalt/data/backups/` nach

@@ -342,6 +342,38 @@ test('Pinnwand: Notfall-Nummern sind schon angepinnt', async () => {
   assert.deepEqual(body.docs, []);
 });
 
+test('Filmabend: Merkliste, wer will, gesehen mit Popcorn-Bewertung', async () => {
+  assert.deepEqual((await json('GET', '/api/state')).body.movies, []);
+  const film = await as(1, 'POST', '/api/movies', { title: '  Das wandelnde Schloss ', service: 'netflix', wantedBy: [1, 2, 2] });
+  assert.equal(film.status, 201);
+  assert.equal(film.body.title, 'Das wandelnde Schloss');
+  assert.equal(film.body.kind, 'film');
+  assert.deepEqual(film.body.wantedBy, [1, 2]);
+  assert.equal(film.body.addedBy, 1);
+  assert.equal(film.body.seenOn, null);
+
+  const serie = await as(2, 'POST', '/api/movies', { title: 'Dark', kind: 'serie', service: 'hbo', note: 'Tipp von Lea' });
+  assert.equal(serie.body.kind, 'serie');
+
+  // Prüfungen
+  assert.equal((await json('POST', '/api/movies', { title: 'x', kind: 'doku' })).status, 400);
+  assert.equal((await json('POST', '/api/movies', { title: 'x', service: 'youtube' })).status, 400);
+  assert.equal((await json('POST', '/api/movies', { title: '' })).status, 400);
+  assert.equal((await json('POST', '/api/movies', { title: 'x', wantedBy: ['1'] })).status, 400);
+  assert.equal((await json('PATCH', `/api/movies/${film.body.id}`, { ratings: { 1: 6 } })).status, 400);
+  assert.equal((await json('PATCH', `/api/movies/${film.body.id}`, { ratings: { abc: 3 } })).status, 400);
+  assert.equal((await json('PATCH', `/api/movies/${film.body.id}`, { seenOn: 'gestern' })).status, 400);
+
+  // Gesehen + bewertet
+  const seen = await json('PATCH', `/api/movies/${film.body.id}`, { seenOn: '2026-11-07', ratings: { 1: 5, 2: 4 } });
+  assert.equal(seen.status, 200);
+  assert.equal(seen.body.seenOn, '2026-11-07');
+  assert.deepEqual(seen.body.ratings, { 1: 5, 2: 4 });
+
+  for (const m of [film, serie]) assert.equal((await json('DELETE', `/api/movies/${m.body.id}`)).status, 200);
+  assert.deepEqual((await json('GET', '/api/state')).body.movies, []);
+});
+
 test('Pinnwand: WLAN, Nummern und Zettel anlegen und prüfen', async () => {
   const wlan = await as(1, 'POST', '/api/notes', {
     kind: 'wlan', title: 'WLAN für Gäste', secret: 'geheim;123', data: { ssid: 'Schloss', security: 'WPA', unbekannt: 1 },

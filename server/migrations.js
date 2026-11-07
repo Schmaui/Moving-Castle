@@ -342,6 +342,24 @@ export const MIGRATIONS = [
   );
   `,
 
+  // 12: Filmabend (Pinnwand) – Merkliste für Filme und Serien.
+  //     seen_on leer = noch auf der Merkliste, sonst "Gesehen" (mit Bewertung von beiden).
+  `
+  CREATE TABLE movies (
+    id          INTEGER PRIMARY KEY,
+    title       TEXT    NOT NULL,
+    kind        TEXT    NOT NULL DEFAULT 'film',      -- film | serie
+    service     TEXT,                                 -- netflix | prime | disney | hbo | kino | sonstiges
+    note        TEXT,                                 -- z. B. "Tipp von Lea"
+    wanted_by   TEXT,                                 -- JSON: [personId, …] – wer will's sehen?
+    ratings     TEXT,                                 -- JSON: { "personId": 1..5 } (Popcorn)
+    seen_on     TEXT,                                 -- JJJJ-MM-TT, wann geguckt
+    added_by    INTEGER REFERENCES people(id) ON DELETE SET NULL,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];
