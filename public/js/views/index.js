@@ -3,5 +3,6 @@
 // Sie ist dann automatisch unter /#/<id> erreichbar und erscheint in der Navigation.
 import liste from './liste.js';
 import vorrat from './vorrat.js';
+import einstellungen from './einstellungen.js';
 
-export const VIEWS = [liste, vorrat];
+export const VIEWS = [liste, vorrat, einstellungen];

@@ -67,6 +67,27 @@ export const MIGRATIONS = [
   UPDATE categories SET icon = 'kartoffeln' WHERE emoji = '🥔';
   `,
 
+  // 4: Fotos an der Kühlschranktür (Dateien liegen in data/fotos/)
+  `
+  CREATE TABLE photos (
+    id          INTEGER PRIMARY KEY,
+    file        TEXT NOT NULL,          -- Dateiname in data/fotos/
+    caption     TEXT,                   -- kleine Bildunterschrift
+    sort        INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+  );
+  `,
+
+  // 5: Gemeinsame Einstellungen (Werte als JSON, erlaubte Werte stehen in modules/settings.js)
+  `
+  CREATE TABLE settings (
+    key         TEXT PRIMARY KEY,
+    value       TEXT NOT NULL,
+    updated_at  TEXT NOT NULL
+  );
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];

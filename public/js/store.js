@@ -16,6 +16,8 @@ export const state = {
   rev: null,
   categories: [],
   items: [],
+  photos: [],
+  settings: {},
 };
 
 const listeners = new Set();
@@ -125,6 +127,7 @@ export async function logout() {
   try { await api.logout(); } catch { /* egal – lokal trotzdem abmelden */ }
   state.loaded = false;
   state.categories = [];
+  state.photos = [];
   state.items = [];
   requireLogin();
 }
@@ -173,5 +176,47 @@ export function deleteCategory(category) {
   return mutate(
     () => { state.categories = state.categories.filter((c) => c.id !== category.id); },
     () => api.remove('categories', category.id)
+  );
+}
+
+// ---------- Fotos ----------
+export function addPhoto(blob, caption) {
+  return mutate(null, () => api.uploadPhoto(blob, caption));
+}
+
+export function deletePhoto(photo) {
+  return mutate(
+    () => { state.photos = state.photos.filter((p) => p.id !== photo.id); },
+    () => api.remove('photos', photo.id)
+  );
+}
+
+export function updatePhoto(photo, patch) {
+  return mutate(
+    () => Object.assign(state.photos.find((p) => p.id === photo.id) || {}, patch),
+    () => api.update('photos', photo.id, patch)
+  );
+}
+
+/** Fotos in Reihenfolge (so hängen sie an der Tür). */
+export const sortedPhotos = () =>
+  [...(state.photos || [])].sort((a, b) => a.sort - b.sort || a.id - b.id);
+
+/** Foto eine Position nach vorn (-1) oder hinten (+1) schieben. */
+export async function movePhoto(photo, dir) {
+  const list = sortedPhotos();
+  const from = list.findIndex((p) => p.id === photo.id);
+  const to = from + dir;
+  if (from < 0 || to < 0 || to >= list.length) return;
+  [list[from], list[to]] = [list[to], list[from]];
+  // neue Reihenfolge durchnummerieren, nur Geänderte speichern
+  await Promise.all(list.map((p, i) => (p.sort !== i ? updatePhoto(p, { sort: i }) : null)));
+}
+
+// ---------- Gemeinsame Einstellungen ----------
+export function updateSettings(patch) {
+  return mutate(
+    () => { state.settings = { ...state.settings, ...patch }; },
+    () => api.patchSettings(patch)
   );
 }

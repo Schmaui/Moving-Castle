@@ -1,35 +1,42 @@
 /* =====================================================================
    DESIGN-VARIABLEN – hier änderst du das Aussehen der ganzen App.
-   Thema: "Küchen-Skizzenbuch" – Papier, Aquarell, Handschrift.
+   Thema: "Kühlschranktür" – Zettel mit Washi-Tape und Polaroids an einer
+   mauvefarbenen Retro-Kühlschranktür.
    Alle anderen CSS-Dateien verwenden nur diese Variablen.
    ===================================================================== */
 
 :root {
+  /* ---------- Kühlschranktür ---------- */
+  --fridge:          #bc98ad;  /* Farbe der Tür (dunkles Pastell-Mauve) */
+  --on-fridge:       #3a2230;  /* Schrift direkt auf der Tür */
+  --on-fridge-muted: #5b3b4c;
+  --handle:          linear-gradient(90deg, #cfc6cb, #fbf8fa 45%, #b3a9ae);
+
   /* ---------- Grundfarben (hell) ---------- */
-  --color-bg:            #f3e8d4;  /* Papier */
-  --color-surface:       #fffaf0;  /* Karten-Papier */
-  --color-surface-2:     #f7eedd;  /* Chips, Eingabefelder */
-  --color-surface-hover: #f0e2c8;
-  --color-border:        #dcc9aa;
-  --color-ink:           #3d2f24;  /* "Tinte": Linien, Ränder */
-  --color-text:          #3d2f24;
-  --color-text-muted:    #8a7461;
+  --color-bg:            var(--fridge);
+  --color-surface:       #fffaf3;  /* Zettel-Papier */
+  --color-surface-2:     #f8efe6;  /* Chips, Eingabefelder */
+  --color-surface-hover: #f3e6da;
+  --color-border:        #e6d6ca;
+  --color-ink:           #3a2430;  /* "Tinte": Linien, Ränder */
+  --color-text:          #3a2430;
+  --color-text-muted:    #85697a;
 
   --color-accent:        #5d7d4c;  /* Salbeigrün */
   --color-accent-hover:  #4c6a3d;
   --color-accent-soft:   #e2e9d0;
-  --color-on-accent:     #fffaf0;
+  --color-on-accent:     #fffaf3;
 
-  --color-missing:       #c8553d;  /* Terrakotta: "fehlt" */
-  --color-missing-soft:  #f6d9cc;
-  --color-on-missing:    #fffaf0;
+  --color-missing:       #c0503a;  /* Terrakotta: "fehlt" */
+  --color-missing-soft:  #f6dcd3;
+  --color-on-missing:    #fffaf3;
 
   --color-danger:        #b13a2a;
   --color-danger-soft:   #f8ddd6;
 
-  --color-highlight:     #e4b04a;  /* Senfgelb: Akzente, Haftnotiz-Tape */
+  --color-highlight:     #e4b04a;  /* Senfgelb: Akzente */
   --color-note:          #f9e7a8;  /* Haftnotiz ("Rückgängig") */
-  --color-on-note:       #3d2f24;
+  --color-on-note:       #3a2430;
   --color-focus:         #d98c2b;
 
   /* ---------- Kategorie-Töne (Aquarell-Pastelle) ----------
@@ -41,18 +48,16 @@
   --tone-4: #bcd3dc;  /* Taubenblau */
   --tone-5: #e8c3cc;  /* Altrosa */
   --tone-6: #dcc6ad;  /* Ton */
-  --tone-strength: 42%;  /* wie stark die Karte eingefärbt ist */
+  --tone-strength: 12%;  /* wie stark der Zettel eingefärbt ist */
 
   /* ---------- Papier & Deko ---------- */
   --texture-grain: url("../img/grain.svg");
-  --wash-1: rgb(201 216 176 / 0.55);   /* Aquarellfleck oben links */
-  --wash-2: rgb(242 196 174 / 0.45);   /* Aquarellfleck unten rechts */
-  --tape-color: rgb(228 176 74 / 0.55);
+  --gloss: rgb(255 255 255 / 0.32);    /* Lackglanz der Tür */
   --line-color: rgb(110 150 180 / 0.28);   /* Linien im Notizblock */
   --margin-color: rgb(200 85 61 / 0.45);   /* roter Rand im Notizblock */
-  --tilt: 0.5deg;          /* wie schief die Karten hängen (0deg = gerade) */
+  --tilt: 1.5deg;          /* wie schief die Zettel hängen (0deg = gerade) */
 
-  --shadow-card:  0 1px 0 rgb(61 47 36 / 0.06), 0 14px 28px -16px rgb(90 55 25 / 0.45);
+  --shadow-card:  0 1px 1px rgb(40 15 30 / 0.10), 0 10px 18px -10px rgb(50 20 40 / 0.40);
   --shadow-print: 3px 3px 0 rgb(61 47 36 / 0.85);   /* "Druck"-Schatten für Buttons */
   --shadow-float: 0 12px 34px -8px rgb(60 35 15 / 0.35);
 
@@ -109,17 +114,22 @@
   color-scheme: light dark;
 }
 
-/* ---------- Dunkelmodus: "Abends bei Kerzenlicht" ---------- */
+/* ---------- Dunkelmodus: "Küche bei Nacht" ---------- */
 @media (prefers-color-scheme: dark) {
   :root {
-    --color-bg:            #211a15;
-    --color-surface:       #2d241d;
-    --color-surface-2:     #3a2f26;
-    --color-surface-hover: #463a2f;
-    --color-border:        #4d3f32;
-    --color-ink:           #f1e3cf;
-    --color-text:          #f3e6d3;
-    --color-text-muted:    #b8a28a;
+    --fridge:          #3a2934;
+    --on-fridge:       #f3e4ec;
+    --on-fridge-muted: #c9adbd;
+    --handle:          linear-gradient(90deg, #4a3d45, #8a7d85 45%, #3e333a);
+
+    --color-bg:            var(--fridge);
+    --color-surface:       #2e242b;
+    --color-surface-2:     #3a2f37;
+    --color-surface-hover: #463a43;
+    --color-border:        #4f414b;
+    --color-ink:           #f1e3ea;
+    --color-text:          #f3e6ec;
+    --color-text-muted:    #b9a2ae;
 
     --color-accent:        #a6c48f;
     --color-accent-hover:  #bad5a4;
@@ -143,11 +153,9 @@
     --tone-4: #4c6672;
     --tone-5: #7b4f5a;
     --tone-6: #6e5a45;
-    --tone-strength: 30%;
+    --tone-strength: 10%;
 
-    --wash-1: rgb(233 170 90 / 0.13);   /* warmer Lampenschein */
-    --wash-2: rgb(150 90 120 / 0.14);
-    --tape-color: rgb(233 190 99 / 0.35);
+    --gloss: rgb(255 255 255 / 0.06);
     --line-color: rgb(160 190 210 / 0.16);
     --margin-color: rgb(232 134 106 / 0.4);
 
@@ -156,6 +164,28 @@
     --shadow-float: 0 12px 34px -8px rgb(0 0 0 / 0.6);
   }
 }
+
+/* ---------- Weitere Kühlschrank-Farben (wählbar in den Einstellungen) ----------
+   Neue Farbe? Eine Zeile hell + eine dunkel + eine Musterfarbe ergänzen,
+   dann in server/modules/settings.js und js/views/einstellungen.js eintragen. */
+body[data-fridge="rose"] { --fridge: #e3b5b0; --on-fridge: #4f2522; --on-fridge-muted: #71403b; --color-bg: var(--fridge); }
+body[data-fridge="mint"] { --fridge: #b7d6c4; --on-fridge: #1f3f35; --on-fridge-muted: #3e5f53; --color-bg: var(--fridge); }
+body[data-fridge="salbei"] { --fridge: #bcc6a2; --on-fridge: #2f3b25; --on-fridge-muted: #4e5a42; --color-bg: var(--fridge); }
+body[data-fridge="himmel"] { --fridge: #b2c7d8; --on-fridge: #1f3446; --on-fridge-muted: #3f5567; --color-bg: var(--fridge); }
+body[data-fridge="creme"] { --fridge: #eee1c9; --on-fridge: #45352a; --on-fridge-muted: #6d5a49; --color-bg: var(--fridge); }
+@media (prefers-color-scheme: dark) {
+  body[data-fridge="rose"] { --fridge: #3d2a2a; --on-fridge: #f5e3e0; --on-fridge-muted: #cfaaa5; --color-bg: var(--fridge); }
+  body[data-fridge="mint"] { --fridge: #24332d; --on-fridge: #e2f1e8; --on-fridge-muted: #a9c7b7; --color-bg: var(--fridge); }
+  body[data-fridge="salbei"] { --fridge: #2c3326; --on-fridge: #e9eedd; --on-fridge-muted: #b6c2a0; --color-bg: var(--fridge); }
+  body[data-fridge="himmel"] { --fridge: #26303a; --on-fridge: #e1ebf3; --on-fridge-muted: #a8bccb; --color-bg: var(--fridge); }
+  body[data-fridge="creme"] { --fridge: #332b22; --on-fridge: #f3e8d8; --on-fridge-muted: #c8b59e; --color-bg: var(--fridge); }
+}
+[data-fridge-swatch="mauve"] { --swatch: #bc98ad; }
+[data-fridge-swatch="rose"] { --swatch: #e3b5b0; }
+[data-fridge-swatch="mint"] { --swatch: #b7d6c4; }
+[data-fridge-swatch="salbei"] { --swatch: #bcc6a2; }
+[data-fridge-swatch="himmel"] { --swatch: #b2c7d8; }
+[data-fridge-swatch="creme"] { --swatch: #eee1c9; }
 
 /* Tipp: Breakpoints (Handy / Tablet / PC) stehen in layout.css,
    weil CSS-Variablen in @media-Regeln nicht funktionieren. */

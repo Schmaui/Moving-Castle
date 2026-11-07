@@ -4,6 +4,7 @@
 import { h, sameName } from '../util.js';
 import { viewHeader, categoryHeader, loading, toneOf, iconLabel } from '../ui/components.js';
 import { icon, PICKABLE } from '../ui/art.js';
+import { photoTiles, photoHint } from '../ui/photos.js';
 import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory } from '../store.js';
 import { showToast } from '../ui/toast.js';
 import { CONFIG } from '../config.js';
@@ -46,7 +47,18 @@ export default {
     const cards = state.categories.map((cat) =>
       categoryCard(cat, state.items.filter((i) => i.categoryId === cat.id), ctx));
 
-    return [header, h('div', { class: 'cards' }, cards, newCategoryCard(ctx))];
+    // Polaroids zwischen die Zettel hängen: nach jedem X. Zettel eins (Einstellungen)
+    const every = state.settings?.photoEvery ?? 2;
+    const photos = every > 0 ? photoTiles() : [];
+    const board = [];
+    cards.forEach((card, i) => {
+      board.push(card);
+      if (every > 0 && (i + 1) % every === 0 && photos.length) board.push(photos.shift());
+      if (every > 0 && i === 0 && !(state.photos || []).length) board.push(photoHint());
+    });
+    board.push(...photos);
+
+    return [header, h('div', { class: 'cards' }, board, newCategoryCard(ctx))];
   },
 };
 

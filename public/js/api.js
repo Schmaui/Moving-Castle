@@ -34,6 +34,18 @@ export const api = {
   login: async (password) => (await request('POST', '/api/login', { password })).data,
   logout: async () => (await request('POST', '/api/logout', {})).data,
 
+  // Fotos: Bild als JPEG-Datei hochladen (nicht als JSON)
+  uploadPhoto: async (blob, caption = '') => {
+    const res = await fetch(`/api/photos?caption=${encodeURIComponent(caption)}`, {
+      method: 'POST', headers: { 'Content-Type': 'image/jpeg' }, body: blob,
+    });
+    const data = await res.json().catch(() => null);
+    if (!res.ok) throw new ApiError(data?.error || `Serverfehler (${res.status})`, res.status);
+    return data;
+  },
+  patchSettings: async (patch) => (await request('PATCH', '/api/settings', patch)).data,
+  photoUrl: (photo) => `/api/photos/${photo.id}/bild`,
+
   // Generische Funktionen für jede Ressource ('items', 'categories', später z. B. 'tasks')
   list: async (resource) => (await request('GET', `/api/${resource}`)).data,
   create: async (resource, data) => (await request('POST', `/api/${resource}`, data)).data,
