@@ -102,7 +102,8 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
     (`CONFIG.split.main` ist jetzt eine Liste), rechts die Liste.
   Update-Pfad Migration 9 → 10 mit alter DB getestet.
 - **Pinnwand (umgebaut) und Küche + Haushalt sind von den Nutzern getestet: „funktioniert alles“.**
-- Ganz am Ende (Wunsch der Nutzer): automatische Sicherung auf den Mac der Nutzer. Plan: Skript
+- Zurückgestellt (Nutzer 7.11.2026: „erstmal egal“, nicht von selbst wieder vorschlagen): automatische
+  Sicherung auf den Mac der Nutzer. Plan, falls sie es doch wollen: Skript
   `scripts/mac-backup-einrichten.sh` (SSH-Schlüssel einrichten, LaunchAgent täglich, `rsync` von
   `root@2.31.137.100:/opt/haushalt/data/backups/` nach `~/moving-castle-backup/` – nicht nach
   ~/Documents, das blockiert macOS für Hintergrundjobs). Nutzer starten es einmal im Terminal.
