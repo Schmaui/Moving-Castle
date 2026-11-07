@@ -23,7 +23,9 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   → **Alles, was auf `main` gepusht wird, ist kurz danach live.**
 - Aus der Cloud-Session ist der Server NICHT erreichbar (weder SSH noch HTTPS). Prüfen können
   nur die Nutzer. Für Server-Befehle: Nutzer per `ssh root@2.31.137.100` anleiten.
-- Tägliches Backup 3:30 Uhr nach `/opt/haushalt/data/backups/` (DB + Fotos).
+- Tägliches Backup 3:30 Uhr nach `/opt/haushalt/data/backups/` (DB + `fotos/` + `ordner/`), Cron
+  `/etc/cron.d/haushalt-backup`, Log `/var/log/haushalt-backup.log`. Am 7.11.2026 mit den Nutzern per
+  SSH geprüft: Cron korrekt, erste Sicherung von Hand erfolgreich (vorher lief noch keine, Server war neu).
 
 ## Arbeitsweise (wichtig)
 - Neue Features/Designs auf einem **eigenen Branch** bauen, Vorschau-Screenshots (Handy + PC,
@@ -104,8 +106,8 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   `scripts/mac-backup-einrichten.sh` (SSH-Schlüssel einrichten, LaunchAgent täglich, `rsync` von
   `root@2.31.137.100:/opt/haushalt/data/backups/` nach `~/moving-castle-backup/` – nicht nach
   ~/Documents, das blockiert macOS für Hintergrundjobs). Nutzer starten es einmal im Terminal.
-- Offen nebenbei: Backup einmal mit den Nutzern prüfen (per SSH, Schritt für Schritt);
-  README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen, Pinnwand ergänzen.
+- Offen nebenbei: README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen, Pinnwand, Kalender ergänzen.
+  Server meldet 3 offene Ubuntu-Updates (`apt upgrade` irgendwann mit den Nutzern; KEIN do-release-upgrade).
 - **Seit 7.11.2026 live: Kalender im „Planer“** (Branch `claude/vigilant-noether-1h6c6p`, Nutzer: „passt“).
   Noch nicht mit echten Links verbunden – beim ersten Verbinden begleiten. Entscheidungen (Klick-Fragen):
   - Beide haben je einen eigenen Apple-Kalender (gegenseitig geteilt) → **je Person ein Link**, die App
