@@ -106,8 +106,8 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   ~/Documents, das blockiert macOS für Hintergrundjobs). Nutzer starten es einmal im Terminal.
 - Offen nebenbei: Backup einmal mit den Nutzern prüfen (per SSH, Schritt für Schritt);
   README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen, Pinnwand ergänzen.
-- **Kalender (7.11.2026): gebaut, wartet auf „passt“** (Branch `claude/vigilant-noether-1h6c6p`, noch NICHT
-  auf main). Entscheidungen (Klick-Fragen):
+- **Seit 7.11.2026 live: Kalender im „Planer“** (Branch `claude/vigilant-noether-1h6c6p`, Nutzer: „passt“).
+  Noch nicht mit echten Links verbunden – beim ersten Verbinden begleiten. Entscheidungen (Klick-Fragen):
   - Beide haben je einen eigenen Apple-Kalender (gegenseitig geteilt) → **je Person ein Link**, die App
     zeigt alles zusammen als EINEN Kalender. Termine in der **Profil-Farbe** der Person mit Profilbild;
     gleicher Termin (Titel + Zeit) in beiden Kalendern → nur einmal, mit beiden Bildern.
