@@ -60,3 +60,16 @@ export function kitchenTabs(active) {
     tab('kochen', 'Kochen', 'topf'),
   );
 }
+
+/** Reiter oben im Planer: Kalender · Aufgaben (beide unter dem Knopf "Planer"). */
+export function plannerTabs(active) {
+  const tab = (id, label, iconName) => h('a', {
+    class: ['kitchen-tabs__tab', active === id && 'is-active'],
+    href: `#/${id}`,
+    'aria-current': active === id ? 'page' : null,
+  }, icon(iconName), h('span', {}, label));
+  return h('nav', { class: 'kitchen-tabs kitchen-tabs--two', 'aria-label': 'Planer' },
+    tab('kalender', 'Kalender', 'kalender'),
+    tab('aufgaben', 'Aufgaben', 'klemmbrett'),
+  );
+}

@@ -2,9 +2,11 @@
 // Macht Screenshots in Handy-, Tablet- und PC-Größe nach docs/screenshots/
 // und klickt die wichtigsten Abläufe einmal durch (Selbsttest).
 // Aufruf: node scripts/screenshots.cjs [http://localhost:8080]
+// Der Server muss mit IMPORT_ALLOW_PRIVATE=1 laufen (Test-Kalender kommt von diesem Rechner).
 const { chromium, devices } = require('playwright');
 const path = require('node:path');
 const fs = require('node:fs');
+const http = require('node:http');
 
 const BASE = process.argv[2] || 'http://localhost:8080';
 const OUT = path.join(__dirname, '..', 'docs', 'screenshots');
@@ -98,6 +100,24 @@ function check(cond, msg) {
   await upload(wohnung, 'application/pdf', fakePdf, 'Mietvertrag', 'Kaution 2.400 € – Kündigungsfrist 3 Monate', 2);
   await upload(vertraege, 'application/pdf', fakePdf, 'Haftpflicht Police', 'Kundennr. HV-4471-22');
   await upload(vertraege, 'application/pdf', fakePdf, 'Internet (Glasfaser)', 'Mindestlaufzeit bis 3/2027', 2);
+
+  // Test-Kalender (so wie ihn Apple als "Öffentlichen Kalender" liefert), Termine rund um heute
+  const ical = (n) => day(n).replaceAll('-', '');
+  const monday = (() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return Math.round((d - new Date()) / 86400000); })();
+  const ICS = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'X-WR-CALNAME:Wir zwei', 'X-WR-TIMEZONE:Europe/Berlin',
+    'BEGIN:VEVENT', 'UID:t1', `DTSTART;TZID=Europe/Berlin:${ical(0)}T093000`, `DTEND;TZID=Europe/Berlin:${ical(0)}T103000`,
+    'SUMMARY:Zahnarzt Kait', 'LOCATION:Praxis Dr. Müller\\, Hauptstraße 5', 'DESCRIPTION:Versichertenkarte mitnehmen', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:t2', `DTSTART;VALUE=DATE:${ical(monday + 5)}`, `DTEND;VALUE=DATE:${ical(monday + 7)}`, 'SUMMARY:Wochenende bei Oma', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:t3', `DTSTART;TZID=Europe/Berlin:${ical(monday)}T190000`, `DTEND;TZID=Europe/Berlin:${ical(monday)}T200000`,
+    'RRULE:FREQ=WEEKLY;BYDAY=MO,TH', 'SUMMARY:Yoga', 'LOCATION:Studio am Park', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:t4', `DTSTART;TZID=Europe/Berlin:${ical(monday + 2)}T200000`, `DTEND;TZID=Europe/Berlin:${ical(monday + 2)}T223000`, 'SUMMARY:Kino mit Lea & Tom', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:t5', `DTSTART;TZID=Europe/Berlin:${ical(monday + 1)}T123000`, `DTEND;TZID=Europe/Berlin:${ical(monday + 1)}T133000`, 'SUMMARY:Mittag mit Mama', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:t6', `DTSTART;VALUE=DATE:${ical(monday + 10)}`, 'RRULE:FREQ=YEARLY', 'SUMMARY:Geburtstag Schmaui', 'END:VEVENT',
+    'BEGIN:VEVENT', 'UID:t7', `DTSTART;TZID=Europe/Berlin:${ical(monday + 15)}T080000`, `DTEND;TZID=Europe/Berlin:${ical(monday + 15)}T090000`, 'SUMMARY:Handwerker Heizung', 'END:VEVENT',
+    'END:VCALENDAR'].join('\r\n');
+  const calServer = http.createServer((req, res) => { res.writeHead(200, { 'Content-Type': 'text/calendar' }); res.end(ICS); });
+  await new Promise((r) => calServer.listen(0, '127.0.0.1', r));
+  const calUrl = `http://127.0.0.1:${calServer.address().port}/published/2/geheim.ics`;
 
   const browser = await chromium.launch();
   const errors = [];
@@ -193,6 +213,35 @@ function check(cond, msg) {
   await page.waitForSelector('#view-vorrat .chip');
 
   // Aufgaben
+  // Planer → Kalender: erst verbinden (wie in der App), dann Woche und Monat
+  await page.goto(BASE + '/#/kalender');
+  await page.waitForSelector('#view-kalender .cal-setup');
+  await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 10000 });
+  check(await page.locator('.nav__link', { hasText: 'Planer' }).getAttribute('aria-current') === 'page', 'Knopf „Planer“ leuchtet im Kalender');
+  await page.screenshot({ path: path.join(OUT, 'handy-kalender-verbinden.jpg'), quality: 85, fullPage: true });
+  await page.locator('#view-kalender [data-focus-key="cal-link"]').fill(calUrl);
+  await page.locator('#view-kalender [data-focus-key="cal-connect"]').click();
+  await page.waitForSelector('#view-kalender .cal-week');
+  check(await page.locator('#view-kalender .cal-day.is-today .cal-event', { hasText: 'Zahnarzt Kait' }).count() === 1, 'Kalender verbunden: heutiger Termin steht in der Woche');
+  check(await page.locator('#view-kalender .cal-event', { hasText: 'Yoga' }).count() === 2, 'Wiederholung (Mo + Do) erscheint zweimal');
+  await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 10000 });
+  await page.screenshot({ path: path.join(OUT, 'handy-kalender-woche.jpg'), quality: 85 });
+  await page.screenshot({ path: path.join(OUT, 'handy-kalender-woche-ganz.jpg'), quality: 85, fullPage: true });
+  await page.locator('#view-kalender .cal-event', { hasText: 'Zahnarzt Kait' }).click();
+  await page.waitForSelector('.cal-sheet');
+  check(await page.locator('.cal-sheet', { hasText: 'Hauptstraße 5' }).count() === 1, 'Termin antippen zeigt Ort und Notiz');
+  await page.screenshot({ path: path.join(OUT, 'handy-kalender-termin.jpg'), quality: 85 });
+  await page.keyboard.press('Escape');
+  await page.locator('#view-kalender .segmented__item', { hasText: 'Monat' }).click();
+  await page.waitForSelector('#view-kalender .cal-month');
+  await page.locator(`#view-kalender .cal-cell[data-focus-key="cell-${day(monday + 2)}"]`).click();
+  await page.waitForSelector('#view-kalender .cal-day--selected .cal-event:has-text("Kino")');
+  check(true, 'Monat: Tag antippen zeigt seine Termine');
+  await page.screenshot({ path: path.join(OUT, 'handy-kalender-monat.jpg'), quality: 85, fullPage: true });
+  await page.locator('#view-kalender .kitchen-tabs__tab', { hasText: 'Aufgaben' }).click();
+  await page.waitForSelector('#view-aufgaben .task');
+  check(await page.locator('.nav__link', { hasText: 'Planer' }).getAttribute('aria-current') === 'page', 'Knopf „Planer“ leuchtet auch bei den Aufgaben');
+
   await page.goto(BASE + '/#/aufgaben');
   await page.waitForSelector('#view-aufgaben .task');
   check(await page.locator('.card--done', { hasText: 'Müll rausbringen' }).count() === 1, 'Erledigt-Verlauf zeigt Müll rausbringen');
@@ -382,6 +431,12 @@ function check(cond, msg) {
   await page.goto(BASE + '/#/aufgaben');
   await page.waitForSelector('#view-aufgaben .task');
   await page.screenshot({ path: path.join(OUT, 'handy-aufgaben-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/kalender');
+  await page.waitForSelector('#view-kalender .cal-week');
+  await page.screenshot({ path: path.join(OUT, 'handy-kalender-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/kalender/monat');
+  await page.waitForSelector('#view-kalender .cal-month');
+  await page.screenshot({ path: path.join(OUT, 'handy-kalender-monat-dunkel.jpg'), quality: 85 });
   await page.goto(BASE + '/#/einstellungen');
   await page.waitForSelector('.person-row');
   await page.screenshot({ path: path.join(OUT, 'handy-einstellungen-dunkel.jpg'), quality: 85 });
@@ -441,6 +496,13 @@ function check(cond, msg) {
   await page.waitForSelector('#view-aufgaben .task');
   await page.mouse.move(0, 0);
   await page.screenshot({ path: path.join(OUT, 'pc-aufgaben.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/kalender');
+  await page.waitForSelector('#view-kalender .cal-week');
+  await page.mouse.move(0, 0);
+  await page.screenshot({ path: path.join(OUT, 'pc-kalender-woche.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/kalender/monat');
+  await page.waitForSelector('#view-kalender .cal-month');
+  await page.screenshot({ path: path.join(OUT, 'pc-kalender-monat.jpg'), quality: 85 });
   await page.goto(BASE + '/#/kochen');
   await page.waitForSelector('#view-kochen .day-card');
   await page.screenshot({ path: path.join(OUT, 'pc-kochen.jpg'), quality: 85 });
@@ -468,6 +530,12 @@ function check(cond, msg) {
   await page.goto(BASE + '/#/aufgaben');
   await page.waitForSelector('#view-aufgaben .task');
   await page.screenshot({ path: path.join(OUT, 'pc-aufgaben-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/kalender/monat');
+  await page.waitForSelector('#view-kalender .cal-month');
+  await page.screenshot({ path: path.join(OUT, 'pc-kalender-monat-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/kalender');
+  await page.waitForSelector('#view-kalender .cal-week');
+  await page.screenshot({ path: path.join(OUT, 'pc-kalender-dunkel.jpg'), quality: 85 });
   await page.goto(BASE + '/#/kochen/rezepte');
   await page.waitForSelector('#view-kochen .recipe-card');
   await page.screenshot({ path: path.join(OUT, 'pc-rezepte-dunkel.jpg'), quality: 85 });
@@ -479,6 +547,7 @@ function check(cond, msg) {
   await page.screenshot({ path: path.join(OUT, 'pc-pinnwand-ordner-dunkel.jpg'), quality: 85 });
 
   await browser.close();
+  calServer.close();
   check(errors.length === 0, `keine Fehler in der Browser-Konsole ${errors.length ? JSON.stringify(errors) : ''}`);
   console.log('Screenshots in', OUT);
 })().catch((e) => { console.error(e); process.exit(1); });

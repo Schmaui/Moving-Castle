@@ -4,7 +4,7 @@
 // - Man sieht, wer eine Aufgabe eingetragen und wer sie erledigt hat.
 // Fällige Aufgaben hängen zusätzlich als Zettel im Vorrat (dueNoteCard unten).
 import { h, today, addDays, addMonths, formatDue, formatWhen } from '../util.js';
-import { viewHeader, emptyState, loading, iconLabel } from '../ui/components.js';
+import { viewHeader, emptyState, loading, iconLabel, plannerTabs } from '../ui/components.js';
 import { icon } from '../ui/art.js';
 import { avatar, byline } from '../ui/people.js';
 import { showToast } from '../ui/toast.js';
@@ -44,6 +44,7 @@ export default {
   id: 'aufgaben',
   label: 'Aufgaben',
   icon: 'klemmbrett',
+  inNav: false,   // liegt in der Leiste unter "Planer" (Reiter oben)
 
   // Badge: was heute dran ist – für mich oder für "egal wer"
   badge: (state) => (state.tasks || [])
@@ -71,6 +72,7 @@ export default {
     ].filter((g) => g.list.length);
 
     return [
+      plannerTabs('aufgaben'),
       header,
       filterRow(state, ctx),
       h('div', { class: 'cards cards--tasks' },

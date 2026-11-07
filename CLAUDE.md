@@ -7,11 +7,12 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
 ## Technik (Kurzfassung – Details in README.md und docs/ANPASSEN.md)
 - Node.js ≥ 22.13 ohne npm-Abhängigkeiten, eingebautes `node:sqlite`. Start: `npm start`, Tests: `npm test`.
 - Frontend: Vanilla JS (ES-Module), kein Build. Design-Variablen in `public/css/tokens.css`.
-- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs). Ansichten: `public/js/views/*`.
+- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs, calendar). Ansichten: `public/js/views/*`.
 - Migrationen: `server/migrations.js` – nur NEUE Einträge anhängen, alte nie ändern.
 - Gezeichnete Symbole statt Emojis: `public/js/ui/art.js`. Szenen-SVGs: `scripts/make-art.py`.
 - Strenge CSP (keine Inline-Styles/-Scripts), alle Ausgaben über `h()` (XSS-sicher).
-- Screenshots/Checks: `scripts/screenshots.cjs` (braucht frischen Server auf :8080 mit leerer DB).
+- Screenshots/Checks: `scripts/screenshots.cjs` (braucht frischen Server auf :8080 mit leerer DB und
+  `IMPORT_ALLOW_PRIVATE=1`, weil der Test-Kalender von localhost kommt).
 
 ## Betrieb (online)
 - Hetzner Cloud, Server „moving-castle“ (CAX11, Ubuntu 24.04, Falkenstein), IP 2.31.137.100.
@@ -105,7 +106,21 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   ~/Documents, das blockiert macOS für Hintergrundjobs). Nutzer starten es einmal im Terminal.
 - Offen nebenbei: Backup einmal mit den Nutzern prüfen (per SSH, Schritt für Schritt);
   README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen, Pinnwand ergänzen.
-- **Als Nächstes** (Reihenfolge der Nutzer): Kalender (Abo-Link für Apple-Kalender, ggf.
-  iCloud-Kalender lesend anzeigen). Vorher wie immer per Klick-Fragen (AskUserQuestion) ausführlich klären.
+- **Kalender (7.11.2026): gebaut, wartet auf „passt“** (Branch `claude/vigilant-noether-1h6c6p`, noch NICHT
+  auf main). Entscheidungen (Klick-Fragen):
+  - EIN gemeinsamer Apple-Kalender, NUR anzeigen (kein Eintragen), keine App-Termine (Aufgaben/Essen)
+    im Kalender, kein Abo in die andere Richtung.
+  - Weg: „Öffentlicher Kalender“ in der Kalender-App → geheimer webcal-Link. Wird einmal in der App
+    eingefügt (Planer → Kalender oder Mehr → Kalender), liegt nur auf dem Server (Tabelle
+    `calendar_feed`, Migration 11), geht nie an die Geräte. Server holt alle 15 Min. neu (+ Knopf).
+  - Leiste: „Aufgaben“ heißt jetzt **„Planer“** (View `kalender`, navAlso `aufgaben`), Reiter oben
+    Kalender · Aufgaben (`plannerTabs`). Start = Woche, umschaltbar auf Monat (`#/kalender/monat`).
+    Badge am Planer = heutige Aufgaben. Termin antippen = Details (Ort → Apple Karten, Notiz).
+  - Technik: `server/ical.js` (iCalendar-Leser ohne Pakete: Zeitzonen, ganztägig, RRULE, EXDATE,
+    RECURRENCE-ID, Absagen; Tests in `test/ical.test.js`), `server/modules/calendar.js`,
+    `public/js/views/kalender.js`. Zeitraum: 400 Tage zurück bis 760 Tage voraus.
+  - Konnte NICHT mit echtem iCloud-Link getestet werden (Cloud-Session) – Nutzer beim ersten Verbinden
+    begleiten, bei Fehler nach Meldung/Screenshot fragen.
+  Update-Pfad Migration 10 → 11 mit alter DB getestet.
 - Später: NFC-Sticker (Anleitung `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`),
 - Hinweis: Bilder, die Nutzer im Chat schicken, kamen zuletzt teilweise leer an → ggf. nachfragen.

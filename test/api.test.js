@@ -425,6 +425,51 @@ test('Ordner: anlegen, PDF und Foto hochladen, ansehen, ändern, verschieben, l�
   assert.equal((await json('DELETE', `/api/folders/${folder.body.id}`)).status, 200, 'leerer Ordner lässt sich löschen');
 });
 
+test('Kalender: Link verbinden, Termine in /api/state, Link bleibt geheim, trennen', async () => {
+  const day = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10).replaceAll('-', '');
+  let ics = ['BEGIN:VCALENDAR', 'X-WR-CALNAME:Wir zwei', 'BEGIN:VEVENT', 'UID:x1',
+    `DTSTART;TZID=Europe/Berlin:${day}T100000`, `DTEND;TZID=Europe/Berlin:${day}T110000`, 'SUMMARY:Friseur', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const site = http.createServer((req, res) => {
+    if (req.url === '/kalender.ics') { res.writeHead(200, { 'Content-Type': 'text/calendar' }); res.end(ics); return; }
+    res.writeHead(200, { 'Content-Type': 'text/html' }); res.end('<html>keine Termine</html>');
+  });
+  await new Promise((r) => site.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${site.address().port}`;
+  try {
+    assert.equal((await json('GET', '/api/state')).body.calendar.connected, false);
+    assert.equal((await json('POST', '/api/calendar/sync')).status, 409);
+    assert.equal((await json('PUT', '/api/calendar', { url: 'kein link' })).status, 400);
+    assert.equal((await json('PUT', '/api/calendar', { url: `${base}/seite` })).status, 422, 'HTML statt Kalender');
+    assert.equal((await json('GET', '/api/state')).body.calendar.connected, false, 'falscher Link wird nicht gespeichert');
+
+    const ok = await json('PUT', '/api/calendar', { url: `${base}/kalender.ics` });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.body.connected, true);
+    assert.equal(ok.body.name, 'Wir zwei');
+    const { body } = await json('GET', '/api/state');
+    assert.equal(body.calendar.events.length, 1);
+    assert.equal(body.calendar.events[0].title, 'Friseur');
+    assert.match(body.calendar.events[0].start, /T10:00$/);
+    assert.ok(!JSON.stringify(body).includes('/kalender.ics'), 'der geheime Link kommt nie bei den Geräten an');
+
+    // Termin kommt dazu -> nach "jetzt aktualisieren" sichtbar
+    ics = ics.replace('END:VCALENDAR', ['BEGIN:VEVENT', 'UID:x2', `DTSTART;VALUE=DATE:${day}`, 'SUMMARY:Müll', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n'));
+    const synced = await json('POST', '/api/calendar/sync');
+    assert.deepEqual(synced.body.events.map((e) => e.title), ['Müll', 'Friseur'], 'ganztägig zuerst');
+
+    // Server weg -> alte Termine bleiben, Fehler wird gemeldet
+    site.close();
+    const failed = await json('POST', '/api/calendar/sync');
+    assert.equal(failed.body.events.length, 2);
+    assert.ok(failed.body.error);
+
+    const off = await json('PUT', '/api/calendar', { url: null });
+    assert.equal(off.body.connected, false);
+  } finally {
+    site.close();
+  }
+});
+
 // ---------- Anmeldung (zweiter Server mit Passwort) ----------
 test('Anmeldung mit Haushalts-Passwort', async () => {
   const port = PORT + 1;

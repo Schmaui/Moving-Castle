@@ -28,6 +28,7 @@ export const state = {
   notes: [],
   folders: [],
   docs: [],
+  calendar: { connected: false, events: [] },
 };
 
 const listeners = new Set();
@@ -146,6 +147,7 @@ export async function logout() {
   state.notes = [];
   state.folders = [];
   state.docs = [];
+  state.calendar = { connected: false, events: [] };
   requireLogin();
 }
 
@@ -489,4 +491,25 @@ export function deleteDoc(doc) {
     () => { state.docs = state.docs.filter((d) => d.id !== doc.id); },
     () => api.remove('docs', doc.id)
   );
+}
+
+// ---------- Kalender (Apple, nur lesen) ----------
+/** Link zum "Öffentlichen Kalender" speichern. Wirft bei Fehler (Meldung für die Anzeige). */
+export async function connectCalendar(url) {
+  const cal = await api.putCalendar(url);
+  state.calendar = cal;
+  emit();
+  refresh();
+  return cal;
+}
+
+export function disconnectCalendar() {
+  return mutate(() => { state.calendar = { connected: false, events: [] }; }, () => api.putCalendar(null));
+}
+
+/** Jetzt neu holen (sonst macht der Server das alle 15 Minuten von selbst). */
+export async function syncCalendar() {
+  const cal = await mutate(null, () => api.syncCalendar());
+  if (cal) { state.calendar = cal; emit(); }
+  return cal;
 }

@@ -15,5 +15,6 @@ import links from './links.js';
 import notes from './notes.js';
 import folders from './folders.js';
 import docs from './docs.js';
+import calendar from './calendar.js';
 
-export const MODULES = [people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs];
+export const MODULES = [people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs, calendar];

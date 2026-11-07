@@ -63,6 +63,10 @@ export const api = {
     blob, blob.type === 'application/pdf' ? 'application/pdf' : 'image/jpeg'),
   docUrl: (doc) => `/api/docs/${doc.id}/datei`,
 
+  // Kalender: geheimen Link speichern (null = trennen) und neu holen
+  putCalendar: async (url) => (await request('PUT', '/api/calendar', { url })).data,
+  syncCalendar: async () => (await request('POST', '/api/calendar/sync', {})).data,
+
   patchSettings: async (patch) => (await request('PATCH', '/api/settings', patch)).data,
 
   // Generische Funktionen für jede Ressource ('items', 'categories', später z. B. 'tasks')

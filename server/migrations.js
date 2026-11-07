@@ -327,6 +327,19 @@ export const MIGRATIONS = [
       AND NOT EXISTS (SELECT 1 FROM items i WHERE i.category_id = c.id AND i.name = v.name COLLATE NOCASE);
   `,
 
+  // 11: Kalender – geheimer Link zum "Öffentlichen Kalender" von Apple + zuletzt geholte Datei
+  `
+  CREATE TABLE calendar_feed (
+    id          INTEGER PRIMARY KEY CHECK (id = 1),   -- es gibt genau einen Kalender
+    url         TEXT,                                 -- geheim! wird nie an die Geräte geschickt
+    name        TEXT,                                 -- z. B. "Wir zwei"
+    ics         TEXT,                                 -- Inhalt der Kalender-Datei
+    synced_at   TEXT,                                 -- zuletzt erfolgreich geholt
+    error       TEXT,                                 -- letzter Fehler (oder leer)
+    updated_at  TEXT    NOT NULL
+  );
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];

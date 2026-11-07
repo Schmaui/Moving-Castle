@@ -4,7 +4,7 @@
 //
 // NEUE EINSTELLUNG? 1) in server/modules/settings.js erlauben,
 //                   2) hier unten einen Abschnitt (section) ergänzen.
-import { h } from '../util.js';
+import { h, formatWhen } from '../util.js';
 import { viewHeader, loading, iconLabel } from '../ui/components.js';
 import { icon, FIGURES } from '../ui/art.js';
 import { avatar } from '../ui/people.js';
@@ -12,7 +12,9 @@ import { myId, setMyId } from '../me.js';
 import { api } from '../api.js';
 import { shrink, openLightbox } from '../ui/photos.js';
 import { showToast } from '../ui/toast.js';
+import { setupCard } from './kalender.js';
 import {
+  disconnectCalendar, syncCalendar,
   addPhoto, deletePhoto, updatePhoto, movePhoto, sortedPhotos, updateSettings, logout,
   updatePerson, uploadAvatar, removeAvatar,
 } from '../store.js';
@@ -52,6 +54,7 @@ export default {
       h('div', { class: 'settings' },
         peopleSection(state, ctx),
         photosSection(ctx),
+        calendarSection(state, ctx),
         fridgeSection(state),
         deviceSection(state, ctx),
       ),
@@ -237,6 +240,33 @@ function draftForm(ctx) {
     h('div', { class: 'add-form' },
       h('button', { type: 'submit', class: 'btn btn--primary' }, 'Aufhängen'),
       h('button', { type: 'button', class: 'btn btn--ghost', onclick: reset }, 'Abbrechen'),
+    ),
+  );
+}
+
+// ---------- Kalender (Apple, nur lesen) ----------
+let changingCalendar = false;
+function calendarSection(state, ctx) {
+  const cal = state.calendar || { connected: false };
+  if (!cal.connected || changingCalendar) {
+    return section('Kalender', 'kalender', 'euer Apple-Kalender im Planer', 4,
+      setupCard(ctx, { compact: cal.connected, onDone: () => { changingCalendar = false; } }),
+      changingCalendar && h('button', { type: 'button', class: 'btn btn--ghost btn--small', onclick: () => { changingCalendar = false; ctx.rerender(); } }, 'Abbrechen'),
+    );
+  }
+  return section('Kalender', 'kalender', 'euer Apple-Kalender im Planer', 4,
+    h('p', { class: 'cal-connected' },
+      h('strong', {}, `Verbunden: „${cal.name || 'Kalender'}“`),
+      h('span', { class: 'muted' }, cal.syncedAt ? ` · aktualisiert ${formatWhen(cal.syncedAt)}` : ''),
+    ),
+    cal.error && h('p', { class: 'hint' }, `Letztes Abholen hat nicht geklappt: ${cal.error}`),
+    h('div', { class: 'add-form' },
+      h('button', { type: 'button', class: 'btn btn--small', onclick: () => syncCalendar() }, iconLabel('wiederholen', 'Jetzt aktualisieren')),
+      h('button', { type: 'button', class: 'btn btn--small btn--ghost', onclick: () => { changingCalendar = true; ctx.rerender(); } }, 'Link ändern'),
+      h('button', {
+        type: 'button', class: 'btn btn--small btn--danger',
+        onclick: () => { if (confirm('Kalender wirklich trennen? Die Termine verschwinden dann aus der App (im Apple-Kalender bleibt alles).')) disconnectCalendar(); },
+      }, 'Trennen'),
     ),
   );
 }

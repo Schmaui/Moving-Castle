@@ -25,7 +25,15 @@ export async function importRecipe(rawUrl) {
 }
 
 // ---------- Abrufen ----------
-async function fetchPage(url) {
+/**
+ * Holt eine öffentliche Internet-Adresse als Text (mit den Schutzregeln oben).
+ * Wird auch vom Kalender benutzt (server/modules/calendar.js).
+ */
+export function fetchPublicText(url, { accept = 'text/html,application/xhtml+xml', agent = 'MovingCastle-Rezeptimport/1.0' } = {}) {
+  return fetchPage(url, { accept, agent });
+}
+
+async function fetchPage(url, { accept = 'text/html,application/xhtml+xml', agent = 'MovingCastle-Rezeptimport/1.0' } = {}) {
   for (let hop = 0; hop <= MAX_REDIRECTS; hop++) {
     await assertPublic(url);
     let res;
@@ -34,8 +42,8 @@ async function fetchPage(url) {
         redirect: 'manual',
         signal: AbortSignal.timeout(TIMEOUT_MS),
         headers: {
-          'User-Agent': 'Mozilla/5.0 (compatible; MovingCastle-Rezeptimport/1.0)',
-          Accept: 'text/html,application/xhtml+xml',
+          'User-Agent': `Mozilla/5.0 (compatible; ${agent})`,
+          Accept: accept,
           'Accept-Language': 'de-DE,de;q=0.9',
         },
       });
