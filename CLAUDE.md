@@ -71,8 +71,8 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
     116116) per Migration 8 vorausgefüllt.
   - Verträge: nur Name + Notiz + Dateien (PDF hochladen oder Foto von Papier) – keine Kosten/Fristen.
   - QR: klein auf dem Zettel, antippen = groß zum Scannen.
-- **Umbau Pinnwand (7.11.2026, Wunsch nach Test): gebaut, wartet auf „passt“** (Branch
-  `claude/vigilant-noether-1h6c6p`, noch NICHT auf main). Entscheidungen (Klick-Fragen):
+- **Seit 7.11.2026 live: Umbau Pinnwand** (Wunsch nach Test, Branch `claude/vigilant-noether-1h6c6p`,
+  Nutzer: „passt“ nach Screenshots). Entscheidungen (Klick-Fragen):
   - #/pinnwand = Übersicht mit 4 Kacheln: WLAN, Nummern, Notizen, Ordner.
   - WLAN/Nummern/Notizen öffnen je ein **Korkbrett mit Holzrahmen**, Zettel mit Pinnadeln (statt Tape).
     Routen `#/pinnwand/wlan|nummern|notizen`. Notizen = kind `zettel` (Geheimes verdeckt bleibt).
