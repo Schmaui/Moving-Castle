@@ -112,8 +112,8 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
 - Von den Nutzern getestet: alles bis einschließlich Küche + Haushalt („funktioniert alles“).
 
 ## Offen
-- Filmabend, Animationen, verstreute Fotos, Zuklappen, Galerie, **Nachricht an die Tür**: live, Feedback der
-  Nutzer abwarten (Malen am echten iPhone prüfen lassen).
+- **Nachricht an die Tür**: von den Nutzern getestet, „perfekt, jetzt ist es super“ (7.11. abends).
+- Filmabend, Animationen, verstreute Fotos, Zuklappen, Galerie: live, Feedback der Nutzer abwarten.
 - **Nächste gewünschte Ideen** (Nutzer am 7.11. gewählt, vorher per Klick-Fragen klären):
   **Benachrichtigungen** (Web-Push, iPhone nur als Home-Bildschirm-App ab iOS 16.4; z. B. „X hat Milch auf
   die Liste gesetzt“, „Aufgabe heute“), **Wochen-Rückblick** (Sonntags-Zettel: erledigt, gekocht, geguckt).
