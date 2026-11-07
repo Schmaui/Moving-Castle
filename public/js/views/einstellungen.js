@@ -22,7 +22,7 @@ import { APP_ICONS, appIcon, setAppIcon, iconUrl } from '../appicon.js';
 import { isStandalone } from '../push.js';
 import {
   addPhoto, deletePhoto, updatePhoto, sortedPhotos, updateSettings, logout,
-  updatePerson, uploadAvatar, removeAvatar, addMessage, deleteMessage, messagesFromMe, me,
+  updatePerson, uploadAvatar, removeAvatar, addMessage, deleteMessage, messagesFromMe, me, myPrefs, updateMyPrefs,
 } from '../store.js';
 
 // Farben der Kühlschranktür (die echten Farbwerte stehen in css/tokens.css)
@@ -143,7 +143,7 @@ function messageSection(state, ctx) {
 }
 
 // ---------- Benachrichtigungen (nur iPhone, pro Handy eingestellt – js/push.js) ----------
-const notify = { status: null, busy: false, prefs: loadPrefs(), checked: false };
+const notify = { status: null, busy: false, checked: false };
 const KIND_LABELS = [
   { id: 'tuer', label: 'Nachricht an der Tür' },
   { id: 'liste', label: 'Etwas auf der Liste' },
@@ -153,7 +153,7 @@ const KIND_LABELS = [
 
 function notifySection(ctx) {
   const support = pushSupport();
-  const sub = 'auf diesem iPhone – jedes Handy stellt selbst ein';
+  const sub = 'kommen aufs iPhone – deine Einstellungen gelten nur für dich';
   if (support === 'not-ios') {
     return section('Benachrichtigungen', 'uhr', 'kommen aufs iPhone', 4,
       h('p', { class: 'muted' }, 'Benachrichtigungen gibt es nur auf dem iPhone. Öffne dort die App über das Symbol auf dem Home-Bildschirm und schalte sie hier unter „Mehr“ ein.'));
@@ -207,7 +207,7 @@ function notifySection(ctx) {
       ));
   }
 
-  const p = notify.prefs;
+  const p = structuredClone(loadPrefs()); // pro Person gespeichert (js/push.js)
   const save = () => { savePrefs(p).catch((err) => showToast(err?.message || 'Speichern fehlgeschlagen', { variant: 'error' })); ctx.rerender(); };
   const timeInput = (key, value, label, onSet) => h('label', { class: 'time-field' },
     h('span', {}, label),
@@ -547,9 +547,10 @@ function calendarSection(state, ctx) {
 
 // ---------- Kühlschrank ----------
 function fridgeSection(state) {
-  const color = state.settings?.fridgeColor || 'mauve';
-  const every = state.settings?.photoEvery ?? 2;
-  return section('Kühlschrank', 'milch', 'Aussehen der Tür', 3,
+  const mine = myPrefs(); // pro Person – jede/r hat die eigene Tür
+  const color = mine.fridgeColor || 'mauve';
+  const every = mine.photoEvery ?? 2;
+  return section('Kühlschrank', 'milch', me() ? `Aussehen deiner Tür – nur für ${me().name}` : 'Aussehen der Tür', 3,
     h('fieldset', { class: 'choice' },
       h('legend', { class: 'choice__legend' }, 'Farbe der Tür'),
       h('div', { class: 'swatches' }, FRIDGE_COLORS.map((c) => h('button', {
@@ -558,7 +559,7 @@ function fridgeSection(state) {
         'data-fridge-swatch': c.id,
         'aria-pressed': String(c.id === color),
         'data-focus-key': `color-${c.id}`,
-        onclick: () => updateSettings({ fridgeColor: c.id }),
+        onclick: () => (me() ? updateMyPrefs({ fridgeColor: c.id }) : updateSettings({ fridgeColor: c.id })),
       }, h('span', { class: 'swatch__dot' }), h('span', { class: 'swatch__label' }, c.label)))),
     ),
     h('fieldset', { class: 'choice' },
@@ -568,7 +569,7 @@ function fridgeSection(state) {
         class: ['segmented__item', (o.value > 0) === (every > 0) && 'is-chosen'],
         'aria-pressed': String((o.value > 0) === (every > 0)),
         'data-focus-key': `every-${o.value}`,
-        onclick: () => updateSettings({ photoEvery: o.value }),
+        onclick: () => (me() ? updateMyPrefs({ photoEvery: o.value }) : updateSettings({ photoEvery: o.value })),
       }, o.label))),
     ),
   );
@@ -577,7 +578,7 @@ function fridgeSection(state) {
 // ---------- Dieses Gerät ----------
 function deviceSection(state, ctx) {
   const mine = myId();
-  return section('Dieses Gerät', 'tuer', 'gilt nur für dieses Handy/diesen Computer', 4,
+  return section('Dieses Gerät', 'tuer', 'gilt nur für dieses Handy/diesen Computer – alles andere merkt sich die App für dich', 4,
     state.people.length > 0 && h('fieldset', { class: 'choice' },
       h('legend', { class: 'choice__legend' }, 'Hier bin ich:'),
       h('div', { class: 'pills' }, state.people.map((p) => h('button', {

@@ -1,7 +1,8 @@
 // Nachricht an die Tür: Beim Öffnen der App ist die Kühlschranktür erst zu.
 //
-//   - Hängt eine Nachricht vom anderen dran (jünger als 24 Std.), bleibt die Tür zu, bis man
-//     sie antippt – dann schwingt sie auf.
+//   - Hängt eine NEUE Nachricht vom anderen dran (jünger als 24 Std.), bleibt die Tür zu, bis man
+//     sie antippt – dann schwingt sie auf. Schon angeschaute (auch auf dem anderen Gerät – pro Person
+//     gespeichert) hängen noch kurz dran, dann geht die Tür von selbst auf.
 //   - Ohne Nachricht: kurz „Hallo …“, dann geht die Tür von selbst auf.
 //   - Kommt man später in die App zurück und es hängt eine NEUE Nachricht dran, ist die Tür
 //     wieder zu. Kommt eine Nachricht, während man die App gerade benutzt, gibt's nur einen Hinweis.
@@ -11,7 +12,7 @@
 // Geschrieben wird unter „Mehr“ (views/einstellungen.js).
 import { h } from '../util.js';
 import { formatWhen } from '../util.js';
-import { state, subscribe, me, personById, messagesForMe } from '../store.js';
+import { state, subscribe, me, personById, messagesForMe, myPrefs, updateMyPrefs } from '../store.js';
 import { avatar } from './people.js';
 import { showToast } from './toast.js';
 
@@ -78,15 +79,18 @@ export function messageNote(msg, { className } = {}) {
 }
 
 // ---------- Die Tür ----------
+// Schon angeschaute Nachrichten: pro Person gespeichert (store.js myPrefs) – was du am Handy gesehen hast,
+// gilt auch am Mac als gesehen. Früher pro Gerät (localStorage) – das wird noch mitgezählt.
 const SEEN_KEY = 'haushalt_tuer_gesehen';
-let seenMemory = [];
 function seenIds() {
-  try { return JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); } catch { return seenMemory; }
+  let local = [];
+  try { local = JSON.parse(localStorage.getItem(SEEN_KEY) || '[]'); } catch { /* egal */ }
+  return [...(myPrefs().seenMessages || []), ...local];
 }
 function markSeen(msgs) {
-  const ids = [...new Set([...seenIds(), ...msgs.map((m) => m.id)])].slice(-50);
-  seenMemory = ids;
-  try { localStorage.setItem(SEEN_KEY, JSON.stringify(ids)); } catch { /* egal */ }
+  const own = myPrefs().seenMessages || [];
+  const ids = [...new Set([...own, ...msgs.map((m) => m.id)])].slice(-100);
+  if (ids.length !== own.length) updateMyPrefs({ seenMessages: ids });
 }
 const unseen = () => {
   const seen = new Set(seenIds());
@@ -139,8 +143,11 @@ function openUp() {
   swingOpen(door);
 }
 
-/** Nachrichten auf die (geschlossene) Tür hängen; Antippen öffnet. */
-function showMessages(el, msgs) {
+/**
+ * Nachrichten auf die (geschlossene) Tür hängen; Antippen öffnet.
+ * auto = alle schon angeschaut (z. B. auf dem anderen Gerät): kurz zeigen, dann geht die Tür von selbst auf.
+ */
+function showMessages(el, msgs, { auto = false } = {}) {
   door = el;
   el.removeAttribute('aria-hidden');
   el.setAttribute('role', 'dialog');
@@ -150,7 +157,8 @@ function showMessages(el, msgs) {
   const content = el.querySelector('.fx-door__content');
   const notes = msgs.map((m, i) => messageNote(m, { className: `door-note--n${i % 3}` }));
   const button = h('button', { type: 'button', class: 'fx-door__open', onclick: (e) => { e.stopPropagation(); openUp(); } },
-    'Antippen zum Öffnen');
+    auto ? 'Tür geht gleich auf …' : 'Antippen zum Öffnen');
+  if (auto) setTimeout(() => { if (door === el) openUp(); }, 2600);
   content.replaceChildren(
     h('p', { class: 'fx-door__title' }, msgs.length > 1 ? 'Nachrichten für dich\u00a0♡' : 'Eine Nachricht für dich\u00a0♡'),
     h('div', { class: 'fx-door__notes' }, notes),
@@ -199,7 +207,9 @@ export function doorStart() {
   const el = calm() ? null : buildDoor(); // gleich zu – sonst sieht man kurz die App
   whenLoaded(3500).then((ok) => {
     const msgs = ok && !state.needsLogin && me() ? messagesForMe() : [];
-    if (msgs.length) showMessages(el || buildDoor(), msgs);
+    const fresh = msgs.length ? unseen() : [];
+    if (fresh.length) showMessages(el || buildDoor(), msgs); // Neues: Tür bleibt zu, bis man tippt
+    else if (msgs.length && el) showMessages(el, msgs, { auto: true }); // schon gesehen: kurz zeigen, dann auf
     else if (el && ok && !state.needsLogin && me()) greet(el, me());
     else if (el) swingOpen(el);
     markSeenOnStart(msgs);

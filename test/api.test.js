@@ -802,3 +802,32 @@ test('Widget: Schlüssel, Auswahl, Daten nur mit Schlüssel', async () => {
   await as(1, 'DELETE', '/api/widget/schluessel');
   assert.equal((await data(key2)).status, 401);
 });
+
+test('Einstellungen pro Person: erben die gemeinsamen, dann jede/r eigene', async () => {
+  await json('PATCH', '/api/settings', { fridgeColor: 'mint', photoEvery: 0 });
+  let prefs = (await json('GET', '/api/state')).body.prefs;
+  assert.equal(prefs[1].fridgeColor, 'mint', 'bisherige gemeinsame Türfarbe übernommen');
+  assert.equal(prefs[2].photoEvery, 0);
+  assert.equal(prefs[1].openNotes, null);
+  assert.deepEqual(prefs[1].seenMessages, []);
+  assert.equal(prefs[1].push.morning, '07:30');
+
+  const kait = await json('PATCH', '/api/prefs/1', { fridgeColor: 'himmel', openNotes: [3, 1, 3], seenMessages: [7], push: { morning: '06:45' } });
+  assert.equal(kait.status, 200);
+  assert.equal(kait.body.fridgeColor, 'himmel');
+  assert.deepEqual(kait.body.openNotes, [3, 1]);
+  assert.equal(kait.body.push.morning, '06:45');
+  assert.equal(kait.body.push.kinds.tuer, true);
+  prefs = (await json('GET', '/api/state')).body.prefs;
+  assert.equal(prefs[1].fridgeColor, 'himmel');
+  assert.equal(prefs[2].fridgeColor, 'mint', 'Schmaui bleibt bei der eigenen');
+  assert.equal(prefs[1].photoEvery, 0, 'nicht Geändertes bleibt');
+
+  // Prüfungen
+  assert.equal((await json('PATCH', '/api/prefs/1', { fridgeColor: 'lila' })).status, 400);
+  assert.equal((await json('PATCH', '/api/prefs/1', { openNotes: ['x'] })).status, 400);
+  assert.equal((await json('PATCH', '/api/prefs/1', { push: { morning: '25:00' } })).status, 400);
+  assert.equal((await json('PATCH', '/api/prefs/1', { geheim: 1 })).status, 400);
+  assert.equal((await json('PATCH', '/api/prefs/99', { photoEvery: 2 })).status, 404);
+  await json('PATCH', '/api/settings', { fridgeColor: 'mauve', photoEvery: 2 });
+});

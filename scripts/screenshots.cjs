@@ -820,6 +820,31 @@ function check(cond, msg) {
   for (const m of (await api('GET', '/api/state')).messages) await api('DELETE', `/api/messages/${m.id}`);
   await writer.close();
 
+  // ---------- Einstellungen pro Person ----------
+  console.log('Einstellungen pro Person:');
+  const kaitPhone = await device({ ...devices['iPhone 13'] }, 1);
+  page = await kaitPhone.newPage(); watch(page);
+  await page.goto(BASE + '/#/einstellungen');
+  await page.waitForSelector('[data-focus-key="color-himmel"]');
+  await page.click('[data-focus-key="color-himmel"]');
+  await page.waitForFunction(() => document.body.dataset.fridge === 'himmel');
+  await kaitPhone.close();
+  const kaitMac = await device({ viewport: { width: 1280, height: 800 } }, 1);
+  page = await kaitMac.newPage(); watch(page);
+  await page.goto(BASE + '/#/vorrat');
+  await page.waitForSelector('#view-vorrat .card');
+  await page.waitForFunction(() => document.body.dataset.fridge === 'himmel');
+  check(true, 'Türfarbe von Kait folgt ihr auf ein anderes Gerät');
+  await page.screenshot({ path: path.join(OUT, 'pc-vorrat-kait-blau.jpg'), quality: 85 });
+  await kaitMac.close();
+  const schmauiPhone = await device({ ...devices['iPhone 13'] }, 2);
+  page = await schmauiPhone.newPage(); watch(page);
+  await page.goto(BASE + '/#/vorrat');
+  await page.waitForSelector('#view-vorrat .card');
+  check(await page.evaluate(() => document.body.dataset.fridge) === 'mauve', 'Schmaui behält die eigene Türfarbe');
+  await schmauiPhone.close();
+  await api('PATCH', '/api/prefs/1', { fridgeColor: 'mauve' });
+
   // ---------- Benachrichtigungen + Widget ----------
   console.log('Benachrichtigungen + Widget:');
   // Mac: Hinweis „kommen aufs iPhone“
@@ -871,6 +896,8 @@ function check(cond, msg) {
   await page.waitForSelector('[data-focus-key="push-test"]');
   check(true, 'Home-Bildschirm-App: Benachrichtigungen eingeschaltet');
   await page.click('[data-focus-key="push-kind-liste"]');
+  await page.waitForTimeout(300);
+  check((await api('GET', '/api/state')).prefs[1].push.kinds.liste === false, 'Benachrichtigungs-Einstellungen werden pro Person gespeichert');
   await page.locator('[data-focus-key="push-kind-tuer"]').scrollIntoViewIfNeeded();
   await page.waitForTimeout(400);
   await page.screenshot({ path: path.join(OUT, 'handy-benachrichtigungen.jpg'), quality: 85 });

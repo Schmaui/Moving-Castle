@@ -79,6 +79,7 @@ export const api = {
   widgetRemove: async () => (await request('DELETE', '/api/widget/schluessel')).data,
   widgetShow: async (show) => (await request('PUT', '/api/widget', { show })).data,
 
+  patchPrefs: async (personId, patch) => (await request('PATCH', `/api/prefs/${personId}`, patch)).data,
   patchSettings: async (patch) => (await request('PATCH', '/api/settings', patch)).data,
 
   // Generische Funktionen für jede Ressource ('items', 'categories', später z. B. 'tasks')

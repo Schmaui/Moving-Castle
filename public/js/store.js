@@ -31,6 +31,7 @@ export const state = {
   calendar: { connected: false, events: [] },
   movies: [],
   messages: [],
+  prefs: {},       // Einstellungen pro Person: { personId: { fridgeColor, photoEvery, openNotes, seenMessages, push } }
 };
 
 const listeners = new Set();
@@ -151,6 +152,7 @@ export async function logout() {
   state.docs = [];
   state.movies = [];
   state.messages = [];
+  state.prefs = {};
   state.calendar = { connected: false, events: [] };
   requireLogin();
 }
@@ -481,6 +483,25 @@ export function deleteMovie(movie) {
 export function restoreMovie(movie) {
   const { title, kind, service, note, wantedBy, ratings, seenOn } = movie;
   return mutate(null, () => api.create('movies', { title, kind, service, note, wantedBy, ratings, seenOn }));
+}
+
+// ---------- Einstellungen pro Person (folgen der Person auf jedes Gerät, server/modules/prefs.js) ----------
+const DEFAULT_PREFS = { fridgeColor: 'mauve', photoEvery: 2, openNotes: null, seenMessages: [], push: null };
+
+/** Meine Einstellungen (wer auf diesem Gerät ausgewählt ist). Ohne Auswahl: die gemeinsamen. */
+export function myPrefs() {
+  const own = state.prefs?.[myId()];
+  if (own) return own;
+  return { ...DEFAULT_PREFS, fridgeColor: state.settings?.fridgeColor || 'mauve', photoEvery: state.settings?.photoEvery ?? 2 };
+}
+
+export function updateMyPrefs(patch) {
+  const id = myId();
+  if (!id) return Promise.resolve(null);
+  return mutate(
+    () => { state.prefs = { ...state.prefs, [id]: { ...myPrefs(), ...patch } }; },
+    () => api.patchPrefs(id, patch)
+  );
 }
 
 // ---------- Nachricht an die Tür ----------

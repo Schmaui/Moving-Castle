@@ -20,5 +20,6 @@ import movies from './movies.js';
 import messages from './messages.js';
 import push from './push.js';
 import widget from './widget.js';
+import prefs from './prefs.js';
 
-export const MODULES = [people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs, calendar, movies, messages, push, widget];
+export const MODULES = [people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs, calendar, movies, messages, push, widget, prefs];

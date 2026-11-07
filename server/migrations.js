@@ -415,6 +415,17 @@ export const MIGRATIONS = [
   );
   `,
 
+  // 15: Einstellungen pro Person (Wunsch der Nutzer: „alle Einstellungen pro Person“).
+  //     data = JSON: { fridgeColor, photoEvery, openNotes, seenMessages, push } – siehe modules/prefs.js.
+  //     Fehlt etwas, gilt der bisherige gemeinsame Wert (Tabelle settings) bzw. der Startwert.
+  `
+  CREATE TABLE person_prefs (
+    person_id   INTEGER PRIMARY KEY REFERENCES people(id) ON DELETE CASCADE,
+    data        TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];

@@ -2,7 +2,7 @@
 // das Routing per URL-Hash (#/liste, #/vorrat) und zeichnet bei Änderungen neu.
 import { CONFIG } from './config.js';
 import { VIEWS } from './views/index.js';
-import { state, subscribe, startSync, onError, me } from './store.js';
+import { state, subscribe, startSync, onError, me, myPrefs } from './store.js';
 import { renderPersonPicker } from './ui/people.js';
 import { scatterPhotos } from './ui/photos.js';
 import { renderLogin } from './ui/login.js';
@@ -132,8 +132,8 @@ function render() {
   }
 
   offlineHint.hidden = state.online;
-  // gemeinsame Einstellungen anwenden (Farbe der Kühlschranktür, siehe css/tokens.css)
-  document.body.dataset.fridge = state.settings?.fridgeColor || 'mauve';
+  // Farbe der Kühlschranktür – jede Person hat ihre eigene (siehe css/tokens.css, store.js myPrefs)
+  document.body.dataset.fridge = myPrefs().fridgeColor || 'mauve';
   withFocusPreserved(() => {
     for (const p of parts.values()) {
       p.section.replaceChildren(...[p.view.render(state, ctx)].flat().filter(Boolean));

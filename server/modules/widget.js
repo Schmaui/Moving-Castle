@@ -74,9 +74,7 @@ export default {
         db.prepare('UPDATE widget_tokens SET used_at = ? WHERE person_id = ?').run(now(), row.person_id);
       }
       const s = summaryFor(ctx, Number(row.person_id));
-      const fridge = db.prepare("SELECT value FROM settings WHERE key = 'fridgeColor'").get()?.value;
-      let fridgeColor = 'mauve';
-      try { fridgeColor = JSON.parse(fridge) || 'mauve'; } catch { /* Startwert */ }
+      const fridgeColor = ctx.resources.prefs?.api.of(Number(row.person_id)).fridgeColor || 'mauve'; // Türfarbe der Person
       // Alles mitschicken: was gezeigt wird, entscheidet „show“ (bzw. der Parameter am Widget)
       return {
         person: s.person,

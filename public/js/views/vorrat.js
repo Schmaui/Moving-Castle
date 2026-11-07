@@ -12,11 +12,11 @@ import { photoLayer, photoHint, doorPhotos } from '../ui/photos.js';
 import { dueNoteCard } from './aufgaben.js';
 import { todayMealCard } from './kochen.js';
 import { formatQty } from '../recipes.js';
-import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory, updateItem, updateCategory, areaOf, sortedPhotos } from '../store.js';
+import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory, updateItem, updateCategory, areaOf, sortedPhotos, myPrefs, updateMyPrefs } from '../store.js';
 import { showToast } from '../ui/toast.js';
 import { CONFIG } from '../config.js';
 
-const OPEN_KEY = 'haushalt_offene_zettel'; // muss VOR ui stehen (loadOpen läuft beim Start)
+const OPEN_KEY = 'haushalt_offene_zettel'; // früher pro Gerät – wird einmal zur Person übernommen
 
 // Zustand nur dieser Ansicht (bleibt beim Neuzeichnen erhalten)
 const ui = {
@@ -26,20 +26,25 @@ const ui = {
   newCategoryOpen: false,
   justToggled: null,    // Artikel, der gerade angetippt wurde (kurzes Wippen)
   editing: null,        // Artikel, der gerade bearbeitet wird: { id, name, quantity, minQty, unit }
-  open: loadOpen(),     // aufgeklappte Zettel (Kategorie-IDs)
 };
 
-// ---------- Auf-/Zuklappen (nur auf diesem Gerät gespeichert) ----------
-function loadOpen() {
-  try { return new Set(JSON.parse(localStorage.getItem(OPEN_KEY) || '[]').filter(Number.isSafeInteger)); } catch { return new Set(); }
+// ---------- Auf-/Zuklappen (pro Person gespeichert, store.js myPrefs) ----------
+function localOpen() {
+  try { return JSON.parse(localStorage.getItem(OPEN_KEY) || '[]').filter(Number.isSafeInteger); } catch { return []; }
 }
-function saveOpen() {
-  try { localStorage.setItem(OPEN_KEY, JSON.stringify([...ui.open])); } catch { /* egal */ }
+/** Aufgeklappte Zettel. Noch nie pro Person gespeichert? Dann das, was dieses Gerät bisher wusste. */
+function openSet() {
+  const saved = myPrefs().openNotes;
+  return new Set(saved ?? localOpen());
 }
-const isOpen = (cat) => ui.editMode || ui.open.has(cat.id) || ui.addOpen.has(cat.id);
+function saveOpen(set) {
+  updateMyPrefs({ openNotes: [...set] });
+}
+const isOpen = (cat, open) => ui.editMode || open.has(cat.id) || ui.addOpen.has(cat.id);
 function toggleOpen(cat, ctx) {
-  if (ui.open.has(cat.id)) { ui.open.delete(cat.id); ui.addOpen.delete(cat.id); } else ui.open.add(cat.id);
-  saveOpen();
+  const open = openSet();
+  if (open.has(cat.id)) { open.delete(cat.id); ui.addOpen.delete(cat.id); } else open.add(cat.id);
+  saveOpen(open);
   ctx.rerender();
 }
 
@@ -71,14 +76,15 @@ function stockView({ id, area, title, icon: iconName, intro, navLabel, navAlso, 
           : `${intro} ~ ${missingCount} von ${items.length} fehlen`,
         actions: [
           !ui.editMode && categories.length > 0 && (() => {
-            const allOpen = categories.every((c) => ui.open.has(c.id));
+            const open = openSet();
+            const allOpen = categories.every((c) => open.has(c.id));
             return h('button', {
               type: 'button', class: 'btn btn--ghost', 'data-focus-key': `open-all-${id}`,
               'aria-label': allOpen ? 'Alle Zettel zuklappen' : 'Alle Zettel aufklappen',
               onclick: () => {
-                for (const c of categories) { if (allOpen) ui.open.delete(c.id); else ui.open.add(c.id); }
+                for (const c of categories) { if (allOpen) open.delete(c.id); else open.add(c.id); }
                 if (allOpen) ui.addOpen.clear();
-                saveOpen();
+                saveOpen(open);
                 ctx.rerender();
               },
             }, allOpen ? iconLabel('hoch', 'Alle zu') : iconLabel('runter', 'Alle auf'));
@@ -100,7 +106,7 @@ function stockView({ id, area, title, icon: iconName, intro, navLabel, navAlso, 
 
       // Fotos hängen wie Magnete verstreut über der Tür (Position: scatterPhotos in ui/photos.js).
       // Einstellung "Fotos an der Tür": 0 = aus.
-      const showPhotos = (state.settings?.photoEvery ?? 2) > 0;
+      const showPhotos = (myPrefs().photoEvery ?? 2) > 0;
       const photos = showPhotos ? doorPhotos(sortedPhotos()) : [];
       // Fällige Aufgaben und das heutige Essen hängen als erste Zettel an der Tür
       const board = [dueNoteCard(state, ctx), todayMealCard(state)].filter(Boolean);
@@ -129,7 +135,7 @@ export const haushalt = stockView({
 function categoryCard(cat, items, ctx) {
   const missing = items.filter((i) => i.missing).length;
   const canDeleteCategory = ui.editMode && items.length === 0;
-  const open = isOpen(cat);
+  const open = isOpen(cat, openSet());
   const shown = open ? items : items.filter((i) => i.missing);
 
   const header = categoryHeader(cat,

@@ -5,7 +5,7 @@
 //   POST /api/push/abo/aus       Handy abmelden: { endpoint }
 //   POST /api/push/test          Test-Benachrichtigung an dieses Handy: { endpoint }
 //
-// Wann kommt etwas? (jedes Handy stellt selbst ein, was es will – prefs.kinds)
+// Wann kommt etwas? (jede Person stellt selbst ein, was sie will – person_prefs.push, siehe prefs.js)
 //   tuer      – der/die andere hängt eine Nachricht an die Tür
 //   liste     – der/die andere setzt etwas auf die Einkaufsliste (gesammelt: erst wenn ein paar
 //               Minuten nichts mehr dazukommt -> „Kait hat 3 Sachen auf die Liste gesetzt: …“)
@@ -83,7 +83,13 @@ export default {
     const setMeta = (k, v) => db.prepare('INSERT INTO meta (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value').run(k, v);
 
     const subsOf = (personId) => db.prepare('SELECT * FROM push_subscriptions WHERE person_id = ?').all(personId);
-    const prefsOf = (sub) => { try { return checkPrefs(JSON.parse(sub.prefs || '{}')); } catch { return checkPrefs({}); } };
+    // Einstellungen gehören der Person (modules/prefs.js); alte Abos ohne Personen-Einstellung: die vom Handy
+    const prefsOf = (sub) => {
+      try {
+        const own = JSON.parse(db.prepare('SELECT data FROM person_prefs WHERE person_id = ?').get(sub.person_id)?.data || '{}').push;
+        return checkPrefs(own ?? JSON.parse(sub.prefs || '{}'));
+      } catch { return checkPrefs({}); }
+    };
     const enqueue = (sub, msg, dueMs = Date.now()) => db.prepare(
       'INSERT INTO push_queue (subscription_id, kind, group_key, title, body, url, data, due_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).run(sub.id, msg.kind, msg.group ?? null, msg.title, msg.body ?? null, msg.url ?? null,
@@ -186,7 +192,7 @@ export default {
       try {
         const nowLocal = localNow();
         morning(nowLocal);
-        const due = db.prepare(`SELECT q.*, s.endpoint, s.p256dh, s.auth, s.prefs FROM push_queue q
+        const due = db.prepare(`SELECT q.*, s.endpoint, s.p256dh, s.auth, s.prefs, s.person_id FROM push_queue q
           JOIN push_subscriptions s ON s.id = q.subscription_id WHERE q.due_at <= ? ORDER BY q.id LIMIT 50`).all(new Date().toISOString());
         for (const q of due) {
           if (q.kind !== 'test' && inQuiet(prefsOf(q), nowLocal.time)) continue; // wartet bis nach der Ruhezeit

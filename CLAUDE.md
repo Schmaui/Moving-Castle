@@ -7,7 +7,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
 ## Technik (Kurzfassung – Details in README.md und docs/ANPASSEN.md)
 - Node.js ≥ 22.13 ohne npm-Abhängigkeiten, eingebautes `node:sqlite`. Start: `npm start`, Tests: `npm test`.
 - Frontend: Vanilla JS (ES-Module), kein Build. Design-Variablen in `public/css/tokens.css`.
-- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs, calendar, movies, messages, push, widget). Ansichten: `public/js/views/*`.
+- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs, calendar, movies, messages, push, widget, prefs). Ansichten: `public/js/views/*`.
   Module melden Änderungen über `ctx.events` ('write', { table, before, after, actor }) aus `resource.js`.
 - Migrationen: `server/migrations.js` – nur NEUE Einträge anhängen, alte nie ändern.
 - Gezeichnete Symbole statt Emojis: `public/js/ui/art.js`. Szenen-SVGs: `scripts/make-art.py`.
@@ -77,7 +77,7 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   = „Unsere Lieblinge“. Karten hängen direkt an der Tür (Nutzer mochten den dunklen „KI-blocky“-Kasten
   NICHT – keine großen dunklen Container mehr), oben nur ein schmales Vorhang-Band.
 - **Küche zuklappbar** (Vorrat + Haushalt): Zettel zeigen zugeklappt nur Überschrift + was fehlt („alles da“),
-  Überschrift antippen = auf/zu, „Alle auf/zu“ oben; pro Gerät in localStorage (`haushalt_offene_zettel`).
+  Überschrift antippen = auf/zu, „Alle auf/zu“ oben; pro Person gespeichert (`openNotes`, früher localStorage).
   Bearbeiten-Modus und „+“ klappen automatisch auf. Nutzer fanden die App vorher „zu voll“ – das half.
 - **Galerie** (Mehr): alle Fotos als Raster (Unterschrift ändern, löschen). An der Tür nur eine zufällige
   Auswahl (`doorPhotos()`: Handy 3, PC 5, pro App-Start neu gemischt, frisch hochgeladene immer dabei).
@@ -96,15 +96,15 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   „Bewegung reduzieren“ schaltet alles ab; screenshots.cjs läuft deshalb mit reducedMotion und prüft
   Animationen in einem eigenen Abschnitt.
 - **Nachricht an die Tür** (`public/js/ui/door.js`, Server `messages.js`, Migration 13, Tabelle `door_messages`):
-  Beim App-Start ist die Kühlschranktür ZU. Hängt eine Nachricht für mich dran (jünger als 24 Std.), bleibt sie
-  zu, bis man tippt; ohne Nachricht kurz „Hallo <Name> ♡“ + Datum, dann geht sie von selbst auf (ersetzt das
+  Beim App-Start ist die Kühlschranktür ZU. Hängt eine NEUE (noch nicht angeschaute) Nachricht für mich dran
+  (jünger als 24 Std.), bleibt sie zu, bis man tippt; ohne Nachricht kurz „Hallo <Name> ♡“ + Datum, dann geht sie von selbst auf (ersetzt das
   alte `doorOpen()` aus fx.js). Nachricht = getippt (Handschrift-Schrift) und/oder mit dem Finger gemalt
   (Striche als JSON, Malfläche 400×300, `openPad()` als Overlay außerhalb der Ansichten, damit Neuzeichnen
   nicht stört), Zettelfarbe gelb/rosa/mint/blau. Geht immer an die andere Person, KEIN Lesestatus (Nutzer-
   Wunsch), nach 24 Std. weg (Server löscht beim Abruf, App blendet selbst aus). Geschrieben wird NUR unter
   „Mehr“ (oberster Abschnitt), dort auch „Hängt gerade an der Tür“ mit „Abnehmen“. Zurück in die App nach
   Hintergrund + neue Nachricht -> Tür wieder zu; neue Nachricht während man die App benutzt -> nur Hinweis mit
-  „Ansehen“. Gesehene IDs pro Gerät in localStorage (`haushalt_tuer_gesehen`). „Bewegung reduzieren“: ohne
+  „Ansehen“. Gesehene IDs pro Person (`seenMessages`, siehe unten). „Bewegung reduzieren“: ohne
   Nachricht gar keine Tür, mit Nachricht Tür ohne Animation.
 - **Benachrichtigungen** (Web-Push, NUR iPhone als Home-Bildschirm-App ab iOS 16.4 – Nutzerwunsch, am Mac nur
   Hinweis): `server/webpush.js` (RFC 8291/8292 selbst mit node:crypto, keine Pakete; VAPID-Schlüssel in Tabelle
@@ -129,6 +129,13 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   iPhone übernimmt das Icon nur beim „Zum Home-Bildschirm“ -> muss in SAFARI gewählt werden (Home-Bildschirm-App hat
   eigenen Speicher, dort nur Hinweis), dann altes Symbol löschen + neu hinzufügen (danach neu anmelden +
   Benachrichtigungen wieder einschalten). Icons: `scripts/make-art.py` (icon-nacht.svg) + `scripts/make-icons.cjs`.
+- **Einstellungen pro Person** (Nutzerwunsch 7.11.: „alle Einstellungen pro Person“): `server/modules/prefs.js`
+  (Migration 15, Tabelle `person_prefs`, in /api/state als `prefs` {personId: …}), Client `myPrefs()` /
+  `updateMyPrefs()` in store.js. Pro Person: Türfarbe + „Fotos an der Tür“ (fallen auf die alten gemeinsamen
+  `settings` zurück), aufgeklappte Küchen-Zettel (`openNotes`), angeschaute Tür-Nachrichten (`seenMessages`; schon
+  gesehene -> Tür zeigt sie kurz und geht von selbst auf), Benachrichtigungen (`push`; Server nimmt sie für alle
+  Handys der Person, Fallback: prefs am Abo). Pro GERÄT bleiben nur „Wer bist du?“ und das App-Icon (Nutzerwahl).
+  Widget-Hintergrund = Türfarbe der Person.
 - Profile: jedes Gerät fragt einmal „Wer bist du?“ und schickt `X-Person` mit (wer-hat-was).
 - **Backup** am 7.11.2026 mit den Nutzern geprüft (siehe „Betrieb“).
 - Von den Nutzern getestet: alles bis einschließlich Küche + Haushalt („funktioniert alles“).

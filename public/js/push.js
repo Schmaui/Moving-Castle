@@ -4,8 +4,10 @@
 //   1. App über „Teilen → Zum Home-Bildschirm“ als Symbol ablegen (ab iOS 16.4)
 //   2. die App von dort öffnen und unter „Mehr → Benachrichtigungen“ einschalten
 // Auf dem Mac (und anderen Computern) gibt es absichtlich keine – Wunsch: nur aufs iPhone.
-// Was wann kommt, stellt jedes Handy selbst ein (siehe server/modules/push.js).
+// Was wann kommt, stellt jede Person selbst ein – gespeichert pro Person (server/modules/prefs.js),
+// also nach „Wer bist du?“ auch auf einem neuen Handy gleich wieder da.
 import { api } from './api.js';
+import { myPrefs, updateMyPrefs } from './store.js';
 
 const PREFS_KEY = 'haushalt_push_prefs';
 export const DEFAULT_PREFS = {
@@ -36,15 +38,16 @@ export function pushSupport() {
   return 'ready';
 }
 
+/** Meine Benachrichtigungs-Einstellungen (pro Person; früher pro Handy im localStorage). */
 export function loadPrefs() {
-  try {
-    const p = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null');
-    if (p) return { ...DEFAULT_PREFS, ...p, kinds: { ...DEFAULT_PREFS.kinds, ...p.kinds }, quiet: { ...DEFAULT_PREFS.quiet, ...p.quiet } };
-  } catch { /* egal */ }
+  const own = myPrefs().push;
+  let p = own;
+  if (!p) { try { p = JSON.parse(localStorage.getItem(PREFS_KEY) || 'null'); } catch { p = null; } }
+  if (p) return { ...DEFAULT_PREFS, ...p, kinds: { ...DEFAULT_PREFS.kinds, ...p.kinds }, quiet: { ...DEFAULT_PREFS.quiet, ...p.quiet } };
   return structuredClone(DEFAULT_PREFS);
 }
 function storePrefs(prefs) {
-  try { localStorage.setItem(PREFS_KEY, JSON.stringify(prefs)); } catch { /* egal */ }
+  updateMyPrefs({ push: prefs });
 }
 
 /** Service Worker anmelden (beim Start der App). Antippen einer Benachrichtigung -> richtige Seite. */
