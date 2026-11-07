@@ -1,0 +1,16 @@
+{
+  "name": "haushalt",
+  "version": "1.0.0",
+  "description": "Haushalts-App: Vorrat und Einkaufsliste im Heimnetz",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server/server.js",
+    "dev": "node --watch --disable-warning=ExperimentalWarning server/server.js",
+    "test": "node --disable-warning=ExperimentalWarning --test test/*.test.js",
+    "backup": "node --disable-warning=ExperimentalWarning server/backup.js"
+  }
+}

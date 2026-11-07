@@ -1,0 +1,45 @@
+# Für den ONLINE-Server (z. B. bei Hetzner): App + Caddy.
+# Caddy holt automatisch ein HTTPS-Zertifikat (Let's Encrypt) und leitet
+# alles verschlüsselt an die App weiter. Die App selbst ist von außen NICHT
+# direkt erreichbar – nur über Caddy.
+#
+# Einstellungen (Domain, Passwort) stehen in der Datei ".env" daneben.
+# Am einfachsten richtet das alles  scripts/server-einrichten.sh  ein.
+#
+# Starten/Aktualisieren:  docker compose -f docker-compose.online.yml up -d --build
+# Log ansehen:            docker compose -f docker-compose.online.yml logs -f
+
+services:
+  haushalt:
+    build: .
+    image: haushalt-app:latest
+    container_name: haushalt
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    environment:
+      TZ: Europe/Berlin
+      TRUST_PROXY: "1"
+      HAUSHALT_PASSWORT: ${HAUSHALT_PASSWORT:?Bitte HAUSHALT_PASSWORT in .env setzen}
+    # kein "ports:" -> nur Caddy kommt an die App ran
+
+  caddy:
+    image: caddy:2-alpine
+    container_name: haushalt-caddy
+    restart: unless-stopped
+    depends_on:
+      - haushalt
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN:?Bitte DOMAIN in .env setzen}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data        # Zertifikate (bleiben bei Updates erhalten)
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

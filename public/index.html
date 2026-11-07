@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>kait &amp; schmauiis moving castle</title>
+  <meta name="description" content="Vorrat und Einkaufsliste für unseren Haushalt">
+
+  <!-- App-Icon & Home-Bildschirm -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="moving castle">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="theme-color" content="#f3e8d4" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#211a15" media="(prefers-color-scheme: dark)">
+
+  <!-- Reihenfolge wichtig: zuerst Variablen, dann der Rest -->
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/fonts.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/layout.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/decor.css"> <!-- Deko: Papier, Tape, Schieflage (optional) -->
+  <link rel="preload" href="fonts/caveat-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/fraunces-latin-full-normal.woff2" as="font" type="font/woff2" crossorigin>
+
+  <script type="module" src="js/app.js"></script>
+</head>
+<body>
+  <!-- Zeichen-Effekte für die Symbole (siehe js/ui/art.js): zittrige Tinte + Aquarellrand -->
+  <svg class="art-defs" aria-hidden="true" focusable="false" width="0" height="0">
+    <filter id="art-wobble" x="-10%" y="-10%" width="120%" height="120%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="4" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="2.4" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+    <filter id="art-watercolor" x="-15%" y="-15%" width="130%" height="130%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.08" numOctaves="3" seed="9" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G" result="d"/>
+      <feGaussianBlur in="d" stdDeviation="0.35"/>
+    </filter>
+  </svg>
+  <div class="app">
+    <!-- Navigation: wird aus js/views/index.js befüllt -->
+    <nav class="nav" aria-label="Hauptnavigation">
+      <a class="nav__brand" href="#/">
+        <img class="nav__brand-logo" src="img/haus-katze.svg" alt="">
+        <span class="nav__brand-name">kait &amp; schmauiis<br>moving castle</span>
+      </a>
+      <ul class="nav__list" id="nav-list"></ul>
+      <!-- Nur am PC sichtbar: Illustration + Spruch unten in der Seitenleiste -->
+      <div class="nav__extra" aria-hidden="true">
+        <img class="nav__art" src="img/fensterbank.svg" alt="">
+        <p class="hand">Alles da, was wir lieben ♡</p>
+      </div>
+    </nav>
+
+    <main class="main" id="main">
+      <!-- Nur am Handy: kleine Kopfzeile mit Logo und Name -->
+      <header class="topbar" aria-hidden="true">
+        <img class="topbar__logo" src="img/haus-katze.svg" alt="">
+        <span class="topbar__name">kait &amp; schmauiis moving castle</span>
+      </header>
+      <p class="hint hint--offline" id="offline-hint" role="status" hidden>
+        Server nicht erreichbar – Änderungen werden evtl. nicht gespeichert.
+      </p>
+      <!-- Ansichten: werden aus js/views/index.js erzeugt -->
+      <div class="views" id="views"></div>
+      <!-- Fußzeile: "Abmelden" (nur sichtbar, wenn der Server ein Passwort verlangt) -->
+      <footer class="app-footer" id="app-footer" hidden></footer>
+    </main>
+  </div>
+
+  <!-- Anmeldeseite (nur wenn nötig, siehe js/ui/login.js) -->
+  <main class="login-screen" id="login-screen" hidden></main>
+
+  <div class="toast-region" id="toast-region" aria-live="polite"></div>
+
+  <noscript><p class="hint">Bitte JavaScript aktivieren.</p></noscript>
+</body>
+</html>

@@ -1,0 +1,36 @@
+/* Schriften – lokal gespeichert in public/fonts/ (funktioniert ohne Internet).
+   Alle drei stehen unter der SIL Open Font License (siehe fonts/LICENSE-*.txt).
+   Andere Schrift? .woff2 nach public/fonts/ legen, hier eintragen,
+   und in tokens.css bei --font-body / --font-heading / --font-hand verwenden. */
+
+@font-face {
+  font-family: "Nunito";
+  src: url("../fonts/nunito-latin-wght-normal.woff2") format("woff2");
+  font-weight: 200 1000;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("../fonts/fraunces-latin-full-normal.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Fraunces";
+  src: url("../fonts/fraunces-latin-full-italic.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: italic;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Caveat";
+  src: url("../fonts/caveat-latin-wght-normal.woff2") format("woff2");
+  font-weight: 400 700;
+  font-style: normal;
+  font-display: swap;
+}

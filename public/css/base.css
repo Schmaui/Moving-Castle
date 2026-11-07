@@ -1,0 +1,69 @@
+/* Grundstile: Reset, Schrift, Fokus. */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  line-height: var(--line-height);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-heading);
+  font-variation-settings: var(--heading-variation);
+  font-weight: 600;
+  line-height: 1.1;
+  margin: 0;
+}
+
+p { margin: 0; }
+ul { margin: 0; padding: 0; list-style: none; }
+a { color: inherit; }
+
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+
+button { cursor: pointer; }
+button:disabled { cursor: default; opacity: 0.5; }
+
+/* Deutlicher Fokusrahmen nur bei Tastaturbedienung */
+:focus { outline: none; }
+:focus-visible {
+  outline: 3px dashed var(--color-focus);
+  outline-offset: 3px;
+}
+
+.muted { color: var(--color-text-muted); }
+.hand { font-family: var(--font-hand); font-size: var(--font-size-hand); line-height: 1.1; }
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition-duration: 0ms !important;
+    animation-duration: 0ms !important;
+  }
+}
+
+/* "hidden" gewinnt immer – auch gegen display:grid/flex */
+[hidden] { display: none !important; }
+
+/* unsichtbarer Container für SVG-Filter */
+.art-defs { position: absolute; width: 0; height: 0; overflow: hidden; }

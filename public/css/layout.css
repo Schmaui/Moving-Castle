@@ -1,0 +1,170 @@
+/* =====================================================================
+   LAYOUT: Grundgerüst für Handy, Tablet und PC.
+
+   Breakpoints (hier anpassen, falls gewünscht):
+     bis 699px     Handy:  eine Spalte, schwebende Navigation unten
+     700–1099px    Tablet: Navigation oben, mehrspaltiges Kartenraster
+     ab 1100px     PC:     Seitenleiste links, Vorrat und Einkaufsliste nebeneinander
+   ===================================================================== */
+
+.app { min-height: 100dvh; }
+
+/* ---------- Navigation (Grundform = Handy: schwebende Leiste unten) ---------- */
+.nav {
+  position: fixed;
+  left: var(--space-3);
+  right: var(--space-3);
+  bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+  z-index: 20;
+  display: flex;
+  height: var(--nav-height);
+  padding: var(--space-1);
+  background: var(--color-surface);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-nav);
+  box-shadow: var(--shadow-float);
+}
+
+.nav__brand, .nav__extra { display: none; }
+
+.nav__list { display: flex; flex: 1; }
+.nav__list > li { flex: 1; display: flex; }
+
+.nav__link {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  text-decoration: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-hand);
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1;
+  border-radius: var(--radius-nav);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.nav__icon {
+  display: grid;
+  place-items: center;
+  width: 50px;
+  height: 36px;
+  border-radius: var(--radius-blob);
+  transition: background var(--transition), transform var(--transition);
+}
+.nav__link[aria-current="page"] { color: var(--color-text); }
+.nav__icon .art { width: 34px; height: 34px; --art-wash: transparent; }
+.nav__link[aria-current="page"] .nav__icon {
+  background: var(--tone-1);
+  transform: rotate(-4deg) scale(1.05);
+}
+.nav__link[aria-current="page"] .nav__icon .art { --art-wash: var(--tone-3); }
+
+/* Zähler-Badge oben rechts am Symbol */
+.nav__link .badge {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + 10px);
+}
+
+/* ---------- Inhalt ---------- */
+.main {
+  padding: var(--space-4);
+  padding-top: calc(var(--space-5) + env(safe-area-inset-top));
+  padding-bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-7));
+}
+
+.view { display: none; }
+.view.is-active { display: block; }
+
+/* Kartenraster: so viele Spalten, wie Platz ist (mind. --card-min-width breit) */
+.cards {
+  columns: var(--card-min-width);
+  column-gap: var(--space-5);
+}
+.cards > * {
+  break-inside: avoid;
+  margin-bottom: var(--space-5);
+}
+
+/* ---------- Tablet ---------- */
+@media (min-width: 700px) {
+  .nav {
+    position: sticky;
+    top: var(--space-3);
+    left: auto; right: auto; bottom: auto;
+    height: auto;
+    margin: var(--space-3) var(--space-5) 0;
+    padding: var(--space-2) var(--space-3) var(--space-2) var(--space-5);
+    align-items: center;
+    gap: var(--space-5);
+  }
+  .nav__brand { display: flex; }
+  .nav__list { flex: 0 1 auto; gap: var(--space-2); }
+  .nav__link {
+    flex-direction: row;
+    gap: var(--space-2);
+    padding: var(--space-1) var(--space-4) var(--space-1) var(--space-1);
+    font-size: 1.45rem;
+  }
+  .nav__icon { width: 44px; height: 40px; }
+  .nav__link .badge { position: static; }
+
+  .main {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: var(--space-6) var(--space-5);
+  }
+}
+
+/* ---------- PC ---------- */
+@media (min-width: 1100px) {
+  .app {
+    display: grid;
+    grid-template-columns: var(--sidebar-width) minmax(0, 1fr);
+  }
+
+  .nav {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    margin: 0;
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-6);
+    padding: var(--space-6) var(--space-4) var(--space-4);
+    background: transparent;
+    border: 0;
+    border-right: 1.5px dashed var(--color-border);
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .nav__list { flex-direction: column; gap: var(--space-2); }
+  .nav__link { justify-content: flex-start; padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2); }
+  .nav__link .badge { margin-left: auto; }
+  .nav__extra { display: flex; }
+
+  .main { width: 100%; padding: var(--space-6) var(--space-6) var(--space-7); }
+
+  /* Vorrat (links, breit) und Einkaufsliste (rechts, schmal) nebeneinander.
+     Welche Ansichten das sind, steht in js/config.js (split). */
+  body.is-split .views {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--liste-width);
+    gap: var(--space-6);
+    align-items: start;
+  }
+  body.is-split .view--split-main,
+  body.is-split .view--split-aside { display: block; }
+  body.is-split .view--split-main  { order: 1; }
+  body.is-split .view--split-aside { order: 2; }
+  body.is-split .view--split-aside {
+    position: sticky;
+    top: var(--space-6);
+    max-height: calc(100dvh - 2 * var(--space-6));
+    overflow-y: auto;
+  }
+}

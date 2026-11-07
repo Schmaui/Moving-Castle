@@ -1,0 +1,561 @@
+/* =====================================================================
+   BAUSTEINE: Karten, Chips, Buttons, Listen, Hinweise.
+   Nutzen nur Variablen aus tokens.css.
+   Reine Deko (Papier, Tape, Schieflage, Illustrationen) steht in decor.css.
+   ===================================================================== */
+
+/* ---------- Marke (Logo in der Navigation) ---------- */
+.nav__brand {
+  align-items: center;
+  gap: var(--space-2);
+  text-decoration: none;
+  font-family: var(--font-heading);
+  font-variation-settings: var(--heading-variation);
+  font-style: italic;
+  font-weight: 600;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+.nav__brand-logo { width: 58px; height: auto; flex: 0 0 auto; rotate: -3deg; }
+
+/* Seitenleiste unten: Illustration + Spruch (nur PC) */
+.nav__extra {
+  margin-top: auto;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  text-align: center;
+  color: var(--color-text-muted);
+}
+.nav__art { width: 100%; max-width: 210px; height: auto; }
+
+/* ---------- Kopfbereich einer Ansicht ---------- */
+.view-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-bottom: var(--space-5);
+}
+.view-header__title {
+  position: relative;
+  display: inline-block;
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  padding-bottom: 10px;
+}
+/* handgezeichnete Wellenlinie unter dem Titel */
+.view-header__title::after {
+  content: "";
+  position: absolute;
+  left: 2px; right: 10%;
+  bottom: 0;
+  height: 10px;
+  background: var(--color-highlight);
+  -webkit-mask: url("../img/squiggle.svg") no-repeat center / 100% 100%;
+  mask: url("../img/squiggle.svg") no-repeat center / 100% 100%;
+}
+.view-header__subtitle {
+  margin-top: var(--space-2);
+  color: var(--color-accent);
+  font-family: var(--font-hand);
+  font-size: var(--font-size-hand);
+  line-height: 1.1;
+  transform: rotate(-1deg);
+  transform-origin: left;
+}
+.view-header__actions { display: flex; gap: var(--space-2); }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 42px;
+  padding: 0 var(--space-4);
+  border: 1.5px solid var(--color-ink);
+  border-radius: var(--radius-chip);
+  background: var(--color-surface);
+  font-weight: var(--font-weight-medium);
+  white-space: nowrap;
+  text-decoration: none;
+  box-shadow: var(--shadow-print);
+  transition: background var(--transition-fast), transform var(--transition), box-shadow var(--transition);
+}
+.btn:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--color-ink); }
+.btn--primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+.btn--active {
+  background: var(--color-highlight);
+  color: var(--color-on-note);
+}
+.btn--danger { color: var(--color-danger); border-color: currentColor; box-shadow: none; }
+.btn--icon {
+  width: 42px;
+  padding: 0;
+  line-height: 1;
+}
+.btn--icon .art { width: 26px; height: 26px; }
+.art--btn { width: 1.35em; height: 1.35em; margin-left: -4px; stroke-width: 2.4; }
+.btn--ghost { background: transparent; border-color: transparent; box-shadow: none; }
+
+@media (hover: hover) {
+  .btn:hover:not(:disabled) { transform: translate(-1px, -1px) rotate(-1deg); box-shadow: 4px 4px 0 var(--color-ink); }
+  .btn--primary:hover:not(:disabled) { background: var(--color-accent-hover); }
+  .btn--ghost:hover:not(:disabled), .btn--danger:hover:not(:disabled) {
+    box-shadow: none;
+    background: var(--color-surface-hover);
+  }
+  .btn--danger:hover:not(:disabled) { background: var(--color-danger-soft); }
+  .nav__link:hover { color: var(--color-text); }
+  .nav__link:hover .nav__icon { background: var(--color-surface-hover); transform: rotate(3deg); }
+  .nav__link[aria-current="page"]:hover .nav__icon { background: var(--tone-1); transform: rotate(-4deg) scale(1.05); }
+}
+
+/* ---------- Karte (eine Kategorie) ---------- */
+.card {
+  position: relative;
+  background-color: var(--color-surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: var(--space-5) var(--space-4) var(--space-4);
+}
+.card__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+  min-height: 44px;
+}
+.card__icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 54px; height: 54px;
+  margin: -6px 0 -6px -4px;
+  rotate: -4deg;
+  /* Aquarell im Symbol etwas kräftiger als die Karte */
+  --art-wash: color-mix(in srgb, var(--card-tone, var(--tone-1)) 100%, var(--color-ink) 6%);
+}
+.card__icon .art { width: 100%; height: 100%; }
+.card__title {
+  flex: 1;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+.card__meta {
+  font-family: var(--font-hand);
+  font-size: var(--font-size-hand);
+  color: var(--color-text-muted);
+}
+
+/* ---------- Chips (Artikel im Vorrat) ---------- */
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--chip-height);
+  padding: var(--space-1) var(--space-4);
+  border: 1.5px solid color-mix(in srgb, var(--color-ink) 22%, transparent);
+  border-radius: var(--radius-chip);
+  background: color-mix(in srgb, var(--color-surface) 80%, transparent);
+  text-align: left;
+  font-weight: var(--font-weight-medium);
+  transition: background var(--transition-fast), border-color var(--transition-fast),
+              color var(--transition-fast), transform var(--transition), box-shadow var(--transition);
+}
+.chip:active { transform: scale(0.94) rotate(-1deg); }
+.chip.is-missing {
+  background: var(--color-missing);
+  border-color: var(--color-ink);
+  color: var(--color-on-missing);
+  box-shadow: 2px 2px 0 var(--color-ink);
+  transform: rotate(-1.5deg);
+}
+/* kleiner gezeichneter Stern vor fehlenden Artikeln */
+.chip__star { width: 15px; height: 15px; margin-left: -4px; stroke-width: 3; }
+/* kurzes Wippen beim Antippen */
+.chip.is-wiggling { animation: wiggle 480ms cubic-bezier(.3,.7,.4,1.4); }
+@keyframes wiggle {
+  0% { transform: scale(1); }
+  30% { transform: scale(1.08) rotate(-4deg); }
+  60% { transform: scale(0.98) rotate(3deg); }
+  100% { transform: scale(1) rotate(var(--chip-rot, 0deg)); }
+}
+.chips > .chip.is-missing:nth-child(even) { transform: rotate(1.2deg); }
+
+.chip--delete {
+  border: 1.5px dashed var(--color-danger);
+  background: transparent;
+  color: var(--color-text);
+}
+.chip--delete.is-missing {
+  background: transparent; color: var(--color-text);
+  border-color: var(--color-danger); box-shadow: none; transform: none;
+}
+.chip__x { display: inline-flex; color: var(--color-danger); }
+.chip__x .art { width: 16px; height: 16px; stroke-width: 3.4; }
+
+@media (hover: hover) {
+  .chip:hover { background: var(--color-surface); transform: translateY(-2px) rotate(-1deg); border-color: var(--color-ink); }
+  .chip.is-missing:hover { background: var(--color-missing); filter: brightness(1.06); }
+  .chip--delete:hover, .chip--delete.is-missing:hover { background: var(--color-danger-soft); filter: none; }
+}
+
+/* ---------- Eingabe "Artikel hinzufügen" ---------- */
+.add-form {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+.input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 var(--space-4);
+  border: 1.5px solid color-mix(in srgb, var(--color-ink) 35%, transparent);
+  border-radius: var(--radius-chip);
+  background: var(--color-surface);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.input::placeholder { color: var(--color-text-muted); font-style: italic; }
+.input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 4px var(--color-accent-soft); }
+.input:focus-visible { outline: none; }
+.input--emoji { flex: 0 0 64px; text-align: center; padding: 0; font-size: 1.3rem; }
+
+/* ---------- Einkaufsliste: Zeilen zum Abhaken ---------- */
+.check-list > li { border-bottom: 1.5px solid var(--line-color); }
+.check-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  width: 100%;
+  min-height: var(--tap-size);
+  padding: var(--space-1) var(--space-1);
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  text-align: left;
+  transition: opacity var(--transition), background var(--transition-fast);
+}
+.check-row__box {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px; height: 28px;
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-blob);
+  color: var(--color-on-accent);
+  transition: background var(--transition-fast), color var(--transition-fast), transform var(--transition);
+}
+/* gezeichnetes Häkchen: unsichtbar, "zeichnet sich" beim Abhaken */
+.check-mark {
+  width: 24px; height: 24px;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.check-mark path { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.check-row.is-checked .check-mark path { animation: draw-check 320ms ease-out forwards; }
+@keyframes draw-check { to { stroke-dashoffset: 0; } }
+.check-row__text { display: flex; flex-direction: column; }
+.check-row__name {
+  font-family: var(--font-hand);
+  font-size: 1.65rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.check-row__detail { font-size: var(--font-size-sm); color: var(--color-text-muted); }
+
+.check-row.is-checked { opacity: 0.55; }
+.check-row.is-checked .check-row__box {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+  transform: rotate(-8deg) scale(1.1);
+}
+.check-row.is-checked .check-row__name {
+  text-decoration: line-through wavy var(--color-missing) 2px;
+}
+
+@media (hover: hover) {
+  .check-row:hover { background: color-mix(in srgb, var(--color-highlight) 15%, transparent); }
+  .check-row:hover .check-row__box { transform: rotate(-6deg); }
+  .check-row:not(.is-checked):hover .check-mark { color: var(--color-accent); }
+  .check-row:not(.is-checked):hover .check-mark path { stroke-dashoffset: 0; opacity: 0.4; }
+}
+
+/* ---------- Zähler-Badge ---------- */
+.badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: var(--radius-blob);
+  background: var(--color-missing);
+  color: var(--color-on-missing);
+  font-family: var(--font-body);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  transform: rotate(-6deg);
+}
+.badge[hidden] { display: none; }
+.badge--soft {
+  background: var(--color-missing-soft);
+  color: var(--color-missing);
+  font-family: var(--font-hand);
+  font-size: 1.15rem;
+  font-weight: 700;
+  height: 26px;
+  padding: 0 10px;
+  white-space: nowrap;
+  transform: rotate(3deg);
+}
+
+/* ---------- Hinweise ---------- */
+.hint {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-card);
+  background: var(--color-danger-soft);
+  font-size: var(--font-size-sm);
+}
+.hint--offline { background: var(--color-missing-soft); }
+.hint[hidden] { display: none; }
+
+.empty {
+  padding: var(--space-6) var(--space-4);
+  text-align: center;
+}
+.empty__art { width: 280px; max-width: 90%; height: auto; margin-bottom: var(--space-2); }
+.empty__symbol { margin: 0 auto var(--space-3); width: 72px; height: 72px; }
+.empty__symbol .art { width: 100%; height: 100%; }
+.empty__title {
+  font-family: var(--font-heading);
+  font-variation-settings: var(--heading-variation);
+  font-style: italic;
+  font-size: var(--font-size-xl);
+  font-weight: 600;
+}
+.empty__text {
+  color: var(--color-text-muted);
+  font-family: var(--font-hand);
+  font-size: var(--font-size-hand);
+  margin: var(--space-2) auto var(--space-5);
+  max-width: 22ch;
+  line-height: 1.15;
+}
+
+/* Karte "Neue Kategorie" */
+.card--new {
+  background: transparent;
+  box-shadow: none;
+  border: 2px dashed var(--color-border);
+}
+.card--new > .btn { width: 100%; font-family: var(--font-hand); font-size: var(--font-size-hand); }
+
+/* ---------- Toast ("Rückgängig"-Hinweis) als Haftnotiz ---------- */
+.toast-region {
+  position: fixed;
+  left: var(--space-4);
+  right: var(--space-4);
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + var(--space-5));
+  z-index: 30;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+.toast {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  max-width: 440px;
+  width: 100%;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-5);
+  min-height: 60px;
+  border-radius: 4px 4px 18px 4px;
+  background: var(--color-note);
+  color: var(--color-on-note);
+  box-shadow: var(--shadow-float);
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(16px) rotate(2deg);
+  transition: opacity var(--transition), transform var(--transition);
+}
+.toast.is-visible { opacity: 1; transform: rotate(-1deg); }
+.toast--error { background: var(--color-danger-soft); color: var(--color-text); }
+.toast__msg {
+  flex: 1;
+  font-family: var(--font-hand);
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.toast__action {
+  min-height: 40px;
+  padding: 0 var(--space-4);
+  border: 1.5px solid var(--color-on-note);
+  border-radius: var(--radius-chip);
+  background: transparent;
+  color: var(--color-on-note);
+  font-weight: var(--font-weight-bold);
+  box-shadow: 2px 2px 0 var(--color-on-note);
+}
+
+@media (min-width: 700px) {
+  .toast-region { bottom: var(--space-6); }
+  .toast { width: auto; min-width: 340px; }
+}
+
+/* ---------- Kleiner Knopf ---------- */
+.btn--small { min-height: 0; padding: var(--space-2) var(--space-3); font-size: var(--font-size-sm); }
+
+/* ---------- Fußzeile (Abmelden) ---------- */
+.app-footer {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--space-6);
+  color: var(--color-text-muted);
+}
+.app-footer .btn { color: var(--color-text-muted); }
+
+/* ---------- Anmeldeseite ---------- */
+.login-screen {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5) var(--space-4);
+}
+.login {
+  width: min(100%, 380px);
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  text-align: center;
+  padding: var(--space-6) var(--space-5) var(--space-5);
+}
+.login__art { width: 230px; max-width: 100%; height: auto; margin: calc(-1 * var(--space-3)) 0 calc(-1 * var(--space-2)); }
+.login__title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-variation-settings: var(--heading-variation);
+  font-size: var(--font-size-2xl);
+  line-height: 1.05;
+}
+.login__text { margin: 0 0 var(--space-2); color: var(--color-accent); rotate: -1.5deg; }
+.login .input { width: 100%; text-align: center; }
+.login__button { width: 100%; }
+.login__error {
+  margin: 0;
+  color: var(--color-danger);
+  font-weight: var(--font-weight-medium);
+}
+.login__small { margin: 0; font-size: var(--font-size-sm); }
+
+/* App-Name in der Navigation (zweizeilig) */
+.nav__brand-name { font-size: 1.2rem; line-height: 1.05; }
+
+/* Anmeldeseite: "Willkommen im" + App-Name */
+.login__welcome { margin: 0 0 calc(-1 * var(--space-2)); color: var(--color-text-muted); rotate: -2deg; }
+.login__title { font-size: 2rem; }
+
+/* ---------- Handgezeichnete Symbole (js/ui/art.js) ---------- */
+.art {
+  width: 1.6em;
+  height: 1.6em;
+  flex: 0 0 auto;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* Aquarell: etwas versetzt und weich – wie von Hand koloriert */
+.art__wash {
+  fill: var(--art-wash, var(--card-tone, var(--tone-3)));
+  stroke: none;
+  translate: 2.4px 2.2px;
+  opacity: 0.95;
+  filter: url(#art-watercolor);
+}
+/* Tinte: leicht zittrig wie mit Füller gezeichnet */
+.art__ink { filter: url(#art-wobble); }
+.art__dot { fill: currentColor; stroke: none; }
+
+/* ---------- Bildauswahl für neue Kategorien ---------- */
+.icon-picker {
+  margin: var(--space-4) 0 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(48px, 1fr));
+  gap: var(--space-1);
+}
+.icon-picker__legend {
+  margin-bottom: var(--space-2);
+  font-family: var(--font-hand);
+  font-size: var(--font-size-hand);
+  color: var(--color-text-muted);
+}
+.icon-picker__item {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  padding: 4px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-blob);
+  background: transparent;
+  transition: transform var(--transition), background var(--transition-fast), border-color var(--transition-fast);
+}
+.icon-picker__item .art { width: 100%; height: 100%; }
+.icon-picker__item.is-chosen {
+  border-color: var(--color-ink);
+  background: var(--color-surface);
+  box-shadow: 2px 2px 0 var(--color-ink);
+  transform: rotate(-4deg) scale(1.06);
+}
+@media (hover: hover) {
+  .icon-picker__item:hover { background: var(--color-surface-hover); transform: rotate(3deg); }
+}
+
+/* ---------- Kopfzeile am Handy (Logo + Name) ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: calc(-1 * var(--space-3)) 0 var(--space-3);
+}
+.topbar__logo { width: 50px; height: auto; rotate: -3deg; }
+.topbar__name {
+  font-family: var(--font-hand);
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-text-muted);
+}
+@media (min-width: 700px) { .topbar { display: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .chip.is-wiggling { animation: none; }
+  .check-row.is-checked .check-mark path { animation: none; stroke-dashoffset: 0; }
+}
+
+/* Lange Kategorienamen: Titel darf umbrechen, Zähler und Plus behalten Abstand */
+.card__title { min-width: 0; overflow-wrap: anywhere; }
+.card__header > .badge, .card__header > .btn { flex: 0 0 auto; }

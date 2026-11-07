@@ -1,0 +1,14 @@
+# Caddy: HTTPS-Türsteher vor der App (nur für docker-compose.online.yml).
+# {$DOMAIN} kommt aus der Datei .env – z. B. unserhaushalt.duckdns.org
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	header {
+		# Browser sollen die Seite nur noch verschlüsselt öffnen
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	reverse_proxy haushalt:8080
+}

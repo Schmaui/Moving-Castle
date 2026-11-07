@@ -1,0 +1,11 @@
+data
+docs
+test
+scripts
+node_modules
+.git
+*.md
+.env
+Caddyfile
+docker-compose*.yml
+.env.example

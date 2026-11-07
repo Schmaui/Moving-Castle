@@ -1,0 +1,161 @@
+/* =====================================================================
+   DESIGN-VARIABLEN – hier änderst du das Aussehen der ganzen App.
+   Thema: "Küchen-Skizzenbuch" – Papier, Aquarell, Handschrift.
+   Alle anderen CSS-Dateien verwenden nur diese Variablen.
+   ===================================================================== */
+
+:root {
+  /* ---------- Grundfarben (hell) ---------- */
+  --color-bg:            #f3e8d4;  /* Papier */
+  --color-surface:       #fffaf0;  /* Karten-Papier */
+  --color-surface-2:     #f7eedd;  /* Chips, Eingabefelder */
+  --color-surface-hover: #f0e2c8;
+  --color-border:        #dcc9aa;
+  --color-ink:           #3d2f24;  /* "Tinte": Linien, Ränder */
+  --color-text:          #3d2f24;
+  --color-text-muted:    #8a7461;
+
+  --color-accent:        #5d7d4c;  /* Salbeigrün */
+  --color-accent-hover:  #4c6a3d;
+  --color-accent-soft:   #e2e9d0;
+  --color-on-accent:     #fffaf0;
+
+  --color-missing:       #c8553d;  /* Terrakotta: "fehlt" */
+  --color-missing-soft:  #f6d9cc;
+  --color-on-missing:    #fffaf0;
+
+  --color-danger:        #b13a2a;
+  --color-danger-soft:   #f8ddd6;
+
+  --color-highlight:     #e4b04a;  /* Senfgelb: Akzente, Haftnotiz-Tape */
+  --color-note:          #f9e7a8;  /* Haftnotiz ("Rückgängig") */
+  --color-on-note:       #3d2f24;
+  --color-focus:         #d98c2b;
+
+  /* ---------- Kategorie-Töne (Aquarell-Pastelle) ----------
+     Jede Kategorie bekommt reihum einen Ton. Mehr Töne? Hier --tone-7 ergänzen,
+     in decor.css eine Zeile und in js/config.js "toneCount" erhöhen. */
+  --tone-1: #c9d8b0;  /* Salbei */
+  --tone-2: #f2c4ae;  /* Pfirsich */
+  --tone-3: #f1d898;  /* Senf */
+  --tone-4: #bcd3dc;  /* Taubenblau */
+  --tone-5: #e8c3cc;  /* Altrosa */
+  --tone-6: #dcc6ad;  /* Ton */
+  --tone-strength: 42%;  /* wie stark die Karte eingefärbt ist */
+
+  /* ---------- Papier & Deko ---------- */
+  --texture-grain: url("../img/grain.svg");
+  --wash-1: rgb(201 216 176 / 0.55);   /* Aquarellfleck oben links */
+  --wash-2: rgb(242 196 174 / 0.45);   /* Aquarellfleck unten rechts */
+  --tape-color: rgb(228 176 74 / 0.55);
+  --line-color: rgb(110 150 180 / 0.28);   /* Linien im Notizblock */
+  --margin-color: rgb(200 85 61 / 0.45);   /* roter Rand im Notizblock */
+  --tilt: 0.5deg;          /* wie schief die Karten hängen (0deg = gerade) */
+
+  --shadow-card:  0 1px 0 rgb(61 47 36 / 0.06), 0 14px 28px -16px rgb(90 55 25 / 0.45);
+  --shadow-print: 3px 3px 0 rgb(61 47 36 / 0.85);   /* "Druck"-Schatten für Buttons */
+  --shadow-float: 0 12px 34px -8px rgb(60 35 15 / 0.35);
+
+  /* ---------- Schrift ---------- */
+  --font-body:    "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: "Fraunces", Georgia, serif;
+  --font-hand:    "Caveat", "Segoe Print", "Bradley Hand", cursive;
+  --heading-variation: "SOFT" 100, "WONK" 1;  /* weiche, verspielte Fraunces-Form */
+
+  --font-size-xs:   0.75rem;
+  --font-size-sm:   0.875rem;
+  --font-size-base: 1rem;
+  --font-size-lg:   1.2rem;
+  --font-size-xl:   1.5rem;
+  --font-size-2xl:  2.4rem;
+  --font-size-hand: 1.45rem;   /* Handschrift wirkt kleiner, daher größer */
+  --font-weight-normal: 450;
+  --font-weight-medium: 650;
+  --font-weight-bold:   800;
+  --line-height: 1.45;
+
+  /* ---------- Abstände ---------- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+
+  /* ---------- Rundungen (absichtlich ungleichmäßig = handgemacht) ---------- */
+  --radius-sm:   10px;
+  --radius-md:   16px;
+  --radius-lg:   26px;
+  --radius-pill: 999px;
+  --radius-card: 28px 22px 30px 20px / 22px 30px 20px 28px;
+  --radius-chip: 22px 18px 24px 16px / 18px 24px 16px 22px;
+  --radius-blob: 58% 42% 55% 45% / 48% 56% 44% 52%;
+  --radius-nav:  30px 26px 32px 24px / 26px 32px 24px 30px;
+
+  /* ---------- Größen ---------- */
+  --tap-size:       52px;
+  --chip-height:    44px;
+  --nav-height:     68px;
+  --sidebar-width:  240px;
+  --liste-width:    400px;
+  --content-max:    1500px;
+  --card-min-width: 300px;
+
+  /* ---------- Bewegung ---------- */
+  --transition-fast: 140ms ease;
+  --transition:      220ms cubic-bezier(.3, .7, .4, 1.2);  /* leicht federnd */
+
+  color-scheme: light dark;
+}
+
+/* ---------- Dunkelmodus: "Abends bei Kerzenlicht" ---------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-bg:            #211a15;
+    --color-surface:       #2d241d;
+    --color-surface-2:     #3a2f26;
+    --color-surface-hover: #463a2f;
+    --color-border:        #4d3f32;
+    --color-ink:           #f1e3cf;
+    --color-text:          #f3e6d3;
+    --color-text-muted:    #b8a28a;
+
+    --color-accent:        #a6c48f;
+    --color-accent-hover:  #bad5a4;
+    --color-accent-soft:   #34402a;
+    --color-on-accent:     #1d2516;
+
+    --color-missing:       #e8866a;
+    --color-missing-soft:  #4d2c22;
+    --color-on-missing:    #2a140d;
+
+    --color-danger:        #f08f7d;
+    --color-danger-soft:   #4a2520;
+
+    --color-highlight:     #e9be63;
+    --color-note:          #efd98f;
+    --color-on-note:       #3d2f24;
+
+    --tone-1: #5d7350;
+    --tone-2: #8a5644;
+    --tone-3: #8a7038;
+    --tone-4: #4c6672;
+    --tone-5: #7b4f5a;
+    --tone-6: #6e5a45;
+    --tone-strength: 30%;
+
+    --wash-1: rgb(233 170 90 / 0.13);   /* warmer Lampenschein */
+    --wash-2: rgb(150 90 120 / 0.14);
+    --tape-color: rgb(233 190 99 / 0.35);
+    --line-color: rgb(160 190 210 / 0.16);
+    --margin-color: rgb(232 134 106 / 0.4);
+
+    --shadow-card:  0 1px 0 rgb(0 0 0 / 0.3), 0 16px 30px -16px rgb(0 0 0 / 0.8);
+    --shadow-print: 3px 3px 0 rgb(0 0 0 / 0.55);
+    --shadow-float: 0 12px 34px -8px rgb(0 0 0 / 0.6);
+  }
+}
+
+/* Tipp: Breakpoints (Handy / Tablet / PC) stehen in layout.css,
+   weil CSS-Variablen in @media-Regeln nicht funktionieren. */

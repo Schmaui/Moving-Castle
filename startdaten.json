@@ -1,0 +1,37 @@
+{
+  "_hinweis": "Wird nur beim ALLERERSTEN Start eingelesen (leere Datenbank). Artikel entweder als Text oder als Objekt: {\"name\": \"Milch\", \"quantity\": 2, \"unit\": \"l\", \"note\": \"Hafermilch\"}",
+  "kategorien": [
+    {
+      "name": "Konserven", "icon": "dose", "emoji": "🥫",
+      "artikel": ["Tomaten (gehackt)", "Kidneybohnen", "Champignons", "Mais", "Mandarinen-Orangen (Dose)", "Soja-Granulat", "Soja-Chunks (trocken)", "Getrocknete Tomaten", "Weinblätter", "Gemüsebrühe"]
+    },
+    {
+      "name": "Frühstück", "icon": "schuessel", "emoji": "🥣",
+      "artikel": ["Nutella", "Erdnussbutter", "Kokosöl", "Hagebuttenmarmelade", "Kaffee", "Aufstriche", "Schmaui Müsli", "Kait Müsli", "Nussmix"]
+    },
+    {
+      "name": "Nudeln & Co.", "icon": "nudeln", "emoji": "🍝",
+      "artikel": ["Fusilli", "Penne", "Lasagneteig", "Noriblätter"]
+    },
+    {
+      "name": "Gewürze", "icon": "gewuerz", "emoji": "🌶️",
+      "artikel": ["Curry", "Garam Masala", "Paprika geräuchert", "Chili", "Paprika edelsüß", "Zimt", "Knoblauchpulver", "Italienische Kräuter", "Dill", "Pumpkin Spice", "Kräuter der Provence", "Salz", "Pfeffer"]
+    },
+    {
+      "name": "Brötchen", "icon": "broetchen", "emoji": "🥐",
+      "artikel": ["Normale Brötchen", "Rosenbrötchen"]
+    },
+    {
+      "name": "Süßes & Snacks", "icon": "keksdose", "emoji": "🍪",
+      "artikel": ["Chips", "Salzige Chips", "Kekse", "Lebkuchen", "Anderes"]
+    },
+    {
+      "name": "Kühlschrank", "icon": "milch", "emoji": "🧊",
+      "artikel": ["Gurke", "Tomate", "Salat", "Paprika", "Mayo", "Ketchup", "Ahornsirup", "Sriracha", "Butter", "Joghurt", "Skyr", "Aufschnitt", "Aufstrich", "Salsa", "Frühlingszwiebeln", "Tofu", "Milch"]
+    },
+    {
+      "name": "Kartoffeln & Zwiebeln", "icon": "kartoffeln", "emoji": "🥔",
+      "artikel": ["Kartoffeln", "Zwiebeln", "Knoblauch"]
+    }
+  ]
+}

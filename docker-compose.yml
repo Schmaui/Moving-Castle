@@ -1,0 +1,15 @@
+services:
+  haushalt:
+    build: .
+    image: haushalt-app:latest
+    container_name: haushalt
+    restart: unless-stopped
+    ports:
+      - "8080:8080"          # außen:innen – links ändern, falls 8080 belegt ist
+    volumes:
+      - ./data:/data         # hier liegt haushalt.db (für Backups einfach diesen Ordner kopieren)
+    environment:
+      - TZ=Europe/Berlin
+    # Falls "Datenordner nicht beschreibbar" im Log steht: eigene Benutzer-ID eintragen
+    # (herausfinden mit: id -u und id -g)
+    # user: "1000:1000"
