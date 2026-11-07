@@ -557,5 +557,5 @@
 }
 
 /* Lange Kategorienamen: Titel darf umbrechen, Zähler und Plus behalten Abstand */
-.card__title { min-width: 0; overflow-wrap: anywhere; }
+.card__title { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
 .card__header > .badge, .card__header > .btn { flex: 0 0 auto; }
