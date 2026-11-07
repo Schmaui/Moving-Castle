@@ -18,6 +18,8 @@ import {
   pushSupport, currentSubscription, enablePush, disablePush, savePrefs, testPush, loadPrefs, refreshPush,
 } from '../push.js';
 import { formatWhen } from '../util.js';
+import { APP_ICONS, appIcon, setAppIcon, iconUrl } from '../appicon.js';
+import { isStandalone } from '../push.js';
 import {
   addPhoto, deletePhoto, updatePhoto, sortedPhotos, updateSettings, logout,
   updatePerson, uploadAvatar, removeAvatar, addMessage, deleteMessage, messagesFromMe, me,
@@ -586,12 +588,35 @@ function deviceSection(state, ctx) {
         onclick: () => { setMyId(p.id); Object.assign(wid, { info: null, script: null }); refreshPush(); ctx.rerender(); },
       }, avatar(p, { size: 'sm' }), p.name))),
     ),
+    appIconChoice(ctx),
     state.authEnabled && h('div', { class: 'choice' },
       h('button', {
         type: 'button', class: 'btn',
         onclick: () => { if (confirm('Dieses Gerät wirklich abmelden?')) logout(); },
       }, iconLabel('tuer', 'Abmelden')),
     ),
+  );
+}
+
+// App-Icon fürs iPhone (Original oder „Nacht“) – gilt nur für dieses Gerät, siehe js/appicon.js
+function appIconChoice(ctx) {
+  const current = appIcon();
+  const standalone = isStandalone();
+  return h('fieldset', { class: 'choice' },
+    h('legend', { class: 'choice__legend' }, 'App-Icon'),
+    h('div', { class: 'icon-choice' }, APP_ICONS.map((i) => h('button', {
+      type: 'button', class: ['icon-choice__item', i.id === current && 'is-chosen'], 'aria-pressed': String(i.id === current),
+      'data-focus-key': `app-icon-${i.id}`, disabled: standalone,
+      onclick: () => { setAppIcon(i.id); ctx.rerender(); showToast(`Icon „${i.label}“ gewählt – jetzt neu zum Home-Bildschirm hinzufügen`); },
+    }, h('img', { src: iconUrl(i.id), alt: '', class: 'icon-choice__img' }), h('span', {}, i.label)))),
+    standalone
+      ? h('p', { class: 'settings__sub' }, 'Zum Ändern die App in Safari öffnen (nicht über das Symbol) und hier unter „Mehr → Dieses Gerät“ das Icon aussuchen.')
+      : h('ol', { class: 'steps icon-choice__steps' },
+        h('li', {}, 'Oben das Icon antippen.'),
+        h('li', {}, 'Das alte App-Symbol auf dem Home-Bildschirm lange drücken → „App entfernen“.'),
+        h('li', {}, 'Hier in Safari unten auf „Teilen“ → „Zum Home-Bildschirm“ → „Hinzufügen“.'),
+        h('li', {}, 'Die App über das neue Symbol öffnen, anmelden und unter „Mehr“ die Benachrichtigungen wieder einschalten.'),
+      ),
   );
 }
 

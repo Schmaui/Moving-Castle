@@ -834,9 +834,17 @@ function check(cond, msg) {
   page = await safari.newPage(); watch(page);
   await page.goto(BASE + '/#/einstellungen');
   await page.waitForSelector('#view-einstellungen .settings__card:has-text("Zum Home-Bildschirm")');
-  await page.locator('#view-einstellungen .settings__card:has-text("Zum Home-Bildschirm")').scrollIntoViewIfNeeded();
+  await page.locator('#view-einstellungen .settings__card:has(.card__title:text-is("Benachrichtigungen"))').scrollIntoViewIfNeeded();
   await page.screenshot({ path: path.join(OUT, 'handy-benachrichtigungen-home.jpg'), quality: 85 });
   check(true, 'iPhone in Safari: Anleitung „Zum Home-Bildschirm“');
+  await page.click('[data-focus-key="app-icon-nacht"]');
+  await page.waitForSelector('[data-focus-key="app-icon-nacht"][aria-pressed="true"]');
+  await page.locator('.icon-choice').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'handy-app-icon.jpg'), quality: 85 });
+  await page.reload();
+  await page.waitForSelector('[data-focus-key="app-icon-nacht"][aria-pressed="true"]');
+  check(await page.evaluate(() => document.querySelector('link[rel="apple-touch-icon"]').getAttribute('href')) === 'icons/apple-touch-icon-nacht.png', 'App-Icon „Nacht“ gewählt, bleibt nach Neuladen (fürs Hinzufügen zum Home-Bildschirm)');
+  check((await fetch(BASE + '/icons/apple-touch-icon-nacht.png')).ok, 'Nacht-Icon ist abrufbar');
   await safari.close();
 
   // iPhone als Home-Bildschirm-App. Den Push-Dienst von Apple spielt ein kleiner Server hier.

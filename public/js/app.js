@@ -12,6 +12,7 @@ import { showToast } from './ui/toast.js';
 import { afterRender, pageIn } from './ui/fx.js';
 import { doorStart } from './ui/door.js';
 import { registerServiceWorker, refreshPush } from './push.js';
+import { applyAppIcon } from './appicon.js';
 
 const navList = document.getElementById('nav-list');
 const viewsEl = document.getElementById('views');
@@ -178,6 +179,7 @@ window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
   resizeTimer = setTimeout(() => scatterPhotos(viewsEl), 150);
 });
+applyAppIcon(); // ausgesuchtes App-Icon (Mehr → Dieses Gerät)
 applyRoute();
 render();
 doorStart(); // Kühlschranktür: erst zu (Nachrichten!), dann auf – siehe ui/door.js

@@ -188,6 +188,26 @@ light_only = light_only.replace('animation:', 'animation-name: none; --x:')
 write('../icons/icon.svg', f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">{light_only}{icon_bg}'
       + g(100, 104, .9, f'<g transform="translate(-100 -100)">{house(False)}</g>') + '</svg>\n')
 
+# App-Icon „Nacht“ (Kaits Wunsch): blauer Nachthimmel, großer Mond, Sterne, Fenster leuchtet warm,
+# Katze als dunkle Silhouette im Fenster. Auswahl in der App unter „Mehr → Dieses Gerät“.
+dark_rules = STYLE.split('@media (prefers-color-scheme: dark) {')[1].split('}\n</style>')[0]
+night_style = (light_only.replace('</style>', dark_rules.replace('    .night { display: inline; } .day { display: none; }', '')
+               + '.night, .day { display: none; } .glass { fill: #f7d98a; } .solid { fill: #2a2440; }'
+               + ' .moon { fill: #f8e7aa; } .star { fill: #f8e7aa; } .glow { fill: #f7d98a; opacity: .14; } </style>', 1))
+night_bg = ('<defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1f2c52"/>'
+            '<stop offset="1" stop-color="#3d5a8c"/></linearGradient></defs>'
+            '<rect width="200" height="200" fill="url(#sky)"/>'
+            '<path class="w" fill="#4a6aa0" d="M100 30c46 0 80 28 80 72s-30 80-80 80-82-34-80-78 34-74 80-74z" style="opacity:.45"/>'
+            # großer Mond oben links + Sterne
+            '<circle class="glow" cx="44" cy="44" r="26"/>'
+            '<path class="moon w" d="M52 22c-14 2-24 14-22 28s16 23 30 20c-11-3-19-13-18-25 0-10 5-18 10-23z"/>'
+            '<path class="ink thin" d="M52 22c-14 2-24 14-22 28s16 23 30 20c-11-3-19-13-18-25 0-10 5-18 10-23z"/>'
+            + ''.join(f'<path class="star" d="M{x} {y-r}l{r*.3:.1f} {r*.7:.1f} {r*.7:.1f} {r*.3:.1f}-{r*.7:.1f} {r*.3:.1f}-{r*.3:.1f} {r*.7:.1f}-{r*.3:.1f}-{r*.7:.1f}-{r*.7:.1f}-{r*.3:.1f} {r*.7:.1f}-{r*.3:.1f}z"/>'
+                      for x, y, r in [(160, 30, 5), (182, 58, 3.5), (122, 22, 3), (20, 88, 3), (176, 104, 2.6), (88, 18, 2.4)]))
+write('../icons/icon-nacht.svg', f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">{night_style}{night_bg}'
+      + '<circle class="glow" cx="100" cy="122" r="34"/>'
+      + g(100, 104, .9, f'<g transform="translate(-100 -100)">{house(False)}</g>') + '</svg>\n')
+
 # ---------- Szene 2: Einkaufsliste leer – Tee, Katze schläft, Pflanze ----------
 empty = ('<path class="w sage" d="M10 120c40-12 160-12 200 0-40 8-160 8-200 0z"/>'
          + g(64, 118, 1, teacup())
