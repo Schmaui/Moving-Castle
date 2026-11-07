@@ -9,9 +9,10 @@ export const CONFIG = {
   undoDurationMs: 5000,
   // Startseite, wenn keine/unbekannte Adresse aufgerufen wird
   defaultRoute: 'liste',
-  // Am PC (ab 1100px) werden diese zwei Ansichten nebeneinander gezeigt.
+  // Am PC (ab 1100px) werden diese Ansichten nebeneinander gezeigt:
+  // links eine aus main (Vorrat oder Haushalt), rechts aside (Einkaufsliste).
   // Auf null setzen, um immer nur eine Ansicht zu zeigen.
-  split: { main: 'vorrat', aside: 'liste' },
+  split: { main: ['vorrat', 'haushalt'], aside: 'liste' },
   // Anzahl der Kategorie-Farbtöne (--tone-1 … --tone-N in css/tokens.css)
   toneCount: 6,
   // Standard-Symbol für neue Kategorien (Name aus js/ui/art.js)

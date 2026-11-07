@@ -27,12 +27,12 @@ for (const view of VIEWS) {
     h('span', { class: 'nav__label' }, view.navLabel || view.label),
     badge,
   );
-  navList.append(h('li', {}, link));
+  // inNav: false -> kein eigener Knopf (z. B. Haushalt und Kochen liegen unter "Küche")
+  if (view.inNav !== false) navList.append(h('li', {}, link));
 
   const section = h('section', {
     class: [
       'view', `view--${view.id}`,
-      CONFIG.split?.main === view.id && 'view--split-main',
       CONFIG.split?.aside === view.id && 'view--split-aside',
     ],
     id: `view-${view.id}`,
@@ -44,6 +44,7 @@ for (const view of VIEWS) {
 
 // ---------- Routing ----------
 let lastHash = null;
+let splitMain = [CONFIG.split?.main].flat()[0];
 function routeFromHash() {
   const id = location.hash.replace(/^#\/?/, '').split(/[/?]/)[0];
   return parts.has(id) ? id : null;
@@ -59,13 +60,19 @@ function applyRoute() {
   const changed = document.body.dataset.route !== id || lastHash !== location.hash;
   lastHash = location.hash;
   document.body.dataset.route = id;
-  const split = CONFIG.split && [CONFIG.split.main, CONFIG.split.aside].includes(id);
+  // PC: Hauptansicht (Vorrat oder Haushalt) links, Einkaufsliste rechts.
+  // Bei der Liste selbst bleibt links die zuletzt benutzte Hauptansicht stehen.
+  const mains = [CONFIG.split?.main].flat().filter(Boolean);
+  if (mains.includes(id)) splitMain = id;
+  const split = CONFIG.split && (mains.includes(id) || id === CONFIG.split.aside);
   document.body.classList.toggle('is-split', Boolean(split));
 
   for (const [viewId, p] of parts) {
-    const active = viewId === id;
-    p.section.classList.toggle('is-active', active);
-    if (active) p.link.setAttribute('aria-current', 'page');
+    p.section.classList.toggle('is-active', viewId === id);
+    p.section.classList.toggle('view--split-main', viewId === splitMain);
+    // Knopf leuchtet auch für Unterbereiche (Küche: Vorrat, Haushalt, Kochen)
+    const current = viewId === id || (p.view.navAlso || []).includes(id);
+    if (current) p.link.setAttribute('aria-current', 'page');
     else p.link.removeAttribute('aria-current');
   }
   if (changed) window.scrollTo(0, 0);

@@ -2,7 +2,7 @@
 // Antippen = gekauft -> verschwindet, mit "Rückgängig".
 import { h, plural, formatAmount, formatWhen } from '../util.js';
 import { viewHeader, categoryHeader, emptyState, loading, toneOf, iconLabel } from '../ui/components.js';
-import { setMissing, personById, buyItem, updateItem, addWish, deleteWish, restoreWish, recipeById } from '../store.js';
+import { setMissing, areaOf, personById, buyItem, updateItem, addWish, deleteWish, restoreWish, recipeById } from '../store.js';
 import { stepper } from './kochen.js';
 import { formatQty } from '../recipes.js';
 import { avatar, byline } from '../ui/people.js';
@@ -49,7 +49,9 @@ export default {
       }), h('div', { class: 'cards' }, wishCard(state, ctx), recentCard(state))];
     }
 
-    const cards = state.categories
+    // Erst Essen (Vorrat), darunter ein eigener Abschnitt "Haushalt" (Bad, Putzen …)
+    const cardsFor = (area) => state.categories
+      .filter((cat) => areaOf(cat) === area)
       .map((cat) => ({ cat, items: missing.filter((i) => i.categoryId === cat.id) }))
       .filter((g) => g.items.length > 0)
       .map(({ cat, items }) =>
@@ -65,8 +67,19 @@ export default {
             ),
           ))),
         ));
+    const food = cardsFor('kueche');
+    const house = cardsFor('haushalt');
+    const houseIds = new Set(state.categories.filter((c) => areaOf(c) === 'haushalt').map((c) => c.id));
+    const houseCount = missing.filter((i) => houseIds.has(i.categoryId)).length;
 
-    return [header, h('div', { class: 'cards' }, cards, wishCard(state, ctx), recentCard(state))];
+    return [
+      header,
+      food.length > 0 && h('div', { class: 'cards' }, food),
+      house.length > 0 && h('h2', { class: 'list-section' }, icon('putzmittel', { wash: false }), 'Haushalt',
+        h('span', { class: 'list-section__count' }, `${houseCount}×`)),
+      house.length > 0 && h('div', { class: 'cards' }, house),
+      h('div', { class: 'cards' }, wishCard(state, ctx), recentCard(state)),
+    ];
   },
 };
 

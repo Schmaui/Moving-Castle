@@ -1,5 +1,5 @@
 {
-  "_hinweis": "Wird nur beim ALLERERSTEN Start eingelesen (leere Datenbank). Artikel entweder als Text oder als Objekt: {\"name\": \"Milch\", \"quantity\": 2, \"unit\": \"l\", \"note\": \"Hafermilch\"}",
+  "_hinweis": "Wird nur beim ALLERERSTEN Start eingelesen (leere Datenbank). \"bereich\": \"haushalt\" = Kategorie erscheint unter Küche → Haushalt statt im Vorrat. Artikel entweder als Text oder als Objekt: {\"name\": \"Milch\", \"quantity\": 2, \"unit\": \"l\", \"note\": \"Hafermilch\"}",
   "kategorien": [
     {
       "name": "Konserven", "icon": "dose", "emoji": "🥫",
@@ -40,6 +40,18 @@
     {
       "name": "Soßen", "icon": "flasche", "emoji": "🍶",
       "artikel": ["Sojasoße", "Tomatenmark", "Kokosmilch", "Mayo", "Ketchup", "Salsa"]
+    },
+    {
+      "name": "Bad & Körperpflege", "icon": "zahnpasta", "emoji": "🪥", "bereich": "haushalt",
+      "artikel": ["Zahnpasta", "Zahnbürsten", "Zahnseide", "Shampoo", "Spülung", "Duschgel", "Deo", "Seife", "Klopapier", "Taschentücher", "Wattepads", "Wattestäbchen"]
+    },
+    {
+      "name": "Putzen & Wäsche", "icon": "putzmittel", "emoji": "🧽", "bereich": "haushalt",
+      "artikel": ["Spülmittel", "Spülmaschinentabs", "Klarspüler", "Spülmaschinensalz", "Waschmittel", "Weichspüler", "Allzweckreiniger", "Badreiniger", "WC-Reiniger", "Glasreiniger", "Schwämme", "Müllbeutel"]
+    },
+    {
+      "name": "Haushalt & Sonstiges", "icon": "rolle", "emoji": "🧻", "bereich": "haushalt",
+      "artikel": ["Küchenrolle", "Alufolie", "Frischhaltefolie", "Backpapier", "Gefrierbeutel", "Batterien", "Glühbirnen", "Kerzen", "Streichhölzer"]
     }
   ]
 }

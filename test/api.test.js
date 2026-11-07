@@ -40,8 +40,11 @@ after(() => {
 test('Startdaten werden eingelesen', async () => {
   const { status, body } = await json('GET', '/api/state');
   assert.equal(status, 200);
-  assert.equal(body.categories.length, 10);
-  assert.equal(body.items.length, 74);
+  assert.equal(body.categories.length, 13);
+  assert.equal(body.items.length, 107);
+  const house = body.categories.filter((c) => c.area === 'haushalt').map((c) => c.name);
+  assert.deepEqual(house, ['Bad & Körperpflege', 'Putzen & Wäsche', 'Haushalt & Sonstiges']);
+  assert.ok(body.items.some((i) => i.name === 'Zahnpasta'), 'Haushalts-Artikel sind dabei');
   assert.ok(body.items.some((i) => i.name === 'Olivenöl'), 'Grundzutaten sind dabei');
   assert.equal(body.categories[0].name, 'Konserven');
   assert.equal(body.categories[0].emoji, '🥫');
@@ -108,6 +111,10 @@ test('HTML wird als Text gespeichert, Steuerzeichen entfernt', async () => {
 test('Kategorien: anlegen, volle nicht löschbar, leere löschbar', async () => {
   const cat = await json('POST', '/api/categories', { name: 'Getränke', emoji: '🥤' });
   assert.equal(cat.status, 201);
+  assert.equal(cat.body.area, 'kueche', 'neue Kategorien landen standardmäßig im Vorrat');
+  const moved = await json('PATCH', `/api/categories/${cat.body.id}`, { area: 'haushalt' });
+  assert.equal(moved.body.area, 'haushalt');
+  assert.equal((await json('PATCH', `/api/categories/${cat.body.id}`, { area: 'garten' })).status, 400);
   const full = await json('DELETE', '/api/categories/1');
   assert.equal(full.status, 409);
   const empty = await json('DELETE', `/api/categories/${cat.body.id}`);

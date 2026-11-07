@@ -14,7 +14,7 @@ export function seedIfEmpty(db, file) {
 
   const data = JSON.parse(fs.readFileSync(file, 'utf8'));
   const insertCategory = db.prepare(
-    'INSERT INTO categories (name, emoji, icon, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+    'INSERT INTO categories (name, emoji, icon, area, sort, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)'
   );
   const insertItem = db.prepare(`
     INSERT INTO items (category_id, name, missing, quantity, unit, note, sort, created_at, updated_at)
@@ -25,7 +25,7 @@ export function seedIfEmpty(db, file) {
   transaction(db, () => {
     const ts = now();
     data.kategorien.forEach((cat, ci) => {
-      const { lastInsertRowid: catId } = insertCategory.run(cat.name, cat.emoji || '📦', cat.icon || 'kiste', ci, ts, ts);
+      const { lastInsertRowid: catId } = insertCategory.run(cat.name, cat.emoji || '📦', cat.icon || 'kiste', cat.bereich === 'haushalt' ? 'haushalt' : 'kueche', ci, ts, ts);
       (cat.artikel || []).forEach((entry) => {
         // Ein Artikel ist entweder ein Text ("Milch") oder ein Objekt
         // ({ "name": "Milch", "quantity": 2, "unit": "l", "note": "Hafer" })

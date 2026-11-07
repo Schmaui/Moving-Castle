@@ -184,9 +184,19 @@ export function restoreItem(item) {
   return mutate(null, () => api.create('items', { categoryId, name, missing, quantity, unit, note, sort, minQty }));
 }
 
-export function addCategory(name, icon) {
+export function addCategory(name, icon, area = 'kueche') {
   const sort = Math.max(-1, ...state.categories.map((c) => c.sort)) + 1;
-  return mutate(null, () => api.create('categories', { name, icon: icon || CONFIG.defaultIcon, sort }));
+  return mutate(null, () => api.create('categories', { name, icon: icon || CONFIG.defaultIcon, sort, area }));
+}
+
+/** Bereich einer Kategorie: 'kueche' (Vorrat, Essen) oder 'haushalt' (Bad, Putzen …). */
+export const areaOf = (category) => category?.area || 'kueche';
+
+export function updateCategory(category, patch) {
+  return mutate(
+    () => Object.assign(state.categories.find((c) => c.id === category.id) || {}, patch),
+    () => api.update('categories', category.id, patch)
+  );
 }
 
 export function deleteCategory(category) {

@@ -292,6 +292,41 @@ export const MIGRATIONS = [
   DELETE FROM notes WHERE kind = 'dokument';
   `,
 
+
+  // 10: Haushalt – Kategorien gehören jetzt zu einem Bereich: 'kueche' (Essen) oder 'haushalt'
+  //     (Bad, Putzen …). Neue Haushalts-Kategorien nur bei schon bestehendem Vorrat anlegen –
+  //     neue Installationen bekommen sie direkt aus startdaten.json.
+  `
+  ALTER TABLE categories ADD COLUMN area TEXT NOT NULL DEFAULT 'kueche';
+  INSERT INTO categories (name, emoji, icon, area, sort, created_at, updated_at)
+    SELECT 'Bad & Körperpflege', '🪥', 'zahnpasta', 'haushalt', (SELECT MAX(sort) + 1 FROM categories), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE EXISTS (SELECT 1 FROM categories)
+      AND NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Bad & Körperpflege' COLLATE NOCASE);
+  INSERT INTO items (category_id, name, sort, created_at, updated_at)
+    SELECT c.id, v.name, 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    FROM categories c, (SELECT 'Zahnpasta' AS name UNION ALL SELECT 'Zahnbürsten' UNION ALL SELECT 'Zahnseide' UNION ALL SELECT 'Shampoo' UNION ALL SELECT 'Spülung' UNION ALL SELECT 'Duschgel' UNION ALL SELECT 'Deo' UNION ALL SELECT 'Seife' UNION ALL SELECT 'Klopapier' UNION ALL SELECT 'Taschentücher' UNION ALL SELECT 'Wattepads' UNION ALL SELECT 'Wattestäbchen') v
+    WHERE c.name = 'Bad & Körperpflege' AND c.area = 'haushalt'
+      AND NOT EXISTS (SELECT 1 FROM items i WHERE i.category_id = c.id AND i.name = v.name COLLATE NOCASE);
+  INSERT INTO categories (name, emoji, icon, area, sort, created_at, updated_at)
+    SELECT 'Putzen & Wäsche', '🧽', 'putzmittel', 'haushalt', (SELECT MAX(sort) + 1 FROM categories), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE EXISTS (SELECT 1 FROM categories)
+      AND NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Putzen & Wäsche' COLLATE NOCASE);
+  INSERT INTO items (category_id, name, sort, created_at, updated_at)
+    SELECT c.id, v.name, 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    FROM categories c, (SELECT 'Spülmittel' AS name UNION ALL SELECT 'Spülmaschinentabs' UNION ALL SELECT 'Klarspüler' UNION ALL SELECT 'Spülmaschinensalz' UNION ALL SELECT 'Waschmittel' UNION ALL SELECT 'Weichspüler' UNION ALL SELECT 'Allzweckreiniger' UNION ALL SELECT 'Badreiniger' UNION ALL SELECT 'WC-Reiniger' UNION ALL SELECT 'Glasreiniger' UNION ALL SELECT 'Schwämme' UNION ALL SELECT 'Müllbeutel') v
+    WHERE c.name = 'Putzen & Wäsche' AND c.area = 'haushalt'
+      AND NOT EXISTS (SELECT 1 FROM items i WHERE i.category_id = c.id AND i.name = v.name COLLATE NOCASE);
+  INSERT INTO categories (name, emoji, icon, area, sort, created_at, updated_at)
+    SELECT 'Haushalt & Sonstiges', '🧻', 'rolle', 'haushalt', (SELECT MAX(sort) + 1 FROM categories), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE EXISTS (SELECT 1 FROM categories)
+      AND NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Haushalt & Sonstiges' COLLATE NOCASE);
+  INSERT INTO items (category_id, name, sort, created_at, updated_at)
+    SELECT c.id, v.name, 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    FROM categories c, (SELECT 'Küchenrolle' AS name UNION ALL SELECT 'Alufolie' UNION ALL SELECT 'Frischhaltefolie' UNION ALL SELECT 'Backpapier' UNION ALL SELECT 'Gefrierbeutel' UNION ALL SELECT 'Batterien' UNION ALL SELECT 'Glühbirnen' UNION ALL SELECT 'Kerzen' UNION ALL SELECT 'Streichhölzer') v
+    WHERE c.name = 'Haushalt & Sonstiges' AND c.area = 'haushalt'
+      AND NOT EXISTS (SELECT 1 FROM items i WHERE i.category_id = c.id AND i.name = v.name COLLATE NOCASE);
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];

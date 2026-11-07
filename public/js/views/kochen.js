@@ -9,7 +9,7 @@
 //
 // Der Abgleich mit dem Vorrat steckt in js/recipes.js.
 import { h, today, addDays, formatWhen, weekdayLong, weekday, shortDate, mondayOf } from '../util.js';
-import { viewHeader, emptyState, loading, iconLabel } from '../ui/components.js';
+import { viewHeader, emptyState, loading, iconLabel, kitchenTabs } from '../ui/components.js';
 import { icon } from '../ui/art.js';
 import { avatar } from '../ui/people.js';
 import { showToast } from '../ui/toast.js';
@@ -43,6 +43,7 @@ export default {
   id: 'kochen',
   label: 'Kochen',
   icon: 'topf',
+  inNav: false,   // liegt in der Leiste unter "Küche" (Reiter oben)
 
   render(state, ctx) {
     if (!state.loaded) return loading();
@@ -57,6 +58,7 @@ export default {
     } else {
       const tab = section === 'rezepte' || section === 'lieblinge' ? section : 'woche';
       content = [
+        kitchenTabs('kochen'),
         viewHeader({ id: 'title-kochen', title: 'Kochen', subtitle: subtitle(state, tab) }),
         tabs(tab),
         tab === 'woche' ? weekView(state, ctx) : listView(state, ctx, tab),

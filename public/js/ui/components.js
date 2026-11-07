@@ -46,3 +46,17 @@ export function loading() {
 export function iconLabel(name, text) {
   return [icon(name, { wash: false, className: 'art--btn' }), text && h('span', {}, text)];
 }
+
+/** Reiter oben in der Küche: Vorrat · Haushalt · Kochen (alle unter dem Knopf "Küche"). */
+export function kitchenTabs(active) {
+  const tab = (id, label, iconName) => h('a', {
+    class: ['kitchen-tabs__tab', active === id && 'is-active'],
+    href: `#/${id}`,
+    'aria-current': active === id ? 'page' : null,
+  }, icon(iconName), h('span', {}, label));
+  return h('nav', { class: 'kitchen-tabs', 'aria-label': 'Küche' },
+    tab('vorrat', 'Vorrat', 'regal'),
+    tab('haushalt', 'Haushalt', 'putzmittel'),
+    tab('kochen', 'Kochen', 'topf'),
+  );
+}

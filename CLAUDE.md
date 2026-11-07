@@ -86,6 +86,19 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   Update-Pfad von Migration 8 → 9 mit alter DB getestet.
   Noch von den Nutzern am echten Gerät zu prüfen: PDF öffnen auf dem iPhone (öffnet neuen Tab – bei App vom
   Home-Bildschirm evtl. Anmeldung nötig?), QR mit echtem Handy scannen.
+- **Küche + Haushalt (7.11.2026): gebaut, wartet auf „passt“** (Branch `claude/vigilant-noether-1h6c6p`,
+  noch NICHT auf main). Entscheidungen (Klick-Fragen):
+  - Leiste: Liste · Küche · Aufgaben · Pinnwand · Mehr (5 Knöpfe). „Küche“ = View `vorrat`
+    (navLabel), Reiter oben Vorrat · Haushalt · Kochen (`kitchenTabs` in `ui/components.js`).
+    Views `haushalt` und `kochen` haben `inNav: false`; `navAlso` lässt „Küche“ leuchten.
+    Routen `#/vorrat`, `#/haushalt`, `#/kochen` bleiben (NFC!).
+  - Kategorien haben `area` ('kueche' | 'haushalt', Migration 10). Haushalt = gleiche Ansicht wie
+    Vorrat (`stockView` in `views/vorrat.js`), ohne Fotos/Heute-Zettel. Start-Kategorien: Bad &
+    Körperpflege, Putzen & Wäsche, Haushalt & Sonstiges (auch in startdaten.json mit "bereich").
+    Im Bearbeiten-Modus Knopf „→ Haushalt“/„→ Vorrat“ zum Verschieben einer Kategorie.
+  - Einkaufsliste: erst Essen, darunter Abschnitt „Haushalt“. PC: links Vorrat ODER Haushalt
+    (`CONFIG.split.main` ist jetzt eine Liste), rechts die Liste.
+  Update-Pfad Migration 9 → 10 mit alter DB getestet.
 - Ganz am Ende (Wunsch der Nutzer): automatische Sicherung auf den Mac der Nutzer. Plan: Skript
   `scripts/mac-backup-einrichten.sh` (SSH-Schlüssel einrichten, LaunchAgent täglich, `rsync` von
   `root@2.31.137.100:/opt/haushalt/data/backups/` nach `~/moving-castle-backup/` – nicht nach

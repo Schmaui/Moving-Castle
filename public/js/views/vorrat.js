@@ -1,14 +1,16 @@
-// Ansicht "Vorrat" (/#/vorrat): alle Artikel als Chips pro Kategorie.
+// Ansichten "Vorrat" (/#/vorrat, Essen) und "Haushalt" (/#/haushalt, Bad, Putzen …):
+// alle Artikel als Chips pro Kategorie. Beide liegen in der Leiste unter "Küche"
+// (Reiter oben: Vorrat · Haushalt · Kochen, siehe kitchenTabs in ui/components.js).
 // Antippen = fehlt (rot, landet auf der Einkaufsliste). Nochmal = doch da.
-// "Bearbeiten" schaltet den Löschmodus ein.
+// "Bearbeiten" schaltet den Bearbeiten-Modus ein.
 import { h, sameName } from '../util.js';
-import { viewHeader, categoryHeader, loading, toneOf, iconLabel } from '../ui/components.js';
+import { viewHeader, categoryHeader, loading, toneOf, iconLabel, kitchenTabs } from '../ui/components.js';
 import { icon, PICKABLE } from '../ui/art.js';
 import { photoTiles, photoHint } from '../ui/photos.js';
 import { dueNoteCard } from './aufgaben.js';
 import { todayMealCard } from './kochen.js';
 import { formatQty } from '../recipes.js';
-import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory, updateItem } from '../store.js';
+import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory, updateItem, updateCategory, areaOf } from '../store.js';
 import { showToast } from '../ui/toast.js';
 import { CONFIG } from '../config.js';
 
@@ -25,50 +27,70 @@ const ui = {
 // Vorschläge für Einheiten (man kann auch etwas anderes eintippen)
 const UNIT_SUGGESTIONS = ['Stück', 'Dose', 'Packung', 'Glas', 'Flasche', 'Becher', 'g', 'kg', 'ml', 'l'];
 
-export default {
-  id: 'vorrat',
-  label: 'Vorrat',
-  icon: 'regal',   // Symbolname aus js/ui/art.js
+/** Erzeugt die Ansicht für einen Bereich ('kueche' = Vorrat, 'haushalt'). */
+function stockView({ id, area, title, icon: iconName, intro, navLabel, navAlso, inNav = true, decorate = false }) {
+  return {
+    id,
+    label: title,
+    navLabel,
+    navAlso,
+    inNav,
+    icon: iconName,   // Symbolname aus js/ui/art.js
 
-  render(state, ctx) {
-    if (!state.loaded) return loading();
-    const missingCount = state.items.filter((i) => i.missing).length;
+    render(state, ctx) {
+      if (!state.loaded) return loading();
+      const categories = state.categories.filter((c) => areaOf(c) === area);
+      const catIds = new Set(categories.map((c) => c.id));
+      const items = state.items.filter((i) => catIds.has(i.categoryId));
+      const missingCount = items.filter((i) => i.missing).length;
 
-    const header = viewHeader({
-      id: 'title-vorrat',
-      title: 'Vorrat',
-      subtitle: ui.editMode
-        ? 'Tippe an, was du ändern oder löschen willst …'
-        : `Tippe an, was fehlt ~ ${missingCount} von ${state.items.length} fehlen`,
-      actions: [
-        h('button', {
-          type: 'button',
-          class: ['btn', ui.editMode && 'btn--active'],
-          'aria-pressed': String(ui.editMode),
-          'data-focus-key': 'edit-toggle',
-          onclick: () => { ui.editMode = !ui.editMode; ui.editing = null; ctx.rerender(); },
-        }, ui.editMode ? iconLabel('haken', 'Fertig') : iconLabel('stift', 'Bearbeiten')),
-      ],
-    });
+      const header = viewHeader({
+        id: `title-${id}`,
+        title,
+        subtitle: ui.editMode
+          ? 'Tippe an, was du ändern oder löschen willst …'
+          : `${intro} ~ ${missingCount} von ${items.length} fehlen`,
+        actions: [
+          h('button', {
+            type: 'button',
+            class: ['btn', ui.editMode && 'btn--active'],
+            'aria-pressed': String(ui.editMode),
+            'data-focus-key': `edit-toggle-${id}`,
+            onclick: () => { ui.editMode = !ui.editMode; ui.editing = null; ctx.rerender(); },
+          }, ui.editMode ? iconLabel('haken', 'Fertig') : iconLabel('stift', 'Bearbeiten')),
+        ],
+      });
 
-    const cards = state.categories.map((cat) =>
-      categoryCard(cat, state.items.filter((i) => i.categoryId === cat.id), ctx));
+      const cards = categories.map((cat) =>
+        categoryCard(cat, items.filter((i) => i.categoryId === cat.id), ctx));
 
-    // Polaroids zwischen die Zettel hängen: nach jedem X. Zettel eins (Einstellungen)
-    const every = state.settings?.photoEvery ?? 2;
-    const photos = every > 0 ? photoTiles() : [];
-    // Fällige Aufgaben hängen als erster Zettel an der Tür
-    const board = [dueNoteCard(state, ctx), todayMealCard(state)].filter(Boolean);
-    cards.forEach((card, i) => {
-      board.push(card);
-      if (every > 0 && (i + 1) % every === 0 && photos.length) board.push(photos.shift());
-      if (every > 0 && i === 0 && !(state.photos || []).length) board.push(photoHint());
-    });
-    board.push(...photos);
+      if (!decorate) return [kitchenTabs(id), header, h('div', { class: 'cards' }, cards, newCategoryCard(ctx, area))];
 
-    return [header, h('div', { class: 'cards' }, board, newCategoryCard(ctx))];
-  },
-};
+      // Polaroids zwischen die Zettel hängen: nach jedem X. Zettel eins (Einstellungen)
+      const every = state.settings?.photoEvery ?? 2;
+      const photos = every > 0 ? photoTiles() : [];
+      // Fällige Aufgaben und das heutige Essen hängen als erste Zettel an der Tür
+      const board = [dueNoteCard(state, ctx), todayMealCard(state)].filter(Boolean);
+      cards.forEach((card, i) => {
+        board.push(card);
+        if (every > 0 && (i + 1) % every === 0 && photos.length) board.push(photos.shift());
+        if (every > 0 && i === 0 && !(state.photos || []).length) board.push(photoHint());
+      });
+      board.push(...photos);
+
+      return [kitchenTabs(id), header, h('div', { class: 'cards' }, board, newCategoryCard(ctx, area))];
+    },
+  };
+}
+
+export default stockView({
+  id: 'vorrat', area: 'kueche', title: 'Vorrat', icon: 'topf', intro: 'Tippe an, was fehlt',
+  navLabel: 'Küche', navAlso: ['haushalt', 'kochen'], decorate: true,
+});
+
+export const haushalt = stockView({
+  id: 'haushalt', area: 'haushalt', title: 'Haushalt', icon: 'putzmittel', intro: 'Bad, Putzen & Co.', inNav: false,
+});
 
 function categoryCard(cat, items, ctx) {
   const missing = items.filter((i) => i.missing).length;
@@ -77,6 +99,17 @@ function categoryCard(cat, items, ctx) {
   return h('section', { class: 'card', 'data-tone': toneOf(cat) },
     categoryHeader(cat,
       missing > 0 && h('span', { class: 'badge badge--soft' }, `${missing} ${missing === 1 ? 'fehlt' : 'fehlen'}`),
+      ui.editMode && h('button', {
+        type: 'button',
+        class: 'btn btn--small btn--ghost card__move',
+        title: areaOf(cat) === 'haushalt' ? 'In den Vorrat (Essen) verschieben' : 'In den Haushalt verschieben',
+        'data-focus-key': `move-${cat.id}`,
+        onclick: () => {
+          const to = areaOf(cat) === 'haushalt' ? 'kueche' : 'haushalt';
+          updateCategory(cat, { area: to });
+          showToast(`„${cat.name}“ liegt jetzt unter ${to === 'haushalt' ? 'Haushalt' : 'Vorrat'}`);
+        },
+      }, areaOf(cat) === 'haushalt' ? '→ Vorrat' : '→ Haushalt'),
       canDeleteCategory && h('button', {
         type: 'button',
         class: 'btn btn--icon btn--danger',
@@ -237,17 +270,17 @@ function addForm(cat, items, ctx) {
   );
 }
 
-function newCategoryCard(ctx) {
+function newCategoryCard(ctx, area) {
   if (!ui.newCategoryOpen) {
     return h('div', { class: 'card card--new' },
       h('button', {
         type: 'button',
         class: 'btn btn--ghost',
-        'data-focus-key': 'new-cat-open',
+        'data-focus-key': `new-cat-open-${area}`,
         onclick: () => {
           ui.newCategoryOpen = true;
           ctx.rerender();
-          document.querySelector('[data-focus-key="new-cat-name"]')?.focus();
+          document.querySelector(`[data-focus-key="new-cat-name-${area}"]`)?.focus();
         },
       }, iconLabel('plus', 'Neue Kategorie')),
     );
@@ -261,7 +294,7 @@ function newCategoryCard(ctx) {
       e.preventDefault();
       const name = (ui.drafts.catName || '').trim();
       if (!name) return;
-      const created = await addCategory(name, chosen);
+      const created = await addCategory(name, chosen, area);
       if (created) close();
     },
     onkeydown: (e) => { if (e.key === 'Escape') close(); },
@@ -269,8 +302,8 @@ function newCategoryCard(ctx) {
     h('h2', { class: 'card__title' }, 'Neue Kategorie'),
     h('div', { class: 'add-form' },
       h('input', {
-        class: 'input', type: 'text', maxlength: 40, placeholder: 'Name, z. B. Getränke',
-        'aria-label': 'Name der Kategorie', 'data-focus-key': 'new-cat-name', autocomplete: 'off',
+        class: 'input', type: 'text', maxlength: 40, placeholder: area === 'haushalt' ? 'Name, z. B. Pflanzen' : 'Name, z. B. Getränke',
+        'aria-label': 'Name der Kategorie', 'data-focus-key': `new-cat-name-${area}`, autocomplete: 'off',
         enterkeyhint: 'done', value: ui.drafts.catName || '',
         oninput: (e) => { ui.drafts.catName = e.target.value; },
       }),
@@ -285,7 +318,7 @@ function newCategoryCard(ctx) {
         'aria-pressed': String(name === chosen),
         'aria-label': label,
         title: label,
-        'data-focus-key': `pick-${name}`,
+        'data-focus-key': `pick-${area}-${name}`,
         onclick: () => { ui.drafts.catIcon = name; ctx.rerender(); },
       }, icon(name))),
     ),

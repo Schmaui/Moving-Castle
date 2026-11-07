@@ -156,7 +156,7 @@ function check(cond, msg) {
   await page.screenshot({ path: path.join(OUT, 'handy-vorrat-hinzufuegen.jpg'), quality: 85 });
 
   // Löschmodus
-  await page.locator('button', { hasText: 'Bearbeiten' }).click();
+  await page.locator('#view-vorrat button', { hasText: 'Bearbeiten' }).click();
   await page.locator('.chip--delete', { hasText: 'Hafermilch' }).click();
   await page.locator('[data-focus-key="edit-delete"]').click();
   await page.waitForTimeout(400);
@@ -172,7 +172,25 @@ function check(cond, msg) {
   check(true, 'Bearbeiten: Menge und Mindestmenge gespeichert');
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: path.join(OUT, 'handy-vorrat-loeschmodus.jpg'), quality: 85 });
-  await page.locator('button', { hasText: 'Fertig' }).click();
+  await page.locator('#view-vorrat button', { hasText: 'Fertig' }).click();
+
+  // Küche → Haushalt: Zahnpasta und Spülmittel fehlen
+  check(await page.locator('.nav__link').count() === 5, 'Leiste hat 5 Knöpfe');
+  check(await page.locator('.nav__link[href="#/vorrat"]').getAttribute('aria-current') === 'page', 'Knopf „Küche“ leuchtet im Vorrat');
+  await page.locator('#view-vorrat .kitchen-tabs__tab', { hasText: 'Haushalt' }).click();
+  await page.waitForSelector('#view-haushalt .chip');
+  check(await page.locator('.nav__link[href="#/vorrat"]').getAttribute('aria-current') === 'page', 'Knopf „Küche“ leuchtet auch im Haushalt');
+  await page.locator('#view-haushalt .chip', { hasText: 'Zahnpasta' }).click();
+  await page.locator('#view-haushalt .chip', { hasText: 'Spülmittel' }).click();
+  await page.waitForTimeout(400);
+  await page.screenshot({ path: path.join(OUT, 'handy-haushalt.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/liste');
+  await page.waitForSelector('#view-liste .list-section');
+  check(await page.locator('#view-liste .list-section ~ .cards .check-row', { hasText: 'Zahnpasta' }).count() === 1, 'Liste: Zahnpasta steht im Abschnitt „Haushalt“');
+  await page.locator('#view-liste .list-section').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'handy-liste-haushalt.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/vorrat');
+  await page.waitForSelector('#view-vorrat .chip');
 
   // Aufgaben
   await page.goto(BASE + '/#/aufgaben');
@@ -355,6 +373,9 @@ function check(cond, msg) {
   await page.goto(BASE + '/#/vorrat');
   await page.waitForSelector('.chip');
   await page.screenshot({ path: path.join(OUT, 'handy-vorrat-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/haushalt');
+  await page.waitForSelector('#view-haushalt .chip');
+  await page.screenshot({ path: path.join(OUT, 'handy-haushalt-dunkel.jpg'), quality: 85 });
   await page.goto(BASE + '/#/liste');
   await page.waitForSelector('.check-row');
   await page.screenshot({ path: path.join(OUT, 'handy-liste-dunkel.jpg'), quality: 85 });
@@ -402,6 +423,13 @@ function check(cond, msg) {
   await page.keyboard.press('Tab');
   await page.locator('.chip', { hasText: 'Erdnussbutter' }).hover();
   await page.screenshot({ path: path.join(OUT, 'pc-vorrat-und-liste.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/haushalt');
+  await page.waitForSelector('#view-haushalt .chip');
+  check(await page.locator('#view-liste').isVisible(), 'PC: Haushalt und Liste nebeneinander');
+  await page.mouse.move(0, 0);
+  await page.screenshot({ path: path.join(OUT, 'pc-haushalt-und-liste.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/vorrat');
+  await page.waitForSelector('#view-vorrat .chip');
 
   // Synchronisation: Änderung über die API (= anderes Gerät) erscheint von selbst
   const { items: now } = await api('GET', '/api/state');
