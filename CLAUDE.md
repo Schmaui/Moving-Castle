@@ -70,6 +70,11 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   heute?“ (was beide wollen, kommt doppelt so oft), „Gesehen“ mit 1–5 Popcorn je Person, Schnitt ≥ 4
   = „Unsere Lieblinge“. Karten hängen direkt an der Tür (Nutzer mochten den dunklen „KI-blocky“-Kasten
   NICHT – keine großen dunklen Container mehr), oben nur ein schmales Vorhang-Band.
+- **Küche zuklappbar** (Vorrat + Haushalt): Zettel zeigen zugeklappt nur Überschrift + was fehlt („alles da“),
+  Überschrift antippen = auf/zu, „Alle auf/zu“ oben; pro Gerät in localStorage (`haushalt_offene_zettel`).
+  Bearbeiten-Modus und „+“ klappen automatisch auf. Nutzer fanden die App vorher „zu voll“ – das half.
+- **Galerie** (Mehr): alle Fotos als Raster (Unterschrift ändern, löschen). An der Tür nur eine zufällige
+  Auswahl (`doorPhotos()`: Handy 3, PC 5, pro App-Start neu gemischt, frisch hochgeladene immer dabei).
 - **Fotos an der Küchentür** (Vorrat): wie Magnete verstreut (`.fridge-board` + `.photo-layer`,
   `scatterPhotos()` in `ui/photos.js`, von app.js nach jedem Zeichnen, nach Schriften und bei Größenänderung).
   Misst die Zettel, tastet Kanten ab, dann freie Lücken, NIE über Artikel/Knöpfe/Titel (Selbsttest prüft das).
@@ -91,7 +96,9 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
 - Von den Nutzern getestet: alles bis einschließlich Küche + Haushalt („funktioniert alles“).
 
 ## Offen
-- Filmabend, Animationen, verstreute Fotos: Feedback der Nutzer abwarten.
+- Filmabend, Animationen, verstreute Fotos, Zuklappen, Galerie: live, Feedback der Nutzer abwarten.
+- Ausnahme von „direkt live“: Bei Geschmacksfragen (Aufräumen/Design) Vorher-Nachher-Bild schicken und
+  auf „passt“ warten – so am 7.11. beim Zuklappen gemacht, kam gut an.
 - **Nächste gewünschte Ideen** (Nutzer am 7.11. gewählt, vorher per Klick-Fragen klären):
   **Nachricht an die Tür** (handgeschriebene Nachricht als Magnet für den anderen),
   **Benachrichtigungen** (Web-Push, iPhone nur als Home-Bildschirm-App ab iOS 16.4; z. B. „X hat Milch auf
