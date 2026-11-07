@@ -59,7 +59,8 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   - Link-Import konnte nur mit Testseiten geprüft werden (Rezeptseiten aus der Cloud-Session
     gesperrt) – bei Problemen Nutzer nach Link + Fehlermeldung fragen.
 - **Alles oben ist live und von den Nutzern getestet („funktioniert“), auch der Link-Import.**
-- **Infos-Pinnwand: gebaut, wartet auf „passt“** (Branch `claude/vigilant-noether-1h6c6p`, noch NICHT auf main).
+- **Seit 7.11.2026 live: Infos-Pinnwand** (#/pinnwand, vom Branch `claude/vigilant-noether-1h6c6p` gemergt,
+  Nutzer: „passt“ nach Screenshots).
   Entscheidungen der Nutzer (7.11.2026, per Klick-Fragen):
   - Inhalte: WLAN für Gäste (QR), wichtige Nummern, Verträge & Dokumente. KEINE Zählerstände, KEIN Müll.
   - Aufbau: freie Zettel + Spezial-Zettel; an der Pinnwand nach Art gruppiert (WLAN, Nummern, Verträge &
@@ -72,14 +73,15 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   - QR: klein auf dem Zettel, antippen = groß zum Scannen.
   Technik: `server/modules/notes.js` + `note-files.js` (Dateien in `data/dokumente/`, im Backup dabei),
   QR-Erzeuger ohne Pakete `public/js/ui/qr.js` (mit zxing geprüft), Ansicht `public/js/views/pinnwand.js`.
-  Offen zum Testen durch die Nutzer: PDF öffnen auf dem iPhone (öffnet neuen Tab – bei App vom
+  Noch von den Nutzern am echten Gerät zu prüfen: PDF öffnen auf dem iPhone (öffnet neuen Tab – bei App vom
   Home-Bildschirm evtl. Anmeldung nötig?), QR mit echtem Handy scannen.
 - Ganz am Ende (Wunsch der Nutzer): automatische Sicherung auf den Mac der Nutzer. Plan: Skript
   `scripts/mac-backup-einrichten.sh` (SSH-Schlüssel einrichten, LaunchAgent täglich, `rsync` von
   `root@2.31.137.100:/opt/haushalt/data/backups/` nach `~/moving-castle-backup/` – nicht nach
   ~/Documents, das blockiert macOS für Hintergrundjobs). Nutzer starten es einmal im Terminal.
 - Offen nebenbei: Backup einmal mit den Nutzern prüfen (per SSH, Schritt für Schritt);
-  README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen ergänzen.
+  README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen, Pinnwand ergänzen.
+- **Als Nächstes** (Reihenfolge der Nutzer): Kalender, siehe unten.
 - Danach (Reihenfolge der Nutzer): Kalender
   (Abo-Link für Apple-Kalender, ggf. iCloud-Kalender lesend anzeigen).
 - Später: NFC-Sticker (Anleitung `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`),
