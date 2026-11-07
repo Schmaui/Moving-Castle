@@ -124,6 +124,11 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   Scriptable nicht testbar, Nutzer nach Screenshot fragen. Daten für Morgen-Nachricht + Widget: `server/summary.js`.
 - **Mehr** (#/einstellungen), Reihenfolge von den Nutzern festgelegt: Nachricht an die Tür, Wir zwei (Profile),
   Galerie, Kühlschrank (Türfarbe, Fotos an/aus), Benachrichtigungen, Widget, Kalender, Dieses Gerät (+ Abmelden).
+- **App-Icon** (Mehr → Dieses Gerät, pro Gerät): „Original“ oder „Nacht“ (Kaits Wunsch: blau, Mond, Sterne, Fenster
+  leuchtet). `public/js/appicon.js` tauscht `<link rel="apple-touch-icon">` (localStorage `haushalt_app_icon`).
+  iPhone übernimmt das Icon nur beim „Zum Home-Bildschirm“ -> muss in SAFARI gewählt werden (Home-Bildschirm-App hat
+  eigenen Speicher, dort nur Hinweis), dann altes Symbol löschen + neu hinzufügen (danach neu anmelden +
+  Benachrichtigungen wieder einschalten). Icons: `scripts/make-art.py` (icon-nacht.svg) + `scripts/make-icons.cjs`.
 - Profile: jedes Gerät fragt einmal „Wer bist du?“ und schickt `X-Person` mit (wer-hat-was).
 - **Backup** am 7.11.2026 mit den Nutzern geprüft (siehe „Betrieb“).
 - Von den Nutzern getestet: alles bis einschließlich Küche + Haushalt („funktioniert alles“).
