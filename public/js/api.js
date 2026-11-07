@@ -57,10 +57,11 @@ export const api = {
   importRecipe: async (url) => (await request('POST', '/api/recipes/import', { url })).data,
   cooked: async (recipe) => (await request('POST', `/api/recipes/${recipe.id}/gekocht`, {})).data,
 
-  // Pinnwand: Datei (PDF oder JPEG) an einen Zettel hängen
-  uploadNoteFile: (note, blob, name) => uploadFile(
-    `/api/notes/${note.id}/dateien?name=${encodeURIComponent(name)}`, blob, blob.type === 'application/pdf' ? 'application/pdf' : 'image/jpeg'),
-  noteFileUrl: (file) => `/api/note-files/${file.id}/datei`,
+  // Ordner: Datei (PDF oder JPEG) hochladen und ansehen
+  uploadDoc: (folder, blob, name, note = '') => uploadFile(
+    `/api/folders/${folder.id}/dateien?name=${encodeURIComponent(name)}&note=${encodeURIComponent(note)}`,
+    blob, blob.type === 'application/pdf' ? 'application/pdf' : 'image/jpeg'),
+  docUrl: (doc) => `/api/docs/${doc.id}/datei`,
 
   patchSettings: async (patch) => (await request('PATCH', '/api/settings', patch)).data,
 

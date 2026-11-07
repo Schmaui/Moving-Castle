@@ -81,18 +81,23 @@ function check(cond, msg) {
   const muell = await api('POST', '/api/tasks', { title: 'Müll rausbringen', due: day(0) }, 1);
   await api('POST', `/api/tasks/${muell.id}/erledigt`, {}, 2);
 
-  // Pinnwand: Nummern, Dokumente (PDF + Foto), freier Zettel
+  // Pinnwand: Nummern, Notizen, Ordner mit Dateien
   await api('POST', '/api/notes', { kind: 'nummern', title: 'Haus & Vermieter', data: { entries: [
     { name: 'Hausmeister Herr Kowalski', number: '0170 1234567' }, { name: 'Hausverwaltung', number: '+49 30 987654-0' },
   ] } }, 1);
-  const miete = await api('POST', '/api/notes', { kind: 'dokument', title: 'Mietvertrag', body: 'Kaution 2.400 € – Kündigungsfrist 3 Monate' }, 2);
-  await api('POST', '/api/notes', { kind: 'dokument', title: 'Haftpflicht', body: 'Kundennr. HV-4471-22' }, 1);
   await api('POST', '/api/notes', { kind: 'zettel', title: 'Fahrradkeller', body: 'Schlüssel hängt am Brett im Flur.\nLicht: Schalter links hinter der Tür.', secret: '4711' }, 2);
+  await api('POST', '/api/notes', { kind: 'zettel', title: 'Pflanzen gießen', body: 'Monstera 1× pro Woche,\nKakteen nur alle 3 Wochen!' }, 1);
+  const { folders } = await api('GET', '/api/state');
+  const vertraege = folders.find((f) => f.name === 'Verträge');
+  const wohnung = folders.find((f) => f.name === 'Wohnung');
   const fakePdf = Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj 3 0 obj<</Type/Page/MediaBox[0 0 200 200]/Parent 2 0 R>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n');
-  const upload = (note, type, body, name, person = 1) => fetch(`${BASE}/api/notes/${note.id}/dateien?name=${encodeURIComponent(name)}`, {
-    method: 'POST', headers: { 'Content-Type': type, 'X-Person': String(person) }, body,
-  }).then((r) => r.json());
-  await upload(miete, 'application/pdf', fakePdf, 'Mietvertrag Wohnung.pdf', 2);
+  const upload = (folder, type, body, name, note = '', person = 1) => fetch(
+    `${BASE}/api/folders/${folder.id}/dateien?name=${encodeURIComponent(name)}&note=${encodeURIComponent(note)}`,
+    { method: 'POST', headers: { 'Content-Type': type, 'X-Person': String(person) }, body },
+  ).then((r) => r.json());
+  await upload(wohnung, 'application/pdf', fakePdf, 'Mietvertrag', 'Kaution 2.400 € – Kündigungsfrist 3 Monate', 2);
+  await upload(vertraege, 'application/pdf', fakePdf, 'Haftpflicht Police', 'Kundennr. HV-4471-22');
+  await upload(vertraege, 'application/pdf', fakePdf, 'Internet (Glasfaser)', 'Mindestlaufzeit bis 3/2027', 2);
 
   const browser = await chromium.launch();
   const errors = [];
@@ -243,20 +248,26 @@ function check(cond, msg) {
   await page.waitForSelector('.person-row');
   await page.screenshot({ path: path.join(OUT, 'handy-einstellungen.jpg'), quality: 85, fullPage: true });
 
-  // Pinnwand: Foto eines Papiers (im Browser gezeichnet) an den Mietvertrag hängen
+  // Pinnwand: Foto eines Papiers (im Browser gezeichnet) in den Ordner „Wohnung“
   const jpeg = await page.evaluate(() => {
     const c = document.createElement('canvas'); c.width = 600; c.height = 800;
     const g = c.getContext('2d'); g.fillStyle = '#fbfaf5'; g.fillRect(0, 0, 600, 800);
-    g.fillStyle = '#333'; g.font = '36px serif'; g.fillText('Mietvertrag – Seite 2', 40, 80);
+    g.fillStyle = '#333'; g.font = '36px serif'; g.fillText('Übergabeprotokoll', 40, 80);
     for (let y = 140; y < 760; y += 30) g.fillRect(40, y, 400 + (y % 120), 3);
     return c.toDataURL('image/jpeg', 0.8).split(',')[1];
   });
-  await upload(miete, 'image/jpeg', Buffer.from(jpeg, 'base64'), 'Seite 2.jpg', 1);
+  await upload(wohnung, 'image/jpeg', Buffer.from(jpeg, 'base64'), 'Übergabeprotokoll');
 
   await page.goto(BASE + '/#/pinnwand');
-  await page.waitForSelector('#view-pinnwand .pin');
-  check(await page.locator('#view-pinnwand .phone', { hasText: '112' }).getAttribute('href') === 'tel:112', 'Pinnwand: Notfall-Nummern sind angepinnt, antippen ruft an');
-  await page.locator('.pin-new__kind', { hasText: 'WLAN' }).click();
+  await page.waitForSelector('#view-pinnwand .pin-tile');
+  check(await page.locator('#view-pinnwand .pin-tile').count() === 4, 'Pinnwand: 4 Kacheln (WLAN, Nummern, Notizen, Ordner)');
+  await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 10000 });
+  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand.jpg'), quality: 85 });
+
+  // WLAN anlegen
+  await page.locator('.pin-tile', { hasText: 'WLAN' }).click();
+  await page.waitForSelector('#view-pinnwand .corkboard');
+  await page.locator('[data-focus-key="board-new"]').click();
   await page.locator('[data-focus-key="form-title"]').fill('WLAN für Gäste');
   await page.locator('[data-focus-key="form-ssid"]').fill('Schloss-Gäste');
   await page.locator('[data-focus-key="form-secret"]').fill('Kalzifer&Sophie2026');
@@ -266,8 +277,8 @@ function check(cond, msg) {
   check(await page.locator('#view-pinnwand .pin--wlan .secret__value').textContent() === '••••••••', 'WLAN angepinnt, Passwort ist verdeckt');
   await page.locator('#view-pinnwand .pin--wlan .secret').click();
   check(await page.locator('#view-pinnwand .pin--wlan .secret__value').textContent() === 'Kalzifer&Sophie2026', 'Antippen zeigt das Passwort');
-  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand.jpg'), quality: 85 });
-  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-ganz.jpg'), quality: 85, fullPage: true });
+  await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 10000 });
+  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-wlan.jpg'), quality: 85 });
   await page.locator('#view-pinnwand .pin-qr').click();
   await page.waitForSelector('.qr-big');
   await page.waitForTimeout(400);
@@ -275,30 +286,63 @@ function check(cond, msg) {
   await page.locator('.qr-big').click();
   await page.waitForSelector('.qr-big', { state: 'detached' });
 
-  // Nummer ergänzen
+  // Nummern: Notfälle sind da, eine Nummer ergänzen
+  await page.locator('#view-pinnwand .back-link').click();
+  await page.locator('.pin-tile', { hasText: 'Nummern' }).click();
+  await page.waitForSelector('#view-pinnwand .pin--nummern');
+  check(await page.locator('#view-pinnwand .phone', { hasText: '112' }).getAttribute('href') === 'tel:112', 'Notfall-Nummern sind angepinnt, antippen ruft an');
+  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-nummern.jpg'), quality: 85, fullPage: true });
   await page.locator('#view-pinnwand .pin--nummern', { hasText: 'Haus & Vermieter' }).locator('.pin__edit').click();
   await page.locator('[data-focus-key="form-add-number"]').click();
   await page.locator('[data-focus-key="form-name-2"]').fill('Schlüsseldienst');
   await page.locator('[data-focus-key="form-number-2"]').fill('030 / 11 22 33');
-  await page.locator('.pin--form').scrollIntoViewIfNeeded();
-  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-nummern.jpg'), quality: 85 });
   await page.locator('[data-focus-key="form-save"]').click();
   await page.waitForSelector('#view-pinnwand .phone:has-text("Schlüsseldienst")');
   check(await page.locator('#view-pinnwand .phone', { hasText: 'Schlüsseldienst' }).getAttribute('href') === 'tel:030112233', 'Nummer ergänzt');
 
-  // Dokument mit PDF neu anlegen
-  await page.locator('.pin-new__kind', { hasText: 'Dokument' }).click();
-  await page.locator('[data-focus-key="form-title"]').fill('Stromvertrag');
-  await page.locator('.pin-form input[type="file"]').setInputFiles({ name: 'Strom 2026.pdf', mimeType: 'application/pdf', buffer: fakePdf });
-  await page.waitForSelector('.pin-form .file-edit:has-text("Strom 2026.pdf")');
-  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-dokument-neu.jpg'), quality: 85 });
-  await page.locator('[data-focus-key="form-save"]').click();
-  await page.waitForSelector('#view-pinnwand .pin:has-text("Stromvertrag") .file:has-text("Strom 2026.pdf")');
-  check(true, 'Dokument mit PDF angepinnt');
-  const pdfHref = await page.locator('#view-pinnwand .file', { hasText: 'Strom 2026.pdf' }).getAttribute('href');
-  const pdfRes = await fetch(BASE + pdfHref);
-  check(pdfRes.headers.get('content-type') === 'application/pdf', 'PDF lässt sich öffnen');
-  await page.locator('#view-pinnwand .file', { hasText: 'Seite 2.jpg' }).click();
+  await page.goto(BASE + '/#/pinnwand/notizen');
+  await page.waitForSelector('#view-pinnwand .pin--zettel');
+  await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 10000 });
+  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-notizen.jpg'), quality: 85 });
+
+  // Ordner: neuen Unterordner anlegen, PDF mit Name + Notiz hochladen
+  await page.goto(BASE + '/#/pinnwand/ordner');
+  await page.waitForSelector('#view-pinnwand .folder');
+  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-ordner.jpg'), quality: 85 });
+  await page.locator('[data-focus-key="folder-new"]').click();
+  await page.locator('[data-focus-key="folder-new-name"]').fill('Versicherungen');
+  await page.keyboard.press('Enter');
+  await page.waitForSelector('#view-pinnwand .folder:has-text("Versicherungen")');
+  check(true, 'Neuen Ordner angelegt');
+  await page.locator('#view-pinnwand .folder', { hasText: 'Verträge' }).click();
+  await page.waitForSelector('#view-pinnwand .doc');
+  await page.locator('#view-pinnwand input[type="file"]').setInputFiles({ name: 'Strom 2026.pdf', mimeType: 'application/pdf', buffer: fakePdf });
+  await page.waitForSelector('[data-focus-key="pending-name-0"]');
+  check(await page.locator('[data-focus-key="pending-name-0"]').inputValue() === 'Strom 2026', 'Name aus dem Dateinamen vorausgefüllt');
+  await page.locator('[data-focus-key="pending-name-0"]').fill('Stromvertrag');
+  await page.locator('[data-focus-key="pending-note-0"]').fill('Abschlag 68 €/Monat');
+  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-datei-neu.jpg'), quality: 85 });
+  await page.locator('[data-focus-key="pending-save"]').click();
+  await page.waitForSelector('#view-pinnwand .doc:has-text("Stromvertrag.pdf")');
+  check(await page.locator('#view-pinnwand .doc', { hasText: 'Stromvertrag.pdf' }).locator('.doc__note').textContent() === 'Abschlag 68 €/Monat', 'PDF mit Name und Notiz im Ordner');
+  const pdfHref = await page.locator('#view-pinnwand .doc', { hasText: 'Stromvertrag.pdf' }).locator('.doc__open').getAttribute('href');
+  check((await fetch(BASE + pdfHref)).headers.get('content-type') === 'application/pdf', 'PDF lässt sich öffnen');
+  await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 10000 });
+  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-ordner-vertraege.jpg'), quality: 85 });
+  // verschieben
+  await page.locator('#view-pinnwand .doc', { hasText: 'Haftpflicht' }).locator('.doc__edit').click();
+  await page.locator('[data-focus-key="doc-folder"]').selectOption({ label: 'Versicherungen' });
+  await page.locator('[data-focus-key="doc-save"]').click();
+  await page.waitForSelector('#view-pinnwand .doc:has-text("Haftpflicht")', { state: 'detached' });
+  check(true, 'Datei in anderen Ordner verschoben');
+  // Suche
+  await page.goto(BASE + '/#/pinnwand/ordner');
+  await page.locator('[data-focus-key="doc-search"]').fill('kaution');
+  await page.waitForSelector('#view-pinnwand .doc:has-text("Mietvertrag")');
+  check(await page.locator('#view-pinnwand .doc').count() === 1, 'Suche findet auch Text in der Notiz');
+  await page.locator('[data-focus-key="doc-search"]').fill('');
+  await page.goto(BASE + '/#/pinnwand/ordner/' + wohnung.id);
+  await page.locator('#view-pinnwand .doc', { hasText: 'Übergabeprotokoll' }).locator('.doc__open').click();
   await page.waitForSelector('.doc-image');
   await page.waitForFunction(() => document.querySelector('.doc-image')?.naturalWidth > 0);
   check(true, 'Foto eines Papiers lässt sich groß ansehen');
@@ -327,9 +371,14 @@ function check(cond, msg) {
   await page.waitForSelector('#view-kochen .recipe-card');
   await page.screenshot({ path: path.join(OUT, 'handy-rezepte-dunkel.jpg'), quality: 85 });
   await page.goto(BASE + '/#/pinnwand');
-  await page.waitForSelector('#view-pinnwand .pin');
+  await page.waitForSelector('#view-pinnwand .pin-tile');
   await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-dunkel.jpg'), quality: 85 });
-  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-ganz-dunkel.jpg'), quality: 85, fullPage: true });
+  await page.goto(BASE + '/#/pinnwand/wlan');
+  await page.waitForSelector('#view-pinnwand .pin');
+  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-wlan-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/pinnwand/ordner/' + wohnung.id);
+  await page.waitForSelector('#view-pinnwand .doc');
+  await page.screenshot({ path: path.join(OUT, 'handy-pinnwand-ordner-dunkel.jpg'), quality: 85 });
   await dark.close();
 
   // ---------- Tablet ----------
@@ -373,10 +422,15 @@ function check(cond, msg) {
   await page.waitForSelector('#view-kochen .ing-list');
   await page.screenshot({ path: path.join(OUT, 'pc-rezept.jpg'), quality: 85 });
   await page.goto(BASE + '/#/pinnwand');
-  await page.waitForSelector('#view-pinnwand .pin');
+  await page.waitForSelector('#view-pinnwand .pin-tile');
   await page.mouse.move(0, 0);
   await page.screenshot({ path: path.join(OUT, 'pc-pinnwand.jpg'), quality: 85 });
-  await page.screenshot({ path: path.join(OUT, 'pc-pinnwand-ganz.jpg'), quality: 85, fullPage: true });
+  await page.goto(BASE + '/#/pinnwand/nummern');
+  await page.waitForSelector('#view-pinnwand .pin');
+  await page.screenshot({ path: path.join(OUT, 'pc-pinnwand-nummern.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/pinnwand/ordner');
+  await page.waitForSelector('#view-pinnwand .folder');
+  await page.screenshot({ path: path.join(OUT, 'pc-pinnwand-ordner.jpg'), quality: 85 });
 
   const desktopDark = await device({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, colorScheme: 'dark' });
   page = await desktopDark.newPage(); watch(page);
@@ -389,9 +443,12 @@ function check(cond, msg) {
   await page.goto(BASE + '/#/kochen/rezepte');
   await page.waitForSelector('#view-kochen .recipe-card');
   await page.screenshot({ path: path.join(OUT, 'pc-rezepte-dunkel.jpg'), quality: 85 });
-  await page.goto(BASE + '/#/pinnwand');
+  await page.goto(BASE + '/#/pinnwand/wlan');
   await page.waitForSelector('#view-pinnwand .pin');
   await page.screenshot({ path: path.join(OUT, 'pc-pinnwand-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/pinnwand/ordner/' + vertraege.id);
+  await page.waitForSelector('#view-pinnwand .doc');
+  await page.screenshot({ path: path.join(OUT, 'pc-pinnwand-ordner-dunkel.jpg'), quality: 85 });
 
   await browser.close();
   check(errors.length === 0, `keine Fehler in der Browser-Konsole ${errors.length ? JSON.stringify(errors) : ''}`);

@@ -7,7 +7,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
 ## Technik (Kurzfassung – Details in README.md und docs/ANPASSEN.md)
 - Node.js ≥ 22.13 ohne npm-Abhängigkeiten, eingebautes `node:sqlite`. Start: `npm start`, Tests: `npm test`.
 - Frontend: Vanilla JS (ES-Module), kein Build. Design-Variablen in `public/css/tokens.css`.
-- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks, recipes, meals, wishes, links). Ansichten: `public/js/views/*`.
+- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks, recipes, meals, wishes, links, notes, folders, docs). Ansichten: `public/js/views/*`.
 - Migrationen: `server/migrations.js` – nur NEUE Einträge anhängen, alte nie ändern.
 - Gezeichnete Symbole statt Emojis: `public/js/ui/art.js`. Szenen-SVGs: `scripts/make-art.py`.
 - Strenge CSP (keine Inline-Styles/-Scripts), alle Ausgaben über `h()` (XSS-sicher).
@@ -71,8 +71,19 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
     116116) per Migration 8 vorausgefüllt.
   - Verträge: nur Name + Notiz + Dateien (PDF hochladen oder Foto von Papier) – keine Kosten/Fristen.
   - QR: klein auf dem Zettel, antippen = groß zum Scannen.
-  Technik: `server/modules/notes.js` + `note-files.js` (Dateien in `data/dokumente/`, im Backup dabei),
+- **Umbau Pinnwand (7.11.2026, Wunsch nach Test): gebaut, wartet auf „passt“** (Branch
+  `claude/vigilant-noether-1h6c6p`, noch NICHT auf main). Entscheidungen (Klick-Fragen):
+  - #/pinnwand = Übersicht mit 4 Kacheln: WLAN, Nummern, Notizen, Ordner.
+  - WLAN/Nummern/Notizen öffnen je ein **Korkbrett mit Holzrahmen**, Zettel mit Pinnadeln (statt Tape).
+    Routen `#/pinnwand/wlan|nummern|notizen`. Notizen = kind `zettel` (Geheimes verdeckt bleibt).
+  - **Ordner** (`#/pinnwand/ordner`, `…/ordner/:id`): Unterordner selbst anlegen, nur eine Ebene;
+    Start-Ordner „Verträge“, „Wohnung“. Datei = PDF/Foto + Name (aus Dateiname vorausgefüllt) + Notiz;
+    verschieben, umbenennen, löschen; Suche über Name + Notiz aller Dateien. Volle Ordner nicht löschbar.
+  - Dokument-Zettel und Dateien an Zetteln entfallen (Migration 9 löscht die Test-Einträge, Server räumt
+    `data/dokumente/` beim Start weg – Nutzer: „nichts Wichtiges“).
+  Technik: `server/modules/notes.js`, `folders.js`, `docs.js` (Dateien in `data/ordner/`, im Backup),
   QR-Erzeuger ohne Pakete `public/js/ui/qr.js` (mit zxing geprüft), Ansicht `public/js/views/pinnwand.js`.
+  Update-Pfad von Migration 8 → 9 mit alter DB getestet.
   Noch von den Nutzern am echten Gerät zu prüfen: PDF öffnen auf dem iPhone (öffnet neuen Tab – bei App vom
   Home-Bildschirm evtl. Anmeldung nötig?), QR mit echtem Handy scannen.
 - Ganz am Ende (Wunsch der Nutzer): automatische Sicherung auf den Mac der Nutzer. Plan: Skript

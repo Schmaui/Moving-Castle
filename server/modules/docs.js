@@ -1,13 +1,13 @@
-// Modul: Dateien an Pinnwand-Zetteln (Verträge, Dokumente, Fotos von Papieren).
+// Modul: Dateien im Ordner der Pinnwand (Verträge, Dokumente, Fotos von Papieren).
 //
-//   GET    /api/note-files                 Liste (kommt auch in /api/state mit, als "noteFiles")
-//   POST   /api/notes/:id/dateien?name=…   Datei anhängen. Body = die Datei selbst,
-//                                          Content-Type: application/pdf oder image/jpeg
-//   GET    /api/note-files/:id/datei       Datei ansehen (nur angemeldet, wie alle /api/-Pfade)
-//   PATCH  /api/note-files/:id             Umbenennen
-//   DELETE /api/note-files/:id             Datei abnehmen (wird gelöscht)
+//   GET    /api/docs                                Liste (kommt auch in /api/state mit)
+//   POST   /api/folders/:id/dateien?name=…&note=…   Datei hochladen. Body = die Datei selbst,
+//                                                   Content-Type: application/pdf oder image/jpeg
+//   GET    /api/docs/:id/datei                      Datei ansehen (nur angemeldet, wie alle /api/-Pfade)
+//   PATCH  /api/docs/:id                            Name, Notiz ändern oder verschieben (folderId)
+//   DELETE /api/docs/:id                            Datei löschen
 //
-// Die Dateien liegen in data/dokumente/ (mit im Daten-Volume und in den Backups).
+// Die Dateien liegen in data/ordner/ (mit im Daten-Volume und in den Backups).
 // Fotos verkleinert der Browser vorher (js/ui/photos.js -> shrink) – das entfernt auch GPS-Daten.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,11 +22,11 @@ const TYPES = {
   pdf: { mime: 'application/pdf', ext: '.pdf', maxBytes: 25 * 1024 * 1024, magic: Buffer.from('%PDF-') },
   jpg: { mime: 'image/jpeg', ext: '.jpg', maxBytes: 8 * 1024 * 1024, magic: Buffer.from([0xff, 0xd8, 0xff]) },
 };
-const MAX_PER_NOTE = 20;
-const MAX_FILES = 500;
+const MAX_FILES = 1000;
 const NAME = { col: 'name', type: 'text', required: true, max: 120 };
+const NOTE = { col: 'note', type: 'text', max: 1000, multiline: true };
 
-export const DOC_DIR = () => path.join(config.dataDir, 'dokumente');
+export const DOC_DIR = () => path.join(config.dataDir, 'ordner');
 export const fileOf = (file) => path.join(DOC_DIR(), path.basename(file));
 
 /** Anzeigename aufräumen: keine Pfade, passende Endung. */
@@ -57,27 +57,30 @@ function disposition(name) {
 }
 
 export default {
-  name: 'noteFiles',
+  name: 'docs',
   inState: true,
   register(ctx) {
     const { db, router } = ctx;
     fs.mkdirSync(DOC_DIR(), { recursive: true });
+    // Aufräumen: Früher hingen Dateien an Pinnwand-Zetteln (data/dokumente/).
+    // Migration 9 hat diese Test-Einträge entfernt – die Dateien dazu kommen hier weg.
+    if (db.prepare('SELECT COUNT(*) AS n FROM note_files').get().n === 0) {
+      fs.rmSync(path.join(config.dataDir, 'dokumente'), { recursive: true, force: true });
+    }
 
-    router.post('/api/notes/:id/dateien', async ({ req, params, query }) => {
-      const noteId = Number(params.id);
-      if (!Number.isSafeInteger(noteId) || !db.prepare('SELECT 1 FROM notes WHERE id = ?').get(noteId)) {
-        throw new HttpError(404, 'Zettel nicht gefunden');
+    router.post('/api/folders/:id/dateien', async ({ req, params, query }) => {
+      const folderId = Number(params.id);
+      if (!Number.isSafeInteger(folderId) || !db.prepare('SELECT 1 FROM folders WHERE id = ?').get(folderId)) {
+        throw new HttpError(404, 'Ordner nicht gefunden');
       }
       const contentType = String(req.headers['content-type'] || '');
       const type = Object.keys(TYPES).find((t) => contentType.startsWith(TYPES[t].mime));
       if (!type) throw new HttpError(415, 'Bitte ein PDF oder ein Foto (JPEG) schicken');
-      if (db.prepare('SELECT COUNT(*) AS n FROM note_files WHERE note_id = ?').get(noteId).n >= MAX_PER_NOTE) {
-        throw new HttpError(409, `Höchstens ${MAX_PER_NOTE} Dateien pro Zettel`);
-      }
-      if (db.prepare('SELECT COUNT(*) AS n FROM note_files').get().n >= MAX_FILES) {
-        throw new HttpError(409, `Höchstens ${MAX_FILES} Dateien – bitte erst alte abnehmen`);
+      if (db.prepare('SELECT COUNT(*) AS n FROM docs').get().n >= MAX_FILES) {
+        throw new HttpError(409, `Höchstens ${MAX_FILES} Dateien – bitte erst alte löschen`);
       }
       const name = cleanName(query.get('name'), type);
+      const note = validateField(NOTE, query.get('note') ?? '', 'note');
       const data = await readBody(req, TYPES[type].maxBytes);
       if (data.length < 100 || !data.subarray(0, TYPES[type].magic.length).equals(TYPES[type].magic)) {
         throw new HttpError(400, type === 'pdf' ? 'Das ist kein PDF' : 'Das ist kein JPEG-Bild');
@@ -88,8 +91,8 @@ export default {
       try {
         const id = transaction(db, () => {
           const r = db.prepare(
-            'INSERT INTO note_files (note_id, file, name, type, size, added_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-          ).run(noteId, file, name, type, data.length, actorOf(db, req), ts, ts);
+            'INSERT INTO docs (folder_id, file, name, note, type, size, added_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+          ).run(folderId, file, name, note, type, data.length, actorOf(db, req), ts, ts);
           bumpRev(db);
           return Number(r.lastInsertRowid);
         });
@@ -100,8 +103,8 @@ export default {
       }
     });
 
-    router.get('/api/note-files/:id/datei', ({ res, params }) => {
-      const row = db.prepare('SELECT file, name, type FROM note_files WHERE id = ?').get(Number(params.id));
+    router.get('/api/docs/:id/datei', ({ res, params }) => {
+      const row = db.prepare('SELECT file, name, type FROM docs WHERE id = ?').get(Number(params.id));
       if (!row) throw new HttpError(404, 'Datei nicht gefunden');
       let data;
       try { data = fs.readFileSync(fileOf(row.file)); } catch { throw new HttpError(404, 'Datei fehlt'); }
@@ -115,12 +118,12 @@ export default {
       return undefined;
     });
 
-    router.delete('/api/note-files/:id', ({ params }) => {
+    router.delete('/api/docs/:id', ({ params }) => {
       const existing = api.get(Number(params.id));
       if (!existing) throw new HttpError(404, 'Datei nicht gefunden');
-      const row = db.prepare('SELECT file FROM note_files WHERE id = ?').get(existing.id);
+      const row = db.prepare('SELECT file FROM docs WHERE id = ?').get(existing.id);
       transaction(db, () => {
-        db.prepare('DELETE FROM note_files WHERE id = ?').run(existing.id);
+        db.prepare('DELETE FROM docs WHERE id = ?').run(existing.id);
         bumpRev(db);
       });
       fs.rmSync(fileOf(row.file), { force: true });
@@ -128,15 +131,16 @@ export default {
     });
 
     // Liste, Einzelabruf und Umbenennen vom generischen Helfer.
-    // POST /api/note-files gibt es absichtlich nicht (Hochladen geht über /api/notes/:id/dateien).
-    router.post('/api/note-files', () => { throw new HttpError(405, 'Bitte über /api/notes/:id/dateien hochladen'); });
+    // POST /api/docs gibt es absichtlich nicht (Hochladen geht über /api/folders/:id/dateien).
+    router.post('/api/docs', () => { throw new HttpError(405, 'Bitte über /api/folders/:id/dateien hochladen'); });
     const api = registerCrud(ctx, {
-      path: '/api/note-files',
-      table: 'note_files',
+      path: '/api/docs',
+      table: 'docs',
       orderBy: 'id',
       fields: {
-        noteId:  { col: 'note_id',  type: 'int',  readonly: true },
+        folderId: { col: 'folder_id', type: 'int', required: true, ref: 'folders' },  // verschieben
         name:    NAME,
+        note:    NOTE,
         type:    { col: 'type',     type: 'text', readonly: true },
         size:    { col: 'size',     type: 'int',  readonly: true },
         addedBy: { col: 'added_by', type: 'int',  readonly: true },

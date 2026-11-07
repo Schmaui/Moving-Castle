@@ -1,10 +1,14 @@
 // Ansicht "Pinnwand" (/#/pinnwand): wichtige Infos für euch beide.
-//   - WLAN für Gäste: Netz + Passwort (verdeckt) + QR-Code (antippen = groß zum Scannen)
-//   - Wichtige Nummern: in Gruppen (z. B. Notfälle, Haus & Vermieter), antippen = anrufen
-//   - Verträge & Dokumente: Name, Notiz, PDFs oder Fotos von Papieren
-//   - Freie Zettel: Titel, Text, optional etwas Geheimes (PIN, Code …), Dateien
-// Gespeichert wird auf dem Server (server/modules/notes.js + note-files.js) – gilt für alle Geräte.
-import { h, formatWhen } from '../util.js';
+//
+//   #/pinnwand                 Übersicht: Kacheln WLAN, Nummern, Notizen, Ordner
+//   #/pinnwand/wlan            Korkbrett mit WLAN-Zetteln (Passwort verdeckt, QR-Code für Gäste)
+//   #/pinnwand/nummern         Korkbrett mit Nummern-Zetteln (Gruppen, antippen = anrufen)
+//   #/pinnwand/notizen         Korkbrett mit freien Notizen (optional etwas Geheimes, z. B. PIN)
+//   #/pinnwand/ordner          Ordner: Unterordner + Suche über alle Dateien
+//   #/pinnwand/ordner/:id      Ein Unterordner: Dateien (PDF/Foto) mit Name + Notiz
+//
+// Gespeichert wird auf dem Server (server/modules/notes.js, folders.js, docs.js) – gilt für alle Geräte.
+import { h, formatWhen, plural } from '../util.js';
 import { viewHeader, emptyState, loading, iconLabel } from '../ui/components.js';
 import { icon } from '../ui/art.js';
 import { byline } from '../ui/people.js';
@@ -13,17 +17,17 @@ import { shrink } from '../ui/photos.js';
 import { qrSvg, wifiText } from '../ui/qr.js';
 import { api } from '../api.js';
 import {
-  addNote, updateNote, deleteNote, restoreNote, filesOf, uploadNoteFile, deleteNoteFile,
+  addNote, updateNote, deleteNote, restoreNote,
+  folderById, docsIn, addFolder, updateFolder, deleteFolder, uploadDoc, updateDoc, deleteDoc,
 } from '../store.js';
 
-// Arten von Zetteln – Reihenfolge = Reihenfolge an der Pinnwand
-const KINDS = [
-  { id: 'wlan',     group: 'WLAN',                 label: 'WLAN',     icon: 'wlan',     tone: 4, placeholder: 'z. B. WLAN für Gäste' },
-  { id: 'nummern',  group: 'Wichtige Nummern',     label: 'Nummern',  icon: 'telefon',  tone: 2, placeholder: 'z. B. Haus & Vermieter' },
-  { id: 'dokument', group: 'Verträge & Dokumente', label: 'Dokument', icon: 'dokument', tone: 5, placeholder: 'z. B. Haftpflicht, Mietvertrag' },
-  { id: 'zettel',   group: 'Zettel',               label: 'Zettel',   icon: 'notiz',    tone: 6, placeholder: 'z. B. Fahrradkeller' },
+// Bereiche der Pinnwand (Kacheln). kind = Art der Zettel auf diesem Korkbrett.
+const BOARDS = [
+  { id: 'wlan',    kind: 'wlan',    title: 'WLAN',    icon: 'wlan',    tone: 4, newLabel: 'Neues WLAN',        placeholder: 'z. B. WLAN für Gäste' },
+  { id: 'nummern', kind: 'nummern', title: 'Nummern', icon: 'telefon', tone: 2, newLabel: 'Neue Nummern-Gruppe', placeholder: 'z. B. Haus & Vermieter' },
+  { id: 'notizen', kind: 'zettel',  title: 'Notizen', icon: 'notiz',   tone: 6, newLabel: 'Neue Notiz',        placeholder: 'z. B. Fahrradkeller' },
 ];
-const kindOf = (id) => KINDS.find((k) => k.id === id) || KINDS[3];
+const boardOfKind = (kind) => BOARDS.find((b) => b.kind === kind) || BOARDS[2];
 
 const SECURITY = [
   { id: 'WPA', label: 'WPA/WPA2/WPA3' },
@@ -33,14 +37,23 @@ const SECURITY = [
 const MAX_PDF_MB = 25;
 const REVEAL_MS = 20000; // so lange bleibt ein aufgedecktes Passwort sichtbar
 
+const subroute = () => location.hash.replace(/^#\/?/, '').split(/[/?]/).slice(1);
+
 // Zustand nur dieser Ansicht (bleibt beim Neuzeichnen erhalten)
 const ui = {
   creating: null,        // Art des neuen Zettels (Formular offen) oder null
-  draft: null,           // Entwurf für neu bzw. bearbeiten
+  draft: null,           // Entwurf für neuen bzw. bearbeiteten Zettel
   editingId: null,       // Zettel, der gerade bearbeitet wird
-  reveal: new Set(),     // aufgedeckte Geheimnisse ("note-id")
-  uploading: 0,          // laufende Uploads
+  reveal: new Set(),     // aufgedeckte Geheimnisse
   busy: false,
+  // Ordner
+  search: '',
+  newFolder: null,       // Name des neuen Ordners (Formular offen) oder null
+  folderEdit: null,      // { id, name } beim Umbenennen
+  pending: [],           // ausgesuchte Dateien vor dem Hochladen: { blob, name, type, note }
+  pendingFolder: null,   // zu welchem Ordner die Auswahl gehört
+  docEdit: null,         // { id, name, note, folderId } beim Bearbeiten einer Datei
+  uploading: false,
 };
 
 export default {
@@ -50,82 +63,117 @@ export default {
 
   render(state, ctx) {
     if (!state.loaded) return loading();
-    const notes = state.notes || [];
-    return [
-      viewHeader({ id: 'title-pinnwand', title: 'Pinnwand', subtitle: 'WLAN, Nummern, Verträge & Dokumente' }),
-      h('div', { class: 'pinboard' },
-        newNoteCard(ctx),
-        notes.length === 0 && !ui.creating && emptyState({
-          symbol: 'pinnwand', title: 'Noch nichts angepinnt', text: 'Oben eine Art aussuchen und loslegen ♡',
-        }),
-        KINDS.map((k) => {
-          const list = notes.filter((n) => n.kind === k.id);
-          if (!list.length) return null;
-          return h('section', { class: 'pin-group', 'aria-label': k.group },
-            h('h2', { class: 'pin-group__title' }, icon(k.icon, { wash: false }), k.group),
-            h('div', { class: 'cards cards--tasks pin-cards' }, list.map((n) => noteCard(n, ctx))),
-          );
-        }),
-      ),
-    ];
+    const [section, sub] = subroute();
+    if (section === 'ordner' && sub) {
+      const folder = folderById(sub);
+      return folder ? folderPage(folder, state, ctx) : notFound('Diesen Ordner gibt es nicht (mehr).', 'ordner');
+    }
+    if (section === 'ordner') return foldersPage(state, ctx);
+    const board = BOARDS.find((b) => b.id === section);
+    if (board) return boardPage(board, state, ctx);
+    return overview(state);
   },
 };
 
 // =====================================================================
-// Neuer Zettel
+// Übersicht: Kacheln
 // =====================================================================
-const emptyDraft = (kind) => ({
-  kind, title: '', body: '', secret: '', ssid: '', security: 'WPA',
-  entries: kind === 'nummern' ? [{ name: '', number: '' }] : [],
-  files: [],   // nur beim Neuanlegen: ausgesuchte Dateien, die nach dem Speichern hochgeladen werden
-});
+function overview(state) {
+  const notes = state.notes || [];
+  const count = (kind) => notes.filter((n) => n.kind === kind).length;
+  const wlan = notes.find((n) => n.kind === 'wlan');
+  const numbers = notes.filter((n) => n.kind === 'nummern').reduce((sum, n) => sum + (n.data?.entries?.length || 0), 0);
+  const docs = state.docs || [];
+  const tiles = [
+    { ...BOARDS[0], info: count('wlan') ? (wlan.data?.ssid || wlan.title) : 'noch leer', meta: count('wlan') > 1 ? plural(count('wlan'), 'Zettel', 'Zettel') : (count('wlan') ? 'QR-Code für Gäste' : '') },
+    { ...BOARDS[1], info: plural(count('nummern'), 'Gruppe', 'Gruppen'), meta: plural(numbers, 'Nummer', 'Nummern') },
+    { ...BOARDS[2], info: count('zettel') ? plural(count('zettel'), 'Notiz', 'Notizen') : 'noch leer', meta: '' },
+    { id: 'ordner', title: 'Ordner', icon: 'ordner', tone: 5, info: plural(docs.length, 'Datei', 'Dateien'), meta: plural((state.folders || []).length, 'Ordner', 'Ordner') },
+  ];
+  return [
+    viewHeader({ id: 'title-pinnwand', title: 'Pinnwand', subtitle: 'WLAN, Nummern, Notizen & Ordner' }),
+    h('nav', { class: 'pin-tiles', 'aria-label': 'Bereiche der Pinnwand' }, tiles.map((t) => h('a', {
+      class: ['card', 'pin-tile', `pin-tile--${t.id}`], 'data-tone': t.tone, href: `#/pinnwand/${t.id}`,
+    },
+      h('span', { class: 'pin-tile__icon' }, icon(t.icon)),
+      h('span', { class: 'pin-tile__title' }, t.title),
+      h('span', { class: 'pin-tile__info' }, t.info),
+      t.meta && h('span', { class: 'pin-tile__meta' }, t.meta),
+    ))),
+  ];
+}
 
-function newNoteCard(ctx) {
-  if (ui.creating) {
-    const k = kindOf(ui.creating);
-    return h('section', { class: 'card card--note pin pin--form', 'data-tone': k.tone },
-      h('div', { class: 'card__header' },
-        h('span', { class: 'card__icon' }, icon(k.icon)),
-        h('h2', { class: 'card__title' }, `Neu: ${k.label}`),
-      ),
-      noteForm(null, ctx),
-    );
-  }
-  return h('section', { class: 'card pin-new', 'data-tone': 3 },
-    h('div', { class: 'card__header' },
-      h('span', { class: 'card__icon' }, icon('pinnwand')),
-      h('h2', { class: 'card__title' }, 'Was möchtest du anpinnen?'),
-    ),
-    h('div', { class: 'pin-new__kinds' }, KINDS.map((k) => h('button', {
-      type: 'button', class: 'pin-new__kind', 'data-tone': k.tone, 'data-focus-key': `new-${k.id}`,
-      onclick: () => {
-        ui.creating = k.id;
-        ui.editingId = null;
-        ui.draft = emptyDraft(k.id);
-        ctx.rerender();
-        focusLater('[data-focus-key="form-title"]');
-      },
-    }, icon(k.icon), h('span', {}, k.label)))),
-  );
+function backLink(href, text) {
+  return h('a', { class: 'back-link', href }, icon('zurueck', { wash: false }), text);
+}
+
+function notFound(text, section) {
+  return [
+    backLink(`#/pinnwand${section ? `/${section}` : ''}`, 'zurück'),
+    emptyState({ symbol: 'ordner', title: 'Nicht gefunden', text }),
+  ];
 }
 
 // =====================================================================
-// Ein Zettel
+// Korkbrett (WLAN, Nummern, Notizen)
 // =====================================================================
+function boardPage(board, state, ctx) {
+  const notes = (state.notes || []).filter((n) => n.kind === board.kind);
+  const creating = ui.creating === board.kind;
+  return [
+    backLink('#/pinnwand', 'Pinnwand'),
+    viewHeader({
+      id: 'title-pinnwand', title: board.title,
+      subtitle: board.kind === 'wlan' ? 'Antippen zeigt Passwort & QR-Code' : board.kind === 'nummern' ? 'Antippen = anrufen' : 'Freie Zettel für alles Mögliche',
+      actions: [!creating && h('button', {
+        type: 'button', class: 'btn btn--primary', 'data-focus-key': 'board-new',
+        onclick: () => startCreate(board, ctx),
+      }, iconLabel('plus', board.newLabel))],
+    }),
+    h('div', { class: 'corkboard' },
+      h('div', { class: 'cards cards--tasks pin-cards' },
+        creating && h('section', { class: 'card card--note pin pin--form', 'data-tone': board.tone },
+          h('div', { class: 'card__header' },
+            h('span', { class: 'card__icon' }, icon(board.icon)),
+            h('h2', { class: 'card__title' }, board.newLabel),
+          ),
+          noteForm(null, ctx),
+        ),
+        notes.map((n) => noteCard(n, ctx)),
+      ),
+      notes.length === 0 && !creating && h('p', { class: 'corkboard__empty' }, 'Hier hängt noch nichts – oben „', board.newLabel, '“ antippen.'),
+    ),
+  ];
+}
+
+function startCreate(board, ctx) {
+  ui.creating = board.kind;
+  ui.editingId = null;
+  ui.draft = emptyDraft(board.kind);
+  ctx.rerender();
+  focusLater('[data-focus-key="form-title"]');
+}
+
+const emptyDraft = (kind) => ({
+  kind, title: '', body: '', secret: '', ssid: '', security: 'WPA',
+  entries: kind === 'nummern' ? [{ name: '', number: '' }] : [],
+});
+
+// ---------- Ein Zettel ----------
 function noteCard(note, ctx) {
-  const k = kindOf(note.kind);
+  const b = boardOfKind(note.kind);
   if (ui.editingId === note.id) {
-    return h('section', { class: 'card card--note pin pin--form', 'data-tone': k.tone },
+    return h('section', { class: 'card card--note pin pin--form', 'data-tone': b.tone },
       h('div', { class: 'card__header' },
-        h('span', { class: 'card__icon' }, icon(k.icon)),
+        h('span', { class: 'card__icon' }, icon(b.icon)),
         h('h2', { class: 'card__title' }, 'Bearbeiten'),
       ),
       noteForm(note, ctx),
     );
   }
-  return h('section', { class: ['card', 'card--note', 'pin', `pin--${note.kind}`], 'data-tone': k.tone },
+  return h('section', { class: ['card', 'card--note', 'pin', `pin--${note.kind}`], 'data-tone': b.tone },
     h('div', { class: 'card__header' },
-      h('span', { class: 'card__icon' }, icon(k.icon)),
+      h('span', { class: 'card__icon' }, icon(b.icon)),
       h('h3', { class: 'card__title' }, note.title),
       h('button', {
         type: 'button', class: 'btn btn--icon btn--ghost pin__edit', 'aria-label': `${note.title} bearbeiten`, title: 'Bearbeiten',
@@ -140,7 +188,6 @@ function noteCard(note, ctx) {
       h('span', { class: 'pin-field__label' }, 'Geheim'),
       secretValue(note, note.secret, ctx),
     ),
-    (note.kind === 'dokument' || note.kind === 'zettel') && fileList(filesOf(note)),
   );
 }
 
@@ -174,17 +221,20 @@ function wlanContent(note, ctx) {
 /** QR-Code bildschirmfüllend – Gast hält die Handykamera drauf. */
 function openQr(note) {
   const d = note.data || {};
+  overlay('WLAN-QR-Code', h('figure', { class: 'qr-big' },
+    qrSvg(wifiText({ ssid: d.ssid, password: note.secret, security: d.security || 'WPA', hidden: d.hidden }), { label: `QR-Code für das WLAN ${d.ssid}` }),
+    h('figcaption', { class: 'qr-big__caption' },
+      h('strong', {}, d.ssid),
+      h('span', {}, 'Handykamera draufhalten – schon seid ihr im WLAN ♡'),
+    ),
+  ));
+}
+
+/** Großansicht über allem. Antippen oder Esc schließt. */
+function overlay(label, content, className) {
   const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
   const onKey = (e) => { if (e.key === 'Escape') close(); };
-  const box = h('div', { class: 'lightbox', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'WLAN-QR-Code', onclick: close },
-    h('figure', { class: 'qr-big' },
-      qrSvg(wifiText({ ssid: d.ssid, password: note.secret, security: d.security || 'WPA', hidden: d.hidden }), { label: `QR-Code für das WLAN ${d.ssid}` }),
-      h('figcaption', { class: 'qr-big__caption' },
-        h('strong', {}, d.ssid),
-        h('span', {}, 'Handykamera draufhalten – schon seid ihr im WLAN ♡'),
-      ),
-    ),
-  );
+  const box = h('div', { class: ['lightbox', className], role: 'dialog', 'aria-modal': 'true', 'aria-label': label, onclick: close }, content);
   document.body.append(box);
   document.addEventListener('keydown', onKey);
 }
@@ -203,39 +253,6 @@ function phoneList(note) {
     ),
   )));
 }
-
-// ---------- Dateien ----------
-function fileList(files) {
-  if (!files.length) return null;
-  return h('ul', { class: 'file-list' }, files.map((f) => h('li', {},
-    f.type === 'jpg'
-      ? h('button', { type: 'button', class: 'file', onclick: () => openImage(f) }, fileInner(f))
-      : h('a', { class: 'file', href: api.noteFileUrl(f), target: '_blank', rel: 'noopener' }, fileInner(f)),
-  )));
-}
-
-function fileInner(f) {
-  return [
-    icon(f.type === 'pdf' ? 'dokument' : 'kamera', { wash: false }),
-    h('span', { class: 'file__name' }, f.name),
-    h('span', { class: 'file__size' }, formatSize(f.size)),
-  ];
-}
-
-/** Foto eines Papiers groß ansehen (antippen schließt). */
-function openImage(f) {
-  const close = () => { box.remove(); document.removeEventListener('keydown', onKey); };
-  const onKey = (e) => { if (e.key === 'Escape') close(); };
-  const box = h('div', { class: 'lightbox lightbox--doc', role: 'dialog', 'aria-modal': 'true', 'aria-label': f.name, onclick: close },
-    h('img', { class: 'doc-image', src: api.noteFileUrl(f), alt: f.name }),
-  );
-  document.body.append(box);
-  document.addEventListener('keydown', onKey);
-}
-
-const formatSize = (bytes) => (bytes >= 1024 * 1024
-  ? `${(bytes / 1024 / 1024).toLocaleString('de-DE', { maximumFractionDigits: 1 })} MB`
-  : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
 // ---------- Geheimes: verdeckt, antippen zeigt ----------
 function secretValue(note, value, ctx) {
@@ -286,9 +303,7 @@ async function copyText(text) {
   }
 }
 
-// =====================================================================
-// Formular (neu + bearbeiten)
-// =====================================================================
+// ---------- Formular (neu + bearbeiten) ----------
 function startEdit(note, ctx) {
   ui.creating = null;
   ui.editingId = note.id;
@@ -315,7 +330,7 @@ function closeForm(ctx) {
 
 function noteForm(note, ctx) {
   const d = ui.draft;
-  const k = kindOf(d.kind);
+  const b = boardOfKind(d.kind);
   const field = (label, ...content) => h('label', { class: 'choice' }, h('span', { class: 'choice__legend' }, label), ...content);
   const input = (key, props) => h('input', {
     class: 'input', type: 'text', autocomplete: 'off', 'data-focus-key': `form-${key}`, value: d[key],
@@ -324,10 +339,10 @@ function noteForm(note, ctx) {
 
   return h('form', {
     class: 'pin-form',
-    onsubmit: (e) => { e.preventDefault(); save(note, ctx); },
+    onsubmit: (e) => { e.preventDefault(); saveNote(note, ctx); },
     onkeydown: (e) => { if (e.key === 'Escape') closeForm(ctx); },
   },
-    field('Überschrift', input('title', { maxlength: 80, placeholder: k.placeholder, enterkeyhint: 'next' })),
+    field('Überschrift', input('title', { maxlength: 80, placeholder: b.placeholder, enterkeyhint: 'next' })),
 
     d.kind === 'wlan' && [
       field('Netzname (SSID)', input('ssid', { maxlength: 64, placeholder: 'so heißt das WLAN', autocapitalize: 'off', spellcheck: 'false' })),
@@ -371,101 +386,33 @@ function noteForm(note, ctx) {
       }, iconLabel('plus', 'Nummer')),
     ),
 
-    (d.kind === 'zettel' || d.kind === 'dokument' || d.kind === 'wlan') && field(d.kind === 'zettel' ? 'Text' : 'Notiz',
+    (d.kind === 'zettel' || d.kind === 'wlan') && field(d.kind === 'zettel' ? 'Text' : 'Notiz',
       h('textarea', {
         class: 'input input--area', rows: d.kind === 'zettel' ? 4 : 2, maxlength: 4000, 'data-focus-key': 'form-body',
-        placeholder: d.kind === 'dokument' ? 'z. B. Kündigungsfrist 3 Monate, Kundennr. …' : d.kind === 'wlan' ? 'z. B. Router steht im Flur' : '',
+        placeholder: d.kind === 'wlan' ? 'z. B. Router steht im Flur' : '',
         value: d.body, oninput: (e) => { d.body = e.target.value; },
       })),
 
     d.kind === 'zettel' && field('Geheim (z. B. PIN, Code) – wird verdeckt angezeigt',
       input('secret', { maxlength: 200, autocapitalize: 'off', spellcheck: 'false' })),
 
-    (d.kind === 'zettel' || d.kind === 'dokument') && filesField(note, ctx),
-
     h('div', { class: 'add-form' },
       h('button', { type: 'submit', class: 'btn btn--primary', 'data-focus-key': 'form-save', disabled: ui.busy }, note ? 'Speichern' : 'Anpinnen'),
       h('button', { type: 'button', class: 'btn btn--ghost', onclick: () => closeForm(ctx) }, 'Abbrechen'),
       note && h('button', {
         type: 'button', class: 'btn btn--icon btn--danger pin-form__delete', 'aria-label': 'Zettel abnehmen', title: 'Abnehmen',
-        onclick: () => remove(note, ctx),
+        onclick: () => {
+          closeForm(ctx);
+          deleteNote(note);
+          showToast(`„${note.title}“ abgenommen`, { actionLabel: 'Rückgängig', onAction: () => restoreNote(note) });
+        },
       }, icon('muell', { wash: false })),
     ),
     note?.createdBy && h('p', { class: 'task-edit__by' }, byline(note.createdBy, `angepinnt ${formatWhen(note.createdAt)}`)),
   );
 }
 
-// ---------- Dateien im Formular ----------
-function filesField(note, ctx) {
-  const d = ui.draft;
-  const existing = note ? filesOf(note) : [];
-  const picker = h('input', {
-    type: 'file', accept: 'application/pdf,image/*', multiple: true, class: 'visually-hidden', tabindex: '-1',
-    onchange: async (e) => {
-      const chosen = [...(e.target.files || [])];
-      e.target.value = '';
-      for (const file of chosen) {
-        const prepared = await prepareFile(file);
-        if (!prepared) continue;
-        if (note) {
-          ui.uploading++;
-          ctx.rerender();
-          const ok = await uploadNoteFile(note, prepared.blob, prepared.name);
-          ui.uploading--;
-          if (ok) showToast(`„${ok.name}“ angehängt`);
-          ctx.rerender();
-        } else {
-          d.files.push(prepared);
-          ctx.rerender();
-        }
-      }
-    },
-  });
-  const row = (name, size, type, onRemove) => h('li', { class: 'file-edit' },
-    icon(type === 'pdf' ? 'dokument' : 'kamera', { wash: false }),
-    h('span', { class: 'file__name' }, name),
-    h('span', { class: 'file__size' }, formatSize(size)),
-    h('button', { type: 'button', class: 'btn btn--icon btn--ghost', 'aria-label': `${name} entfernen`, title: 'Entfernen', onclick: onRemove },
-      icon('muell', { wash: false })),
-  );
-  return h('fieldset', { class: 'choice' },
-    h('legend', { class: 'choice__legend' }, 'Dateien (PDF oder Foto)'),
-    (existing.length > 0 || d.files.length > 0) && h('ul', { class: 'file-list file-list--edit' },
-      existing.map((f) => row(f.name, f.size, f.type, () => {
-        if (confirm(`„${f.name}“ wirklich löschen?`)) deleteNoteFile(f);
-      })),
-      d.files.map((f, i) => row(f.name, f.blob.size, f.type, () => { d.files.splice(i, 1); ctx.rerender(); })),
-    ),
-    h('div', { class: 'pills' },
-      h('button', { type: 'button', class: 'btn btn--small', 'data-focus-key': 'form-file', onclick: () => picker.click() },
-        iconLabel('klammer', 'PDF oder Foto anhängen')),
-      ui.uploading > 0 && h('span', { class: 'muted' }, 'lädt hoch …'),
-    ),
-    picker,
-  );
-}
-
-/** PDF prüfen bzw. Foto verkleinern (entfernt auch GPS-Daten). */
-async function prepareFile(file) {
-  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
-  if (isPdf) {
-    if (file.size > MAX_PDF_MB * 1024 * 1024) {
-      showToast(`„${file.name}“ ist zu groß (höchstens ${MAX_PDF_MB} MB)`, { variant: 'error' });
-      return null;
-    }
-    return { blob: new Blob([await file.arrayBuffer()], { type: 'application/pdf' }), name: file.name, type: 'pdf' };
-  }
-  try {
-    const blob = await shrink(file, { maxSize: 2400 });
-    return { blob, name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'jpg' };
-  } catch {
-    showToast(`„${file.name}“ konnte nicht gelesen werden – bitte PDF oder Foto`, { variant: 'error' });
-    return null;
-  }
-}
-
-// ---------- Speichern / Abnehmen ----------
-async function save(note, ctx) {
+async function saveNote(note, ctx) {
   const d = ui.draft;
   const title = d.title.trim();
   if (!title) {
@@ -495,30 +442,326 @@ async function save(note, ctx) {
   ui.busy = true;
   ctx.rerender();
   const saved = note ? await updateNote(note, data) : await addNote({ kind: d.kind, ...data });
-  if (saved && !note) {
-    // ausgesuchte Dateien jetzt hochladen
-    for (const f of d.files) await uploadNoteFile(saved, f.blob, f.name);
-  }
   ui.busy = false;
   if (!saved) { ctx.rerender(); return; }
   closeForm(ctx);
   showToast(note ? 'Gespeichert ♡' : `„${title}“ hängt an der Pinnwand ♡`);
 }
 
-function remove(note, ctx) {
-  const files = filesOf(note);
-  if (files.length) {
-    const what = files.length === 1 ? 'der angehängten Datei' : `${files.length} angehängten Dateien`;
-    if (!confirm(`„${note.title}“ mit ${what} abnehmen? Die Dateien werden gelöscht.`)) return;
-    closeForm(ctx);
-    deleteNote(note);
-    showToast(`„${note.title}“ abgenommen`);
-    return;
-  }
-  closeForm(ctx);
-  deleteNote(note);
-  showToast(`„${note.title}“ abgenommen`, { actionLabel: 'Rückgängig', onAction: () => restoreNote(note) });
+// =====================================================================
+// Ordner
+// =====================================================================
+function foldersPage(state, ctx) {
+  const folders = state.folders || [];
+  const q = ui.search.trim().toLocaleLowerCase('de');
+  const hits = q
+    ? (state.docs || []).filter((d) => `${d.name} ${d.note || ''}`.toLocaleLowerCase('de').includes(q))
+    : null;
+  return [
+    backLink('#/pinnwand', 'Pinnwand'),
+    viewHeader({ id: 'title-pinnwand', title: 'Ordner', subtitle: 'Verträge, Dokumente & Fotos von Papieren' }),
+    h('div', { class: 'folder-page' },
+      h('label', { class: 'search' },
+        icon('suche', { wash: false }),
+        h('input', {
+          class: 'input search__input', type: 'search', placeholder: 'In allen Dateien suchen …', 'aria-label': 'In allen Dateien suchen',
+          'data-focus-key': 'doc-search', autocomplete: 'off', enterkeyhint: 'search', value: ui.search,
+          oninput: (e) => { ui.search = e.target.value; ctx.rerender(); },
+        }),
+      ),
+      hits
+        ? h('section', { class: 'card doc-card', 'data-tone': 5 },
+          h('div', { class: 'card__header' },
+            h('span', { class: 'card__icon' }, icon('suche')),
+            h('h2', { class: 'card__title' }, hits.length ? plural(hits.length, 'Treffer', 'Treffer') : 'Nichts gefunden'),
+          ),
+          hits.length > 0 && h('ul', { class: 'doc-list' }, hits.map((d) => docRow(d, state, ctx, { showFolder: true }))),
+        )
+        : h('div', { class: 'folders' },
+          folders.map((f, i) => h('a', { class: 'folder', href: `#/pinnwand/ordner/${f.id}`, 'data-tone': (i % 6) + 1 },
+            h('span', { class: 'folder__name' }, f.name),
+            h('span', { class: 'folder__count' }, plural(docsIn(f).length, 'Datei', 'Dateien')),
+          )),
+          ui.newFolder === null
+            ? h('button', {
+              type: 'button', class: 'folder folder--new', 'data-focus-key': 'folder-new',
+              onclick: () => { ui.newFolder = ''; ctx.rerender(); focusLater('[data-focus-key="folder-new-name"]'); },
+            }, icon('plus', { wash: false }), h('span', { class: 'folder__name' }, 'Neuer Ordner'))
+            : h('form', {
+              class: 'folder folder--form',
+              onsubmit: async (e) => {
+                e.preventDefault();
+                const name = ui.newFolder.trim();
+                if (!name) return;
+                if (await addFolder(name)) { ui.newFolder = null; showToast(`Ordner „${name}“ angelegt`); ctx.rerender(); }
+              },
+              onkeydown: (e) => { if (e.key === 'Escape') { ui.newFolder = null; ctx.rerender(); } },
+            },
+              h('input', {
+                class: 'input', type: 'text', maxlength: 40, placeholder: 'Name, z. B. Versicherungen', 'aria-label': 'Name des neuen Ordners',
+                'data-focus-key': 'folder-new-name', autocomplete: 'off', enterkeyhint: 'done', value: ui.newFolder,
+                oninput: (e) => { ui.newFolder = e.target.value; },
+              }),
+              h('div', { class: 'add-form' },
+                h('button', { type: 'submit', class: 'btn btn--primary btn--small' }, 'Anlegen'),
+                h('button', { type: 'button', class: 'btn btn--ghost btn--small', onclick: () => { ui.newFolder = null; ctx.rerender(); } }, 'Abbrechen'),
+              ),
+            ),
+        ),
+    ),
+  ];
 }
+
+// ---------- Ein Unterordner ----------
+function folderPage(folder, state, ctx) {
+  if (ui.pendingFolder !== folder.id) { ui.pending = []; ui.pendingFolder = folder.id; } // anderer Ordner -> Auswahl verwerfen
+  const docs = docsIn(folder).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const editing = ui.folderEdit?.id === folder.id;
+  const picker = h('input', {
+    type: 'file', accept: 'application/pdf,image/*', multiple: true, class: 'visually-hidden', tabindex: '-1',
+    onchange: async (e) => {
+      const chosen = [...(e.target.files || [])];
+      e.target.value = '';
+      for (const file of chosen) {
+        const prepared = await prepareFile(file);
+        if (prepared) ui.pending.push(prepared);
+      }
+      ctx.rerender();
+      focusLater('[data-focus-key="pending-name-0"]');
+    },
+  });
+  return [
+    backLink('#/pinnwand/ordner', 'Ordner'),
+    editing
+      ? folderEditForm(folder, ctx)
+      : viewHeader({
+        id: 'title-pinnwand', title: folder.name, subtitle: plural(docs.length, 'Datei', 'Dateien'),
+        actions: [h('button', {
+          type: 'button', class: 'btn btn--icon', 'aria-label': 'Ordner umbenennen oder löschen', title: 'Ordner bearbeiten',
+          'data-focus-key': 'folder-edit',
+          onclick: () => { ui.folderEdit = { id: folder.id, name: folder.name }; ctx.rerender(); focusLater('[data-focus-key="folder-edit-name"]'); },
+        }, icon('stift', { wash: false }))],
+      }),
+    h('div', { class: 'folder-page' },
+      ui.pending.length > 0
+        ? pendingForm(folder, ctx)
+        : h('div', { class: 'add-form add-form--tight' },
+          h('button', { type: 'button', class: 'btn btn--primary', 'data-focus-key': 'doc-add', onclick: () => picker.click() },
+            iconLabel('plus', 'PDF oder Foto hinzufügen')),
+          picker,
+        ),
+      h('section', { class: 'card doc-card', 'data-tone': 5 },
+        docs.length
+          ? h('ul', { class: 'doc-list' }, docs.map((d) => docRow(d, state, ctx)))
+          : h('p', { class: 'muted doc-card__empty' }, 'Noch leer – oben eine Datei hinzufügen.'),
+      ),
+    ),
+  ];
+}
+
+function folderEditForm(folder, ctx) {
+  const close = () => { ui.folderEdit = null; ctx.rerender(); };
+  return h('form', {
+    class: 'card folder-edit', 'data-tone': 5,
+    onsubmit: async (e) => {
+      e.preventDefault();
+      const name = ui.folderEdit.name.trim();
+      if (!name) return;
+      if (name !== folder.name && !(await updateFolder(folder, { name }))) return;
+      close();
+    },
+    onkeydown: (e) => { if (e.key === 'Escape') close(); },
+  },
+    h('label', { class: 'choice' },
+      h('span', { class: 'choice__legend' }, 'Name des Ordners'),
+      h('input', {
+        class: 'input', type: 'text', maxlength: 40, 'data-focus-key': 'folder-edit-name', autocomplete: 'off', value: ui.folderEdit.name,
+        oninput: (e) => { ui.folderEdit.name = e.target.value; },
+      }),
+    ),
+    h('div', { class: 'add-form' },
+      h('button', { type: 'submit', class: 'btn btn--primary' }, 'Speichern'),
+      h('button', { type: 'button', class: 'btn btn--ghost', onclick: close }, 'Abbrechen'),
+      h('button', {
+        type: 'button', class: 'btn btn--icon btn--danger pin-form__delete', 'aria-label': 'Ordner löschen', title: 'Ordner löschen',
+        onclick: async () => {
+          if (docsIn(folder).length) {
+            showToast('Im Ordner liegen noch Dateien – bitte erst löschen oder verschieben', { variant: 'error' });
+            return;
+          }
+          if (!confirm(`Ordner „${folder.name}“ löschen?`)) return;
+          ui.folderEdit = null;
+          if (await deleteFolder(folder)) { showToast(`Ordner „${folder.name}“ gelöscht`); location.hash = '#/pinnwand/ordner'; }
+        },
+      }, icon('muell', { wash: false })),
+    ),
+  );
+}
+
+// ---------- Ausgesuchte Dateien: Name + Notiz, dann hochladen ----------
+function pendingForm(folder, ctx) {
+  const cancel = () => { ui.pending = []; ctx.rerender(); };
+  return h('form', {
+    class: 'card pending', 'data-tone': 3,
+    onsubmit: async (e) => {
+      e.preventDefault();
+      if (ui.uploading) return;
+      ui.uploading = true;
+      ctx.rerender();
+      let ok = 0;
+      for (const p of [...ui.pending]) {
+        const name = p.name.trim() || (p.type === 'pdf' ? 'Dokument' : 'Foto');
+        if (await uploadDoc(folder, p.blob, name, p.note.trim())) {
+          ok++;
+          ui.pending.splice(ui.pending.indexOf(p), 1);
+        }
+      }
+      ui.uploading = false;
+      if (ok) showToast(ok === 1 ? 'Datei liegt im Ordner ♡' : `${ok} Dateien liegen im Ordner ♡`);
+      ctx.rerender();
+    },
+    onkeydown: (e) => { if (e.key === 'Escape') cancel(); },
+  },
+    h('div', { class: 'card__header' },
+      h('span', { class: 'card__icon' }, icon('klammer')),
+      h('h2', { class: 'card__title' }, ui.pending.length === 1 ? 'Neue Datei' : `${ui.pending.length} neue Dateien`),
+    ),
+    ui.pending.map((p, i) => h('div', { class: 'pending__item' },
+      h('div', { class: 'pending__top' },
+        icon(p.type === 'pdf' ? 'dokument' : 'kamera', { wash: false }),
+        h('input', {
+          class: 'input', type: 'text', maxlength: 110, 'aria-label': 'Name', 'data-focus-key': `pending-name-${i}`,
+          autocomplete: 'off', value: p.name, oninput: (e) => { p.name = e.target.value; },
+        }),
+        h('button', {
+          type: 'button', class: 'btn btn--icon btn--ghost', 'aria-label': 'Nicht hochladen', title: 'Weglassen',
+          onclick: () => { ui.pending.splice(i, 1); ctx.rerender(); },
+        }, icon('kreuz', { wash: false })),
+      ),
+      h('textarea', {
+        class: 'input input--area', rows: 2, maxlength: 1000, placeholder: 'Notiz (optional), z. B. „Kündigungsfrist 3 Monate“',
+        'aria-label': 'Notiz', 'data-focus-key': `pending-note-${i}`, value: p.note, oninput: (e) => { p.note = e.target.value; },
+      }),
+    )),
+    h('div', { class: 'add-form' },
+      h('button', { type: 'submit', class: 'btn btn--primary', 'data-focus-key': 'pending-save', disabled: ui.uploading },
+        ui.uploading ? 'lädt hoch …' : 'In den Ordner legen'),
+      h('button', { type: 'button', class: 'btn btn--ghost', onclick: cancel, disabled: ui.uploading }, 'Abbrechen'),
+    ),
+  );
+}
+
+/** PDF prüfen bzw. Foto verkleinern (entfernt auch GPS-Daten). */
+async function prepareFile(file) {
+  const isPdf = file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
+  const base = file.name.replace(/\.[^.]+$/, '');
+  if (isPdf) {
+    if (file.size > MAX_PDF_MB * 1024 * 1024) {
+      showToast(`„${file.name}“ ist zu groß (höchstens ${MAX_PDF_MB} MB)`, { variant: 'error' });
+      return null;
+    }
+    return { blob: new Blob([await file.arrayBuffer()], { type: 'application/pdf' }), name: base, type: 'pdf', note: '' };
+  }
+  try {
+    const blob = await shrink(file, { maxSize: 2400 });
+    return { blob, name: base, type: 'jpg', note: '' };
+  } catch {
+    showToast(`„${file.name}“ konnte nicht gelesen werden – bitte PDF oder Foto`, { variant: 'error' });
+    return null;
+  }
+}
+
+// ---------- Eine Datei ----------
+function docRow(doc, state, ctx, { showFolder = false } = {}) {
+  if (ui.docEdit?.id === doc.id) return h('li', { class: 'doc doc--editing' }, docEditForm(doc, state, ctx));
+  const day = new Date(doc.createdAt).toLocaleDateString('de-DE', { day: 'numeric', month: 'numeric', year: 'numeric' });
+  const folder = showFolder ? folderById(doc.folderId) : null;
+  const inner = [
+    h('span', { class: 'doc__icon' }, icon(doc.type === 'pdf' ? 'dokument' : 'kamera', { wash: false })),
+    h('span', { class: 'doc__text' },
+      h('span', { class: 'doc__name' }, doc.name),
+      doc.note && h('span', { class: 'doc__note' }, doc.note),
+      h('span', { class: 'doc__meta' },
+        folder && h('span', { class: 'doc__folder' }, icon('ordner', { wash: false }), folder.name),
+        byline(doc.addedBy, `${day} · ${formatSize(doc.size)}`)),
+    ),
+  ];
+  return h('li', { class: 'doc' },
+    doc.type === 'jpg'
+      ? h('button', { type: 'button', class: 'doc__open', 'aria-label': `${doc.name} ansehen`, onclick: () => overlay(doc.name, h('img', { class: 'doc-image', src: api.docUrl(doc), alt: doc.name }), 'lightbox--doc') }, inner)
+      : h('a', { class: 'doc__open', href: api.docUrl(doc), target: '_blank', rel: 'noopener', 'aria-label': `${doc.name} öffnen` }, inner),
+    h('button', {
+      type: 'button', class: 'btn btn--icon btn--ghost doc__edit', 'aria-label': `${doc.name} bearbeiten`, title: 'Bearbeiten',
+      'data-focus-key': `doc-edit-${doc.id}`,
+      onclick: () => {
+        ui.docEdit = { id: doc.id, name: doc.name.replace(/\.(pdf|jpg)$/i, ''), note: doc.note || '', folderId: doc.folderId };
+        ctx.rerender();
+        focusLater('[data-focus-key="doc-name"]');
+      },
+    }, icon('stift', { wash: false })),
+  );
+}
+
+function docEditForm(doc, state, ctx) {
+  const d = ui.docEdit;
+  const close = () => { ui.docEdit = null; ctx.rerender(); };
+  return h('form', {
+    class: 'pin-form',
+    onsubmit: async (e) => {
+      e.preventDefault();
+      const name = d.name.trim();
+      if (!name) return;
+      const patch = {};
+      if (`${name}.${doc.type}` !== doc.name) patch.name = name;
+      if ((d.note.trim() || null) !== doc.note) patch.note = d.note.trim() || null;
+      if (d.folderId !== doc.folderId) patch.folderId = d.folderId;
+      close();
+      if (Object.keys(patch).length && await updateDoc(doc, patch)) {
+        showToast(patch.folderId ? `Verschoben nach „${folderById(patch.folderId)?.name}“` : 'Gespeichert ♡');
+      }
+    },
+    onkeydown: (e) => { if (e.key === 'Escape') close(); },
+  },
+    h('label', { class: 'choice' },
+      h('span', { class: 'choice__legend' }, 'Name'),
+      h('input', {
+        class: 'input', type: 'text', maxlength: 110, 'data-focus-key': 'doc-name', autocomplete: 'off', value: d.name,
+        oninput: (e) => { d.name = e.target.value; },
+      }),
+    ),
+    h('label', { class: 'choice' },
+      h('span', { class: 'choice__legend' }, 'Notiz'),
+      h('textarea', {
+        class: 'input input--area', rows: 2, maxlength: 1000, 'data-focus-key': 'doc-note', value: d.note,
+        oninput: (e) => { d.note = e.target.value; },
+      }),
+    ),
+    (state.folders || []).length > 1 && h('label', { class: 'choice' },
+      h('span', { class: 'choice__legend' }, 'Liegt im Ordner'),
+      h('select', {
+        class: 'input', 'data-focus-key': 'doc-folder',
+        onchange: (e) => { d.folderId = Number(e.target.value); },
+      }, state.folders.map((f) => h('option', { value: f.id, selected: f.id === d.folderId }, f.name))),
+    ),
+    h('div', { class: 'add-form' },
+      h('button', { type: 'submit', class: 'btn btn--primary', 'data-focus-key': 'doc-save' }, 'Speichern'),
+      h('button', { type: 'button', class: 'btn btn--ghost', onclick: close }, 'Abbrechen'),
+      h('button', {
+        type: 'button', class: 'btn btn--icon btn--danger pin-form__delete', 'aria-label': 'Datei löschen', title: 'Löschen',
+        onclick: () => {
+          if (!confirm(`„${doc.name}“ wirklich löschen?`)) return;
+          close();
+          deleteDoc(doc);
+          showToast(`„${doc.name}“ gelöscht`);
+        },
+      }, icon('muell', { wash: false })),
+    ),
+  );
+}
+
+const formatSize = (bytes) => (bytes >= 1024 * 1024
+  ? `${(bytes / 1024 / 1024).toLocaleString('de-DE', { maximumFractionDigits: 1 })} MB`
+  : `${Math.max(1, Math.round(bytes / 1024))} KB`);
 
 function focusLater(selector) {
   requestAnimationFrame(() => document.querySelector(selector)?.focus({ preventScroll: true }));

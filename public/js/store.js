@@ -26,7 +26,8 @@ export const state = {
   wishes: [],
   links: [],
   notes: [],
-  noteFiles: [],
+  folders: [],
+  docs: [],
 };
 
 const listeners = new Set();
@@ -143,7 +144,8 @@ export async function logout() {
   state.meals = [];
   state.wishes = [];
   state.notes = [];
-  state.noteFiles = [];
+  state.folders = [];
+  state.docs = [];
   requireLogin();
 }
 
@@ -425,33 +427,56 @@ export function updateNote(note, patch) {
   );
 }
 
-/** Zettel abnehmen (angehängte Dateien werden mit gelöscht). */
 export function deleteNote(note) {
   return mutate(
-    () => {
-      state.notes = state.notes.filter((n) => n.id !== note.id);
-      state.noteFiles = state.noteFiles.filter((f) => f.noteId !== note.id);
-    },
+    () => { state.notes = state.notes.filter((n) => n.id !== note.id); },
     () => api.remove('notes', note.id)
   );
 }
 
-/** Abgenommenen Zettel wieder anpinnen (für "Rückgängig", nur ohne Dateien). */
+/** Abgenommenen Zettel wieder anpinnen (für "Rückgängig"). */
 export function restoreNote(note) {
   const { kind, title, body, secret, data, sort } = note;
   return mutate(null, () => api.create('notes', { kind, title, body, secret, data, sort }));
 }
 
-/** Dateien eines Zettels (älteste zuerst). */
-export const filesOf = (note) => (state.noteFiles || []).filter((f) => f.noteId === note.id);
+// ---------- Ordner (Dokumente) ----------
+export const folderById = (id) => state.folders.find((f) => f.id === Number(id)) || null;
+export const docsIn = (folder) => state.docs.filter((d) => d.folderId === folder.id);
 
-export function uploadNoteFile(note, blob, name) {
-  return mutate(null, () => api.uploadNoteFile(note, blob, name));
+export function addFolder(name) {
+  const sort = Math.max(-1, ...state.folders.map((f) => f.sort)) + 1;
+  return mutate(null, () => api.create('folders', { name, sort }));
 }
 
-export function deleteNoteFile(file) {
+export function updateFolder(folder, patch) {
   return mutate(
-    () => { state.noteFiles = state.noteFiles.filter((f) => f.id !== file.id); },
-    () => api.remove('note-files', file.id)
+    () => Object.assign(folderById(folder.id) || {}, patch),
+    () => api.update('folders', folder.id, patch)
+  );
+}
+
+export function deleteFolder(folder) {
+  return mutate(
+    () => { state.folders = state.folders.filter((f) => f.id !== folder.id); },
+    () => api.remove('folders', folder.id)
+  );
+}
+
+export function uploadDoc(folder, blob, name, note) {
+  return mutate(null, () => api.uploadDoc(folder, blob, name, note));
+}
+
+export function updateDoc(doc, patch) {
+  return mutate(
+    () => Object.assign(state.docs.find((d) => d.id === doc.id) || {}, patch),
+    () => api.update('docs', doc.id, patch)
+  );
+}
+
+export function deleteDoc(doc) {
+  return mutate(
+    () => { state.docs = state.docs.filter((d) => d.id !== doc.id); },
+    () => api.remove('docs', doc.id)
   );
 }

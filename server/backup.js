@@ -29,9 +29,9 @@ db.exec(`VACUUM INTO '${target.replaceAll("'", "''")}'`);
 db.close();
 console.log(`[backup] Gesichert: ${target}`);
 
-// Fotos und Pinnwand-Dateien mitsichern (nur neue Dateien werden kopiert;
+// Fotos und Dateien aus dem Pinnwand-Ordner mitsichern (nur neue Dateien werden kopiert;
 // abgenommene Fotos/Dokumente bleiben in der Sicherung)
-for (const sub of ['fotos', 'dokumente']) {
+for (const sub of ['fotos', 'ordner']) {
   const from = path.join(config.dataDir, sub);
   if (!fs.existsSync(from)) continue;
   fs.cpSync(from, path.join(dir, sub), { recursive: true, force: false, errorOnExist: false });

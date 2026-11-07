@@ -257,6 +257,41 @@ export const MIGRATIONS = [
     0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
   `,
 
+  // 9: Ordner für Dokumente (Unterordner, eine Ebene) statt Dokument-Zettel.
+  //    Die bisherigen Dokument-Zettel waren nur Tests (laut Nutzern) und fallen weg;
+  //    angehängte Dateien an Zetteln gibt es nicht mehr (Dateien liegen jetzt im Ordner).
+  `
+  CREATE TABLE folders (
+    id          INTEGER PRIMARY KEY,
+    name        TEXT    NOT NULL,
+    sort        INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+  CREATE UNIQUE INDEX folders_name ON folders (name COLLATE NOCASE);
+
+  CREATE TABLE docs (
+    id          INTEGER PRIMARY KEY,
+    folder_id   INTEGER NOT NULL REFERENCES folders(id) ON DELETE RESTRICT,
+    file        TEXT    NOT NULL,                   -- Dateiname in data/ordner/
+    name        TEXT    NOT NULL,                   -- angezeigter Name, z. B. "Mietvertrag.pdf"
+    note        TEXT,                               -- z. B. "Kündigungsfrist 3 Monate"
+    type        TEXT    NOT NULL,                   -- pdf | jpg
+    size        INTEGER NOT NULL DEFAULT 0,
+    added_by    INTEGER REFERENCES people(id) ON DELETE SET NULL,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+  CREATE INDEX docs_folder ON docs (folder_id);
+
+  INSERT INTO folders (name, sort, created_at, updated_at) VALUES
+    ('Verträge', 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+    ('Wohnung',  1, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'));
+
+  DELETE FROM note_files;
+  DELETE FROM notes WHERE kind = 'dokument';
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];

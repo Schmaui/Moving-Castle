@@ -3,21 +3,18 @@
 //   GET    /api/notes          Liste (kommt auch in /api/state mit)
 //   POST   /api/notes          Neuer Zettel
 //   PATCH  /api/notes/:id      Ändern
-//   DELETE /api/notes/:id      Abnehmen (angehängte Dateien werden mit gelöscht)
+//   DELETE /api/notes/:id      Abnehmen
 //
 // Arten (kind):
-//   zettel   – freier Zettel: Titel, Notiz, optional etwas Geheimes (PIN, Code …), Dateien
+//   zettel   – Notiz: Titel, Text, optional etwas Geheimes (PIN, Code …)
 //   wlan     – WLAN für Gäste: data = { ssid, security: WPA|WEP|nopass, hidden }, secret = Passwort
 //   nummern  – Telefonnummern-Gruppe: data = { entries: [{ name, number }] }
-//   dokument – Vertrag/Dokument: Titel, Notiz, Dateien (PDF/Foto, siehe note-files.js)
-import fs from 'node:fs';
+// Dokumente liegen nicht mehr an Zetteln, sondern im Ordner (folders.js + docs.js).
 import { registerCrud } from '../resource.js';
 import { HttpError } from '../http.js';
 import { validateField } from '../validate.js';
-import { bumpRev, transaction } from '../db.js';
-import { fileOf } from './note-files.js';
 
-export const KINDS = ['zettel', 'wlan', 'nummern', 'dokument'];
+export const KINDS = ['zettel', 'wlan', 'nummern'];
 const SECURITY = ['WPA', 'WEP', 'nopass'];
 const MAX_ENTRIES = 40;
 // Telefonnummer: Ziffern, am Anfang ggf. +, dazwischen Leerzeichen / - ( ) .
@@ -53,21 +50,6 @@ export default {
   name: 'notes',
   inState: true,
   register(ctx) {
-    const { db, router } = ctx;
-
-    // Zettel abnehmen: Dateien auf der Platte gleich mit wegräumen
-    router.delete('/api/notes/:id', ({ params }) => {
-      const existing = api.get(Number(params.id));
-      if (!existing) throw new HttpError(404, 'Zettel nicht gefunden');
-      const files = db.prepare('SELECT file FROM note_files WHERE note_id = ?').all(existing.id);
-      transaction(db, () => {
-        db.prepare('DELETE FROM notes WHERE id = ?').run(existing.id);
-        bumpRev(db);
-      });
-      for (const f of files) fs.rmSync(fileOf(f.file), { force: true });
-      return existing;
-    });
-
     const api = registerCrud(ctx, {
       path: '/api/notes',
       table: 'notes',
