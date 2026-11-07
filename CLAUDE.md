@@ -36,7 +36,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   - Polaroid-Fotos zwischen den Zetteln (Upload, im Browser verkleinert, nur mit Login sichtbar).
   - Einstellungen-Seite (#/einstellungen, Nav „Mehr“): Fotos verwalten, Türfarbe, Foto-Häufigkeit,
     Abmelden – gemeinsam für alle Geräte (`server/modules/settings.js`).
-- Branch `aufgaben-profile` (**noch nicht live**, wartet auf Freigabe):
+- **Seit 7.11.2026 ebenfalls live** (vom Branch `aufgaben-profile` gemergt):
   - Profile „Wir zwei“ (Kait, Schmaui): Name, gezeichnete Figur oder eigenes Foto, Farbe
     (`server/modules/people.js`). Jedes Gerät fragt einmal „Wer bist du?“ (localStorage,
     `public/js/me.js`) und schickt die Person als Header `X-Person` mit.
