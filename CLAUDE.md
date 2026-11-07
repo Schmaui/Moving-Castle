@@ -86,8 +86,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   Update-Pfad von Migration 8 → 9 mit alter DB getestet.
   Noch von den Nutzern am echten Gerät zu prüfen: PDF öffnen auf dem iPhone (öffnet neuen Tab – bei App vom
   Home-Bildschirm evtl. Anmeldung nötig?), QR mit echtem Handy scannen.
-- **Küche + Haushalt (7.11.2026): gebaut, wartet auf „passt“** (Branch `claude/vigilant-noether-1h6c6p`,
-  noch NICHT auf main). Entscheidungen (Klick-Fragen):
+- **Seit 7.11.2026 live: Küche + Haushalt** (Branch `claude/vigilant-noether-1h6c6p`, Nutzer: „passt“). Entscheidungen (Klick-Fragen):
   - Leiste: Liste · Küche · Aufgaben · Pinnwand · Mehr (5 Knöpfe). „Küche“ = View `vorrat`
     (navLabel), Reiter oben Vorrat · Haushalt · Kochen (`kitchenTabs` in `ui/components.js`).
     Views `haushalt` und `kochen` haben `inNav: false`; `navAlso` lässt „Küche“ leuchten.
