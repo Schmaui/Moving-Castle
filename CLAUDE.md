@@ -29,7 +29,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   hell + dunkel) schicken, erst nach „passt“ nach `main` mergen.
 - Vor dem Mergen: `npm test` und `scripts/screenshots.cjs` müssen grün sein.
 
-## Stand / offen (zuletzt aktualisiert: 7.11.2026, Ende der Session)
+## Stand / offen (zuletzt aktualisiert: 7.11.2026)
 - `main` (live): Zeichnungs-Design, Login, Auto-Update **und seit 7.11.2026 das Kühlschrank-Design**
   (vom Branch `design-kuehlschrank` gemergt):
   - Kühlschranktür-Design in Mauve, schräge Zettel mit Washi-Tape.
@@ -98,14 +98,14 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   - Einkaufsliste: erst Essen, darunter Abschnitt „Haushalt“. PC: links Vorrat ODER Haushalt
     (`CONFIG.split.main` ist jetzt eine Liste), rechts die Liste.
   Update-Pfad Migration 9 → 10 mit alter DB getestet.
+- **Pinnwand (umgebaut) und Küche + Haushalt sind von den Nutzern getestet: „funktioniert alles“.**
 - Ganz am Ende (Wunsch der Nutzer): automatische Sicherung auf den Mac der Nutzer. Plan: Skript
   `scripts/mac-backup-einrichten.sh` (SSH-Schlüssel einrichten, LaunchAgent täglich, `rsync` von
   `root@2.31.137.100:/opt/haushalt/data/backups/` nach `~/moving-castle-backup/` – nicht nach
   ~/Documents, das blockiert macOS für Hintergrundjobs). Nutzer starten es einmal im Terminal.
 - Offen nebenbei: Backup einmal mit den Nutzern prüfen (per SSH, Schritt für Schritt);
   README.md und docs/ANPASSEN.md um Profile, Aufgaben, Kochen, Pinnwand ergänzen.
-- **Als Nächstes** (Reihenfolge der Nutzer): Kalender, siehe unten.
-- Danach (Reihenfolge der Nutzer): Kalender
-  (Abo-Link für Apple-Kalender, ggf. iCloud-Kalender lesend anzeigen).
+- **Als Nächstes** (Reihenfolge der Nutzer): Kalender (Abo-Link für Apple-Kalender, ggf.
+  iCloud-Kalender lesend anzeigen). Vorher wie immer per Klick-Fragen (AskUserQuestion) ausführlich klären.
 - Später: NFC-Sticker (Anleitung `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`),
 - Hinweis: Bilder, die Nutzer im Chat schicken, kamen zuletzt teilweise leer an → ggf. nachfragen.
