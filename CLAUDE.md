@@ -129,5 +129,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   - Konnte NICHT mit echtem iCloud-Link getestet werden (Cloud-Session) – Nutzer beim ersten Verbinden
     begleiten, bei Fehler nach Meldung/Screenshot fragen.
   Update-Pfad Migration 10 → 11 mit alter DB getestet.
-- Später: NFC-Sticker (Anleitung `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`),
+- Zurückgestellt (Nutzer 7.11.2026, nicht von selbst wieder vorschlagen): NFC-Sticker (Anleitung
+  `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`).
+- **Aktuell keine offenen Wünsche** – auf neue Ideen der Nutzer warten, vorher per Klick-Fragen klären.
 - Hinweis: Bilder, die Nutzer im Chat schicken, kamen zuletzt teilweise leer an → ggf. nachfragen.
