@@ -16,6 +16,7 @@ export const state = {
   rev: null,
   categories: [],
   items: [],
+  photos: [],
 };
 
 const listeners = new Set();
@@ -125,6 +126,7 @@ export async function logout() {
   try { await api.logout(); } catch { /* egal – lokal trotzdem abmelden */ }
   state.loaded = false;
   state.categories = [];
+  state.photos = [];
   state.items = [];
   requireLogin();
 }
@@ -173,5 +175,17 @@ export function deleteCategory(category) {
   return mutate(
     () => { state.categories = state.categories.filter((c) => c.id !== category.id); },
     () => api.remove('categories', category.id)
+  );
+}
+
+// ---------- Fotos ----------
+export function addPhoto(blob, caption) {
+  return mutate(null, () => api.uploadPhoto(blob, caption));
+}
+
+export function deletePhoto(photo) {
+  return mutate(
+    () => { state.photos = state.photos.filter((p) => p.id !== photo.id); },
+    () => api.remove('photos', photo.id)
   );
 }

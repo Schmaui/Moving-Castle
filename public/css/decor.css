@@ -1,16 +1,44 @@
 /* =====================================================================
-   DEKO: Papier, Aquarell, Washi-Tape, Notizblock, Schieflage.
+   DEKO: Kühlschranktür, Washi-Tape, Notizblock, Polaroids, Schieflage.
    Alles hier ist "Kunst" – die App funktioniert auch ohne diese Datei.
    Schneller Weg zu einem schlichteren Look: in index.html die Zeile
    mit decor.css entfernen (oder einzelne Abschnitte unten löschen).
    ===================================================================== */
 
-/* ---------- Papier-Hintergrund mit Aquarellflecken ---------- */
+/* ---------- Kühlschranktür: Lack mit sanftem Glanz ---------- */
 body {
+  background-color: var(--fridge);
   background-image:
-    radial-gradient(70vmax 55vmax at -10% -5%, var(--wash-1), transparent 65%),
-    radial-gradient(60vmax 50vmax at 110% 105%, var(--wash-2), transparent 65%),
+    linear-gradient(100deg, transparent 0 16%, var(--gloss) 24%, transparent 36%, transparent 64%,
+                    color-mix(in srgb, var(--gloss) 55%, transparent) 72%, transparent 82%),
+    linear-gradient(180deg, color-mix(in srgb, var(--gloss) 70%, transparent), transparent 35%, rgb(0 0 0 / 0.05)),
     var(--texture-grain);
+  background-attachment: fixed;
+}
+/* Griff am rechten Rand */
+body::after {
+  content: "";
+  position: fixed;
+  right: 5px;
+  top: 24%;
+  width: 9px;
+  height: 24%;
+  border-radius: 6px;
+  background: var(--handle);
+  box-shadow: -2px 3px 6px rgb(0 0 0 / 0.2);
+  pointer-events: none;
+  z-index: 1;
+}
+/* Schrift, die direkt auf der Tür steht */
+.view-header__title, .empty__title { color: var(--on-fridge); }
+.view-header__title::after { background: var(--on-fridge); opacity: 0.28; }
+.view-header__subtitle, .empty__text, .topbar__name, .app-footer, .app-footer .btn { color: var(--on-fridge-muted); }
+/* Trennfuge zwischen Gefrierfach und Kühlteil (am Handy oben) */
+.topbar {
+  padding-bottom: var(--space-3);
+  margin-bottom: var(--space-5);
+  border-bottom: 3px solid rgb(0 0 0 / 0.09);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--gloss) 150%, transparent);
 }
 
 /* ---------- Kategorie-Töne ---------- */
@@ -25,6 +53,7 @@ body {
 .card[data-tone] {
   background-color: color-mix(in srgb, var(--card-tone) var(--tone-strength), var(--color-surface));
   background-image: var(--texture-grain);
+  border-radius: 3px;
 }
 .card[data-tone]::before {
   content: "";
@@ -43,9 +72,10 @@ body {
   /* ausgefranste Tape-Kanten */
   clip-path: polygon(0 8%, 4% 0, 96% 4%, 100% 0, 98% 50%, 100% 100%, 95% 94%, 4% 100%, 0 92%, 3% 50%);
 }
-.cards > .card:nth-child(3n+1) { rotate: calc(var(--tilt) * -1); }
-.cards > .card:nth-child(3n+2) { rotate: var(--tilt); }
-.cards > .card:nth-child(3n)   { rotate: calc(var(--tilt) * -0.4); }
+.cards > .card:nth-child(4n+1) { rotate: calc(var(--tilt) * -1); }
+.cards > .card:nth-child(4n+2) { rotate: calc(var(--tilt) * 0.8); translate: 4px 0; }
+.cards > .card:nth-child(4n+3) { rotate: calc(var(--tilt) * -0.35); translate: -3px 0; }
+.cards > .card:nth-child(4n)   { rotate: calc(var(--tilt) * 1.25); }
 .cards > .card:nth-child(3n+1)::before { left: 28%; rotate: -5deg; }
 .cards > .card:nth-child(3n+2)::before { left: 70%; rotate: 4deg; }
 
@@ -100,3 +130,15 @@ body {
 
 /* "Neue Kategorie" ohne Tape */
 .card--new::before { display: none; }
+.card--new { border-color: color-mix(in srgb, var(--on-fridge) 30%, transparent); }
+.card--new > .btn { color: var(--on-fridge); }
+
+/* ---------- PC: Seitenleiste direkt auf der Tür ---------- */
+@media (min-width: 1100px) {
+  .nav { border-right-color: color-mix(in srgb, var(--on-fridge) 18%, transparent); }
+  .nav__brand, .nav__link, .nav__extra { color: var(--on-fridge-muted); }
+  .nav__link[aria-current="page"] { color: var(--on-fridge); }
+}
+@media (min-width: 700px) and (max-width: 1099px) {
+  .nav { background: var(--color-surface); }
+}

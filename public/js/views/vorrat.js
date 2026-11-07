@@ -4,6 +4,7 @@
 import { h, sameName } from '../util.js';
 import { viewHeader, categoryHeader, loading, toneOf, iconLabel } from '../ui/components.js';
 import { icon, PICKABLE } from '../ui/art.js';
+import { photoWall } from '../ui/photos.js';
 import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory } from '../store.js';
 import { showToast } from '../ui/toast.js';
 import { CONFIG } from '../config.js';
@@ -46,7 +47,7 @@ export default {
     const cards = state.categories.map((cat) =>
       categoryCard(cat, state.items.filter((i) => i.categoryId === cat.id), ctx));
 
-    return [header, h('div', { class: 'cards' }, cards, newCategoryCard(ctx))];
+    return [header, photoWall(state, ctx, { editMode: ui.editMode }), h('div', { class: 'cards' }, cards, newCategoryCard(ctx))];
   },
 };
 

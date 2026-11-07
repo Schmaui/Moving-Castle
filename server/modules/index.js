@@ -4,5 +4,6 @@
 //   3. Hier importieren und eintragen
 import categories from './categories.js';
 import items from './items.js';
+import photos from './photos.js';
 
-export const MODULES = [categories, items];
+export const MODULES = [categories, items, photos];

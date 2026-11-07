@@ -29,6 +29,13 @@ db.exec(`VACUUM INTO '${target.replaceAll("'", "''")}'`);
 db.close();
 console.log(`[backup] Gesichert: ${target}`);
 
+// Fotos mitsichern (nur neue Dateien werden kopiert; abgenommene Fotos bleiben in der Sicherung)
+const photoDir = path.join(config.dataDir, 'fotos');
+if (fs.existsSync(photoDir)) {
+  fs.cpSync(photoDir, path.join(dir, 'fotos'), { recursive: true, force: false, errorOnExist: false });
+  console.log('[backup] Fotos gesichert');
+}
+
 // Alte Sicherungen löschen
 const old = fs.readdirSync(dir)
   .filter((f) => /^haushalt-\d{4}-\d{2}-\d{2}\.db$/.test(f))
