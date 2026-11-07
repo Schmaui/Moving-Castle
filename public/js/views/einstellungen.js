@@ -28,10 +28,9 @@ const FRIDGE_COLORS = [
   { id: 'creme', label: 'Creme' },
 ];
 
+// Fotos hängen verstreut an der Tür (ui/photos.js). Gespeichert als photoEvery: 0 = aus, sonst an.
 const PHOTO_EVERY = [
-  { value: 1, label: 'oft' },
-  { value: 2, label: 'mittel' },
-  { value: 3, label: 'selten' },
+  { value: 2, label: 'an' },
   { value: 0, label: 'aus' },
 ];
 
@@ -265,11 +264,11 @@ function fridgeSection(state) {
       }, h('span', { class: 'swatch__dot' }), h('span', { class: 'swatch__label' }, c.label)))),
     ),
     h('fieldset', { class: 'choice' },
-      h('legend', { class: 'choice__legend' }, 'Fotos zwischen den Zetteln'),
+      h('legend', { class: 'choice__legend' }, 'Fotos an der Tür'),
       h('div', { class: 'segmented' }, PHOTO_EVERY.map((o) => h('button', {
         type: 'button',
-        class: ['segmented__item', o.value === every && 'is-chosen'],
-        'aria-pressed': String(o.value === every),
+        class: ['segmented__item', (o.value > 0) === (every > 0) && 'is-chosen'],
+        'aria-pressed': String((o.value > 0) === (every > 0)),
         'data-focus-key': `every-${o.value}`,
         onclick: () => updateSettings({ photoEvery: o.value }),
       }, o.label))),

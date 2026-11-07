@@ -349,6 +349,35 @@ function check(cond, msg) {
   });
   await upload(wohnung, 'image/jpeg', Buffer.from(jpeg, 'base64'), 'Übergabeprotokoll');
 
+  // Fotos für die Kühlschranktür (im Browser gemalt: Himmel, Sonne, Hügel)
+  const COLORS = [['#f4c7a1', '#e8875f', '#7fae6e'], ['#bcd3dc', '#f7e08a', '#5d7d4c'], ['#e8c3cc', '#fff3c4', '#b86b77'], ['#c9d8b0', '#f2c4ae', '#4c6672']];
+  for (const [i, caption] of ['Urlaub am Meer', 'Erster Abend ♡', 'Kalzifer', 'Unser Garten'].entries()) {
+    const pic = await page.evaluate(([sky, sun, hill]) => {
+      const c = document.createElement('canvas'); c.width = 400; c.height = 400;
+      const g = c.getContext('2d'); g.fillStyle = sky; g.fillRect(0, 0, 400, 400);
+      g.fillStyle = sun; g.beginPath(); g.arc(290, 110, 60, 0, 7); g.fill();
+      g.fillStyle = hill; g.beginPath(); g.ellipse(140, 420, 260, 170, 0, 0, 7); g.fill();
+      return c.toDataURL('image/jpeg', 0.85).split(',')[1];
+    }, COLORS[i]);
+    await fetch(`${BASE}/api/photos?caption=${encodeURIComponent(caption)}`, {
+      method: 'POST', headers: { 'Content-Type': 'image/jpeg', 'X-Person': String((i % 2) + 1) }, body: Buffer.from(pic, 'base64'),
+    });
+  }
+  // Fotos verdecken nie Artikel, Knöpfe oder Titel
+  const photoClash = () => page.evaluate(() => {
+    const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    const photos = [...document.querySelectorAll('.view.is-active .polaroid--magnet')].map((p) => p.getBoundingClientRect());
+    const keep = [...document.querySelectorAll('.view.is-active .fridge-board .cards :is(.chip, .btn, .card__title, .check-row, .task)')].map((e) => e.getBoundingClientRect());
+    const els = [...document.querySelectorAll('.view.is-active .fridge-board .cards :is(.chip, .btn, .card__title, .check-row, .task)')];
+    const bad = els.filter((e) => photos.some((p) => hit(p, e.getBoundingClientRect()))).map((e) => e.className + ':' + e.textContent.trim().slice(0, 20));
+    return { photos: photos.length, clashes: photos.filter((p) => keep.some((k) => hit(p, k))).length, bad };
+  });
+  await page.goto(BASE + '/#/vorrat');
+  await page.waitForSelector('#view-vorrat .polaroid--magnet');
+  let clash = await photoClash();
+  check(clash.photos === 4 && clash.clashes === 0, `Handy: 4 Fotos verstreut an der Tür, keins verdeckt Artikel/Knöpfe (${JSON.stringify(clash)})`);
+  await page.screenshot({ path: path.join(OUT, 'handy-vorrat-fotos.jpg'), quality: 85, fullPage: true });
+
   await page.goto(BASE + '/#/pinnwand');
   await page.waitForSelector('#view-pinnwand .pin-tile');
   check(await page.locator('#view-pinnwand .pin-tile').count() === 5, 'Pinnwand: 5 Kacheln (WLAN, Nummern, Notizen, Ordner, Filmabend)');
@@ -546,6 +575,14 @@ function check(cond, msg) {
   await page.screenshot({ path: path.join(OUT, 'pc-haushalt-und-liste.jpg'), quality: 85 });
   await page.goto(BASE + '/#/vorrat');
   await page.waitForSelector('#view-vorrat .chip');
+  const pcClash = await page.evaluate(() => {
+    const hit = (a, b) => a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
+    const photos = [...document.querySelectorAll('#view-vorrat .polaroid--magnet')].map((p) => p.getBoundingClientRect());
+    const keep = [...document.querySelectorAll('#view-vorrat .fridge-board .cards :is(.chip, .btn, .card__title, .check-row, .task)')].map((e) => e.getBoundingClientRect());
+    return { photos: photos.length, clashes: photos.filter((p) => keep.some((k) => hit(p, k))).length };
+  });
+  check(pcClash.photos === 4 && pcClash.clashes === 0, `PC: Fotos verstreut, keins verdeckt Artikel/Knöpfe (${JSON.stringify(pcClash)})`);
+  await page.screenshot({ path: path.join(OUT, 'pc-vorrat-fotos.jpg'), quality: 85, fullPage: true });
 
   // Synchronisation: Änderung über die API (= anderes Gerät) erscheint von selbst
   const { items: now } = await api('GET', '/api/state');
@@ -660,7 +697,21 @@ function check(cond, msg) {
     return el && el.getAnimations().length > 0;
   }, null, { timeout: 15000 });
   check(true, 'Neuer Zettel (vom anderen Handy) klebt sich an die Tür');
-  check(await page.evaluate(() => document.querySelectorAll('.pin--zettel')[0].getAnimations().length === 0), 'Alte Zettel bleiben ruhig');
+  // nach dem nächsten Abgleich (neu zeichnen) darf nichts nochmal ankleben
+  await page.waitForTimeout(1200);
+  await api('PATCH', `/api/items/${itemByName('Mehl').id}`, { missing: true }, 2);
+  await page.waitForSelector('.nav__link[href="#/liste"] .badge', { timeout: 10000 });
+  await page.waitForTimeout(6000);
+  check(await page.evaluate(() => [...document.querySelectorAll('.pin--zettel')].every((n) => n.getAnimations().length === 0)), 'Beim nächsten Abgleich klebt nichts nochmal an');
+  await page.goto(BASE + '/#/vorrat');
+  await page.waitForSelector('#view-vorrat .polaroid--magnet');
+  await page.locator('#view-vorrat .polaroid--magnet .polaroid__photo').first().click();
+  check(await page.evaluate(() => document.querySelector('#view-vorrat .polaroid--magnet').getAnimations().length > 0), 'Foto antippen: wackelt kurz …');
+  await page.waitForSelector('.lightbox .polaroid--big');
+  check(true, '… und geht dann groß auf');
+  await page.locator('.lightbox').click();
+  await page.goto(BASE + '/#/pinnwand/notizen');
+  await page.waitForSelector('#view-pinnwand .pin--zettel');
   await page.locator('.back-link').click();
   check(await page.waitForFunction(() => document.querySelector('.view.is-active')?.getAnimations().length > 0, null, { timeout: 2000, polling: 16 }).then(() => true), 'Seitenwechsel: Seite gleitet herein');
   await moving.close();

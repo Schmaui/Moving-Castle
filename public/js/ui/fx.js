@@ -7,10 +7,13 @@
 //
 //   play(key, kind)        Animation für Elemente mit data-fx="key" starten (z. B. Popcorn ploppt)
 //   fxKey(key)             Attribute für h(): { 'data-fx': key }
-//   enter(key, createdAt)  Attribute für frisch angelegte Dinge -> "kleben" an die Tür (einmalig)
+//   enter(key, createdAt)  Attribute für frisch angelegte Dinge -> "kleben" an die Tür (einmalig,
+//                          erst wenn man es wirklich sieht – z. B. Foto unter "Mehr" angelegt,
+//                          klebt sich an, sobald ihr die Küche öffnet)
+//   wiggle(el)             kurz wackeln (Foto antippen), Promise -> danach groß öffnen
 //   flyTo(el, target)      Kopie von el fliegt zu target (Abhaken -> Korb)
 //   hearts(el)             kleine Herzen steigen auf (Aufgabe erledigt)
-//   pageIn(el)             Seite gleitet herein
+//   pageIn(el, dir)        Seite rutscht herein wie beim Umblättern (dir 1 = von rechts, -1 = von links)
 //   doorOpen()             Kühlschranktür schwingt beim Start auf
 //
 // Alle Animationen entfallen, wenn am Gerät "Bewegung reduzieren" eingeschaltet ist.
@@ -55,7 +58,7 @@ const KINDS = {
 const running = new Map();       // key -> { kind, start }
 const done = new WeakSet();      // Elemente, die schon animiert werden
 const seen = new Set();          // enter(): diese Dinge sind schon "angeklebt"
-const FRESH_MS = 15000;          // so lange gilt etwas als "gerade eben angelegt"
+const FRESH_MS = 90000;          // so lange gilt etwas als "gerade eben angelegt"
 
 export const fxKey = (key) => ({ 'data-fx': key });
 
@@ -72,20 +75,26 @@ export function play(key, kind) {
 
 /** Für frisch angelegte Einträge: einmal an die Tür kleben (auch wenn das andere Handy es anlegt). */
 export function enter(key, createdAt) {
-  if (seen.has(key)) return { 'data-fx': key };
-  const age = Date.now() - Date.parse(createdAt || '');
-  if (!(age < FRESH_MS && age > -FRESH_MS) || calm()) {
+  if (seen.has(key) || running.has(key)) return { 'data-fx': key };
+  return { 'data-fx': key, 'data-fx-born': createdAt || '' };
+}
+
+/** enter(): Erst wenn das Element zum ersten Mal sichtbar ist, entscheiden, ob es sich anklebt. */
+function checkEntering(root) {
+  for (const el of root.querySelectorAll('[data-fx-born]')) {
+    const key = el.dataset.fx;
+    if (seen.has(key) || running.has(key) || !el.getClientRects().length) continue; // noch versteckt
     seen.add(key);
-    return { 'data-fx': key };
+    const age = Date.now() - Date.parse(el.dataset.fxBorn);
+    if (calm() || !(age < FRESH_MS && age > -FRESH_MS)) continue;
+    running.set(key, { kind: 'stick', start: performance.now() });
+    setTimeout(() => running.delete(key), KINDS.stick.duration + 50);
   }
-  seen.add(key);
-  running.set(key, { kind: 'stick', start: performance.now() });
-  setTimeout(() => running.delete(key), KINDS.stick.duration + 50);
-  return { 'data-fx': key };
 }
 
 /** Nach jedem Neuzeichnen: laufende Animationen an den neuen Elementen fortsetzen. */
 export function afterRender(root = document) {
+  checkEntering(root);
   if (!running.size) return;
   for (const el of root.querySelectorAll('[data-fx]')) {
     if (done.has(el)) continue;
@@ -157,13 +166,26 @@ export function hearts(el, count = 6) {
   Promise.allSettled(anims).then(() => layer.remove());
 }
 
-/** Seite gleitet sanft herein. */
-export function pageIn(el) {
+/** Seite rutscht herein wie beim Umblättern (dir 1 = von rechts, -1 = von links, 0 = von unten). */
+export function pageIn(el, dir = 1) {
   if (calm() || !el) return;
+  const from = dir === 0 ? 'translateY(26px)' : `translateX(${dir * 56}px) rotate(${dir * 0.8}deg)`;
   el.animate([
-    { opacity: 0, transform: 'translateY(14px)' },
+    { opacity: 0, transform: from },
     { opacity: 1, transform: 'none' },
-  ], { duration: 260, easing: 'cubic-bezier(.2,.8,.3,1)' });
+  ], { duration: 340, easing: 'cubic-bezier(.2,.8,.25,1)' });
+}
+
+/** Kurz wackeln (z. B. Foto antippen). Ohne Bewegung sofort fertig. */
+export function wiggle(el) {
+  if (calm() || !el) return Promise.resolve();
+  return el.animate([
+    { transform: 'rotate(0) scale(1)' },
+    { transform: 'rotate(-7deg) scale(1.06)', offset: 0.2 },
+    { transform: 'rotate(6deg) scale(1.06)', offset: 0.45 },
+    { transform: 'rotate(-3deg) scale(1.03)', offset: 0.7 },
+    { transform: 'rotate(0) scale(1)' },
+  ], { duration: 380, easing: 'ease-in-out' }).finished.then(() => {}, () => {});
 }
 
 /** Beim Start: Kühlschranktür schwingt einmal auf. Antippen überspringt. */

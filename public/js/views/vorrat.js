@@ -6,11 +6,11 @@
 import { h, sameName } from '../util.js';
 import { viewHeader, categoryHeader, loading, toneOf, iconLabel, kitchenTabs } from '../ui/components.js';
 import { icon, PICKABLE } from '../ui/art.js';
-import { photoTiles, photoHint } from '../ui/photos.js';
+import { photoLayer, photoHint } from '../ui/photos.js';
 import { dueNoteCard } from './aufgaben.js';
 import { todayMealCard } from './kochen.js';
 import { formatQty } from '../recipes.js';
-import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory, updateItem, updateCategory, areaOf } from '../store.js';
+import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory, updateItem, updateCategory, areaOf, sortedPhotos } from '../store.js';
 import { showToast } from '../ui/toast.js';
 import { CONFIG } from '../config.js';
 
@@ -66,19 +66,21 @@ function stockView({ id, area, title, icon: iconName, intro, navLabel, navAlso, 
 
       if (!decorate) return [kitchenTabs(id), header, h('div', { class: 'cards' }, cards, newCategoryCard(ctx, area))];
 
-      // Polaroids zwischen die Zettel hängen: nach jedem X. Zettel eins (Einstellungen)
-      const every = state.settings?.photoEvery ?? 2;
-      const photos = every > 0 ? photoTiles() : [];
+      // Fotos hängen wie Magnete verstreut über der Tür (Position: scatterPhotos in ui/photos.js).
+      // Einstellung "Fotos an der Tür": 0 = aus.
+      const showPhotos = (state.settings?.photoEvery ?? 2) > 0;
+      const photos = showPhotos ? sortedPhotos() : [];
       // Fällige Aufgaben und das heutige Essen hängen als erste Zettel an der Tür
       const board = [dueNoteCard(state, ctx), todayMealCard(state)].filter(Boolean);
       cards.forEach((card, i) => {
         board.push(card);
-        if (every > 0 && (i + 1) % every === 0 && photos.length) board.push(photos.shift());
-        if (every > 0 && i === 0 && !(state.photos || []).length) board.push(photoHint());
+        if (showPhotos && i === 0 && !photos.length) board.push(photoHint());
       });
-      board.push(...photos);
 
-      return [kitchenTabs(id), header, h('div', { class: 'cards' }, board, newCategoryCard(ctx, area))];
+      return [kitchenTabs(id), header, h('div', { class: 'fridge-board' },
+        h('div', { class: 'cards' }, board, newCategoryCard(ctx, area)),
+        photos.length > 0 && photoLayer(photos),
+      )];
     },
   };
 }

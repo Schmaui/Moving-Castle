@@ -681,6 +681,29 @@
   .polaroid { width: 165px; }
 }
 
+/* Fotos wie Magnete verstreut über der Tür (Position setzt scatterPhotos in js/ui/photos.js) */
+.fridge-board { position: relative; }
+.photo-layer { position: absolute; inset: 0; z-index: 3; pointer-events: none; }
+.polaroid--magnet { position: absolute; left: 0; top: 0; width: 96px; padding: 6px 6px 0; margin: 0; pointer-events: auto; }
+.polaroid--magnet .polaroid__caption { font-size: 0.95rem; min-height: 20px; padding: 2px 1px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.polaroid--magnet .polaroid__by { --avatar-size: 20px; }
+/* jedes zweite Foto hängt an einem runden Magneten statt am Klebestreifen */
+.polaroid--magnet:nth-child(even)::before {
+  top: -9px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  clip-path: none;
+  rotate: 0deg;
+  background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / 0.8) 0 16%, transparent 26%),
+    radial-gradient(circle, color-mix(in srgb, var(--card-tone, var(--tone-3)) 85%, #000) 0 60%, color-mix(in srgb, var(--card-tone, var(--tone-3)) 60%, #000) 100%);
+  box-shadow: 1px 3px 4px rgb(0 0 0 / 0.35);
+}
+@media (min-width: 700px) {
+  .polaroid--magnet { width: 118px; }
+  .polaroid--magnet .polaroid__caption { font-size: 1.1rem; }
+}
+
 /* Plus-Knopf fest oben rechts im Zettel, damit Titel und Zähler Platz haben */
 .card:not(.card--note) > .card__header { padding-right: 44px; position: relative; }
 .card:not(.card--note) > .card__header > .btn--ghost.btn--icon { position: absolute; right: -6px; top: 50%; translate: 0 -50%; }

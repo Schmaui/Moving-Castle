@@ -70,9 +70,16 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   heute?“ (was beide wollen, kommt doppelt so oft), „Gesehen“ mit 1–5 Popcorn je Person, Schnitt ≥ 4
   = „Unsere Lieblinge“. Karten hängen direkt an der Tür (Nutzer mochten den dunklen „KI-blocky“-Kasten
   NICHT – keine großen dunklen Container mehr), oben nur ein schmales Vorhang-Band.
-- **Animationen** (`public/js/ui/fx.js`, Web Animations API): Tür schwingt beim Start auf, Seiten gleiten,
+- **Fotos an der Küchentür** (Vorrat): wie Magnete verstreut (`.fridge-board` + `.photo-layer`,
+  `scatterPhotos()` in `ui/photos.js`, von app.js nach jedem Zeichnen, nach Schriften und bei Größenänderung).
+  Misst die Zettel, tastet Kanten ab, dann freie Lücken, NIE über Artikel/Knöpfe/Titel (Selbsttest prüft das).
+  Ergebnis wird gemerkt (Signatur aus Maßen), Position per CSSOM (`el.style.left`, CSP-erlaubt).
+  Einstellung „Fotos an der Tür“: an/aus (`photoEvery` 0 = aus). Foto antippen: wackelt, dann groß.
+- **Animationen** (`public/js/ui/fx.js`, Web Animations API): Tür schwingt beim Start auf, Seiten rutschen
+  beim Wechsel wie Umblättern herein (Richtung nach Reihenfolge der Leiste bzw. Unterseite = von rechts),
   Abhaken in der Liste fliegt in den Korb, Aufgabe erledigt -> Herzen, neue Zettel/Fotos/Kinokarten
-  kleben sich an (`enter(key, createdAt)`, nur frisch angelegte), Zufall: Würfel rollt + Vorhang geht auf,
+  kleben sich an (`enter(key, createdAt)`: nur < 90 s alt, und erst wenn sie zum ersten Mal SICHTBAR sind),
+  Zufall: Würfel rollt + Vorhang geht auf,
   Popcorn ploppt. WICHTIG: app.js zeichnet alles neu -> keine CSS-Einblend-Animationen an neu gezeichneten
   Elementen (laufen sonst bei jedem Abgleich neu), stattdessen `play()`/`enter()` aus fx.js.
   „Bewegung reduzieren“ schaltet alles ab; screenshots.cjs läuft deshalb mit reducedMotion und prüft
@@ -84,7 +91,12 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
 - Von den Nutzern getestet: alles bis einschließlich Küche + Haushalt („funktioniert alles“).
 
 ## Offen
-- Filmabend: Verbesserungswünsche der Nutzer abwarten.
+- Filmabend, Animationen, verstreute Fotos: Feedback der Nutzer abwarten.
+- **Nächste gewünschte Ideen** (Nutzer am 7.11. gewählt, vorher per Klick-Fragen klären):
+  **Nachricht an die Tür** (handgeschriebene Nachricht als Magnet für den anderen),
+  **Benachrichtigungen** (Web-Push, iPhone nur als Home-Bildschirm-App ab iOS 16.4; z. B. „X hat Milch auf
+  die Liste gesetzt“, „Aufgabe heute“), **Wochen-Rückblick** (Sonntags-Zettel: erledigt, gekocht, geguckt).
+  Nicht gewählt: Liste nach Laden sortiert, Wetter an der Tür.
 - Ideen-Speicher (Nutzer interessiert, „für später“): **Gemeinsame Ausgaben** (wer hat was bezahlt,
   wer schuldet wem). Nicht gewählt: Ausflugs-/Date-Ideen, Geburtstage & Geschenke, Haltbarkeit im Vorrat,
   Serien-Fortschritt, Snacks auf Einkaufsliste, Filmabend planen, Poster automatisch (TMDB).

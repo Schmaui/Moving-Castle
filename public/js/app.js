@@ -4,6 +4,7 @@ import { CONFIG } from './config.js';
 import { VIEWS } from './views/index.js';
 import { state, subscribe, startSync, onError, me } from './store.js';
 import { renderPersonPicker } from './ui/people.js';
+import { scatterPhotos } from './ui/photos.js';
 import { renderLogin } from './ui/login.js';
 import { icon } from './ui/art.js';
 import { h } from './util.js';
@@ -135,6 +136,7 @@ function render() {
       p.section.replaceChildren(...[p.view.render(state, ctx)].flat().filter(Boolean));
     }
   });
+  scatterPhotos(viewsEl); // Fotos an der Tür verteilen (braucht die fertig gezeichneten Zettel)
   afterRender(viewsEl); // laufende Animationen an den neu gezeichneten Elementen fortsetzen
   for (const p of parts.values()) {
     const n = p.view.badge?.(state) || 0;
@@ -148,11 +150,31 @@ function render() {
 // ---------- Start ----------
 onError((msg) => showToast(msg, { variant: 'error' }));
 subscribe(render);
+// Richtung beim Umblättern: weiter rechts in der Leiste (bzw. tiefer in eine Unterseite) = von rechts
+const ORDER = VIEWS.map((v) => v.id);
+let prevHash = location.hash;
+function pageDirection(from, to) {
+  const parts = (hash) => hash.replace(/^#\/?/, '').split(/[/?]/).filter(Boolean);
+  const a = parts(from);
+  const b = parts(to);
+  const ia = ORDER.indexOf(a[0]);
+  const ib = ORDER.indexOf(b[0]);
+  if (ia !== ib && ia >= 0 && ib >= 0) return ib > ia ? 1 : -1;
+  return b.length >= a.length ? 1 : -1;
+}
 window.addEventListener('hashchange', () => {
   const changed = applyRoute();
   render();
-  // neue Seite gleitet sanft herein (auf dem PC nicht die Liste daneben)
-  if (changed) pageIn(document.querySelector('.view.is-active'));
+  // neue Seite rutscht herein wie beim Umblättern (auf dem PC nicht die Liste daneben)
+  if (changed) pageIn(document.querySelector('.view.is-active'), pageDirection(prevHash, location.hash));
+  prevHash = location.hash;
+});
+// Schriften laden nach -> Zettel werden etwas höher -> Fotos neu verteilen
+document.fonts?.ready.then(() => scatterPhotos(viewsEl));
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => scatterPhotos(viewsEl), 150);
 });
 applyRoute();
 render();
