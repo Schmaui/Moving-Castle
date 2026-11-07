@@ -53,6 +53,10 @@ export const api = {
   completeTask: async (task, nextDue) =>
     (await request('POST', `/api/tasks/${task.id}/erledigt`, { nextDue: nextDue ?? null })).data,
 
+  // Rezepte: von einer Webseite holen (Entwurf) und "gekocht" mitzählen
+  importRecipe: async (url) => (await request('POST', '/api/recipes/import', { url })).data,
+  cooked: async (recipe) => (await request('POST', `/api/recipes/${recipe.id}/gekocht`, {})).data,
+
   patchSettings: async (patch) => (await request('PATCH', '/api/settings', patch)).data,
 
   // Generische Funktionen für jede Ressource ('items', 'categories', später z. B. 'tasks')

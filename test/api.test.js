@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import http from 'node:http';
 
 const PORT = 18000 + Math.floor(Math.random() * 1000);
 const BASE = `http://127.0.0.1:${PORT}`;
@@ -21,7 +22,7 @@ const json = (method, url, body) =>
 before(async () => {
   dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'haushalt-test-'));
   proc = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'server/server.js'], {
-    env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir },
+    env: { ...process.env, PORT: String(PORT), DATA_DIR: dataDir, IMPORT_ALLOW_PRIVATE: '1' },
     stdio: 'ignore',
   });
   for (let i = 0; i < 50; i++) {
@@ -39,8 +40,9 @@ after(() => {
 test('Startdaten werden eingelesen', async () => {
   const { status, body } = await json('GET', '/api/state');
   assert.equal(status, 200);
-  assert.equal(body.categories.length, 8);
-  assert.equal(body.items.length, 63);
+  assert.equal(body.categories.length, 10);
+  assert.equal(body.items.length, 74);
+  assert.ok(body.items.some((i) => i.name === 'Olivenöl'), 'Grundzutaten sind dabei');
   assert.equal(body.categories[0].name, 'Konserven');
   assert.equal(body.categories[0].emoji, '🥫');
   assert.ok(body.items.every((i) => i.missing === false));
@@ -225,6 +227,105 @@ test('Aufgaben: abhaken mit Wiederholung legt die nächste an', async () => {
   assert.equal(r2.body.next, null);
 });
 
+// ---------- Kochen: Mengen, Rezepte, Wochenplan, Wunschzettel ----------
+test('Mengen: unter der Mindestmenge fehlt es von selbst, Einkaufen füllt auf', async () => {
+  const a = await json('PATCH', '/api/items/2', { quantity: 3, minQty: 2, unit: 'Dose' });
+  assert.equal(a.body.missing, false);
+  const b = await as(1, 'PATCH', '/api/items/2', { quantity: 1 });
+  assert.equal(b.body.missing, true, 'unter Mindestmenge -> fehlt');
+  assert.equal(b.body.missingBy, 1);
+  const c = await json('PATCH', '/api/items/2', { missing: false });
+  assert.equal(c.body.quantity, 2, 'abgehakt ohne Menge -> auf Mindestmenge aufgefüllt');
+  const d = await json('PATCH', '/api/items/2', { missing: false, quantity: 5 });
+  assert.equal(d.body.quantity, 5);
+  const e = await json('PATCH', '/api/items/2', { missing: true, quantity: 5 });
+  assert.equal(e.body.missing, true, 'Rückgängig: ausdrücklich "fehlt" bleibt');
+  await json('PATCH', '/api/items/2', { quantity: null, minQty: null, unit: null, missing: false });
+});
+
+test('Rezepte: anlegen, prüfen, gekocht zählen, löschen', async () => {
+  const r = await as(2, 'POST', '/api/recipes', {
+    title: 'Linsen-Curry',
+    ingredients: [{ qty: 200, unit: 'g', name: 'rote Linsen', note: null }, { qty: null, unit: null, name: 'Reis', note: null }],
+    tags: ['schnell', 'schnell', '  '],
+    minutes: 30,
+    sourceUrl: 'https://example.org/curry',
+  });
+  assert.equal(r.status, 201);
+  assert.equal(r.body.createdBy, 2);
+  assert.deepEqual(r.body.tags, ['schnell']);
+  assert.equal(r.body.ingredients[0].name, 'rote Linsen');
+
+  assert.equal((await json('POST', '/api/recipes', { title: 'x', ingredients: [{ qty: 'viel', name: 'a' }] })).status, 400);
+  assert.equal((await json('POST', '/api/recipes', { title: 'x', ingredients: [{ qty: 1 }] })).status, 400);
+  assert.equal((await json('POST', '/api/recipes', { title: 'x', ingredients: 'Linsen' })).status, 400);
+  assert.equal((await json('POST', '/api/recipes', { title: 'x', sourceUrl: 'javascript:alert(1)' })).status, 400);
+  assert.equal((await json('POST', '/api/recipes', { title: 'x', cookedCount: 5 })).status, 400);
+
+  const fav = await json('PATCH', `/api/recipes/${r.body.id}`, { favorite: true, notes: 'weniger Chili' });
+  assert.equal(fav.body.favorite, true);
+  const cooked = await json('POST', `/api/recipes/${r.body.id}/gekocht`, {});
+  assert.equal(cooked.body.cookedCount, 1);
+  assert.ok(cooked.body.lastCooked);
+
+  // Wochenplan: 2 Vorschläge pro Abend, Platz doppelt belegt -> 409
+  const m1 = await as(1, 'POST', '/api/meals', { day: '2026-11-09', slot: 1, recipeId: r.body.id });
+  assert.equal(m1.status, 201);
+  assert.equal(m1.body.createdBy, 1);
+  assert.equal((await json('POST', '/api/meals', { day: '2026-11-09', slot: 2, title: 'Reste' })).status, 201);
+  assert.equal((await json('POST', '/api/meals', { day: '2026-11-09', slot: 1, title: 'Pizza' })).status, 409);
+  assert.equal((await json('POST', '/api/meals', { day: '2026-11-09', slot: 3, title: 'Pizza' })).status, 400);
+  assert.equal((await json('POST', '/api/meals', { day: '2026-11-10' })).status, 400, 'Rezept oder Text nötig');
+
+  // Wunschzettel
+  const w = await as(2, 'POST', '/api/wishes', { name: 'rote Linsen', amount: '200 g', recipeId: r.body.id });
+  assert.equal(w.body.addedBy, 2);
+
+  // Rezept löschen: Wochenplan-Eintrag weg, Wunsch bleibt (ohne Rezept)
+  await json('DELETE', `/api/recipes/${r.body.id}`);
+  const { body } = await json('GET', '/api/state');
+  assert.equal(body.meals.filter((m) => m.recipeId === r.body.id).length, 0);
+  assert.equal(body.wishes.find((x) => x.id === w.body.id).recipeId, null);
+});
+
+test('Zuordnung Zutat -> Vorratsartikel merken', async () => {
+  const l = await json('POST', '/api/links', { nameKey: 'nudeln', itemId: 21 });
+  assert.equal(l.status, 201);
+  assert.equal((await json('POST', '/api/links', { nameKey: 'nudeln', itemId: 20 })).status, 409);
+  assert.equal((await json('PATCH', `/api/links/${l.body.id}`, { itemId: null })).body.itemId, null);
+  assert.equal((await json('POST', '/api/links', { nameKey: 'x', itemId: 9999 })).status, 400);
+});
+
+test('Rezept per Link holen (schema.org/Recipe)', async () => {
+  const page = `<html><head><script type="application/ld+json">{"@context":"https://schema.org","@graph":[
+    {"@type":"WebPage"},{"@type":"Recipe","name":"Chili sin Carne &amp; Reis","recipeYield":["4","4 Portionen"],
+    "totalTime":"PT1H5M","keywords":"vegan, Meal-Prep","recipeIngredient":["1 Zwiebel","400 g Kidneybohnen"],
+    "recipeInstructions":[{"@type":"HowToSection","itemListElement":[{"@type":"HowToStep","text":"Zwiebel <b>anbraten</b>."}]},
+    {"@type":"HowToStep","text":"Bohnen dazu."}]}]}</script></head><body></body></html>`;
+  const site = http.createServer((req, res) => {
+    if (req.url === '/weiter') { res.writeHead(302, { Location: '/rezept' }); return res.end(); }
+    if (req.url === '/rezept') { res.writeHead(200, { 'Content-Type': 'text/html' }); return res.end(page); }
+    res.writeHead(200, { 'Content-Type': 'text/html' }); res.end('<html>kein Rezept</html>');
+  });
+  await new Promise((r) => site.listen(0, '127.0.0.1', r));
+  const base = `http://127.0.0.1:${site.address().port}`;
+  try {
+    const ok = await json('POST', '/api/recipes/import', { url: `${base}/weiter` });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.body.title, 'Chili sin Carne & Reis');
+    assert.deepEqual(ok.body.ingredients, ['1 Zwiebel', '400 g Kidneybohnen']);
+    assert.deepEqual(ok.body.steps, ['Zwiebel anbraten.', 'Bohnen dazu.']);
+    assert.equal(ok.body.minutes, 65);
+    assert.equal(ok.body.servings, 4);
+    assert.deepEqual(ok.body.tags, ['vegan', 'Meal-Prep']);
+    assert.equal((await json('POST', '/api/recipes/import', { url: `${base}/nix` })).status, 422);
+    assert.equal((await json('POST', '/api/recipes/import', { url: 'file:///etc/passwd' })).status, 400);
+    assert.equal((await json('POST', '/api/recipes/import', { url: 'kein link' })).status, 400);
+  } finally {
+    site.close();
+  }
+});
+
 // ---------- Anmeldung (zweiter Server mit Passwort) ----------
 test('Anmeldung mit Haushalts-Passwort', async () => {
   const port = PORT + 1;
@@ -249,6 +350,7 @@ test('Anmeldung mit Haushalts-Passwort', async () => {
     assert.equal((await req('PATCH', '/api/items/1', { missing: true })).status, 401);
     assert.deepEqual(await (await req('GET', '/api/auth')).json(), { enabled: true, loggedIn: false });
     assert.equal((await req('GET', '/index.html')).status, 200, 'Seite selbst ist erreichbar');
+    assert.equal((await req('POST', '/api/recipes/import', { url: 'https://example.org' })).status, 401, 'Import nur angemeldet');
 
     const wrong = await req('POST', '/api/login', { password: 'falsch' });
     assert.equal(wrong.status, 401);

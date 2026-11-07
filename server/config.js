@@ -17,6 +17,8 @@ export const config = {
   password: process.env.HAUSHALT_PASSWORT || '',
   // "1", wenn ein Proxy (Caddy) davor sitzt: dann gelten dessen Angaben zu IP und HTTPS
   trustProxy: process.env.TRUST_PROXY === '1',
-  // Maximale Größe eines JSON-Requests (Schutz vor Unsinn)
-  maxBodyBytes: 16 * 1024,
+  // Maximale Größe eines JSON-Requests (Schutz vor Unsinn; Rezepte brauchen etwas Platz)
+  maxBodyBytes: 64 * 1024,
+  // Nur für Tests: Rezept-Import darf auch Adressen im eigenen Netz abrufen
+  importAllowPrivate: process.env.IMPORT_ALLOW_PRIVATE === '1',
 };

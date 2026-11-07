@@ -43,6 +43,7 @@ for (const view of VIEWS) {
 }
 
 // ---------- Routing ----------
+let lastHash = null;
 function routeFromHash() {
   const id = location.hash.replace(/^#\/?/, '').split(/[/?]/)[0];
   return parts.has(id) ? id : null;
@@ -54,7 +55,9 @@ function applyRoute() {
     id = CONFIG.defaultRoute;
     history.replaceState(null, '', `#/${id}`);
   }
-  const changed = document.body.dataset.route !== id;
+  // auch Unterseiten (z. B. #/kochen/rezept/3) -> nach oben scrollen
+  const changed = document.body.dataset.route !== id || lastHash !== location.hash;
+  lastHash = location.hash;
   document.body.dataset.route = id;
   const split = CONFIG.split && [CONFIG.split.main, CONFIG.split.aside].includes(id);
   document.body.classList.toggle('is-split', Boolean(split));
@@ -135,7 +138,7 @@ function render() {
 // ---------- Start ----------
 onError((msg) => showToast(msg, { variant: 'error' }));
 subscribe(render);
-window.addEventListener('hashchange', applyRoute);
+window.addEventListener('hashchange', () => { applyRoute(); render(); });
 applyRoute();
 render();
 startSync();

@@ -43,6 +43,35 @@ function check(cond, msg) {
     await api('PATCH', `/api/items/${it.id}`, { missing: false }, by);
   }
 
+  // Mengen: Kokosmilch ist da, Tomatenmark ist alle (-> steht von selbst auf der Liste)
+  const itemByName = (n) => items.find((x) => x.name === n);
+  await api('PATCH', `/api/items/${itemByName('Kokosmilch').id}`, { quantity: 2, minQty: 1, unit: 'Dose' }, 2);
+  await api('PATCH', `/api/items/${itemByName('Tomatenmark').id}`, { quantity: 0, minQty: 1, unit: 'Tube' }, 2);
+  await api('PATCH', `/api/items/${itemByName('Reis').id}`, { quantity: 1000, minQty: 500, unit: 'g' }, 1);
+
+  // Beispiel-Rezepte (Zutaten wie in der App aus Text zerlegt)
+  const { parseIngredient } = await import('../public/js/recipes.js');
+  const recipe = (title, minutes, tags, favorite, lines, steps) => api('POST', '/api/recipes', {
+    title, minutes, tags, favorite, ingredients: lines.map(parseIngredient), steps: steps.join('\n'),
+  }, 1);
+  const curry = await recipe('Rotes Linsen-Curry', 35, ['schnell', 'vegan'], true,
+    ['1 Zwiebel', '2 Knoblauchzehen', '1 EL Olivenöl', '200 g rote Linsen', '1 Dose Kokosmilch', '1 Dose gehackte Tomaten', '2 TL Curry', '200 g Reis'],
+    ['Zwiebel und Knoblauch hacken, in Olivenöl anbraten.', 'Linsen, Kokosmilch, Tomaten und Curry dazu, 20 Min. köcheln.', 'Mit Reis servieren.']);
+  const chili = await recipe('Chili sin Carne', 50, ['Meal-Prep'], false,
+    ['1 Zwiebel', '1 Dose Kidneybohnen', '1 Dose Mais', '150 g Soja-Granulat', '2 EL Tomatenmark', '1 TL Paprika geräuchert', '1 TL Chili'],
+    ['Soja-Granulat in Brühe einweichen.', 'Zwiebel anbraten, alles dazu und 30 Min. köcheln.']);
+  const pancakes = await recipe('Fluffige Pfannkuchen', 20, ['süß'], true,
+    ['250 g Mehl', '2 EL Zucker', '1 Pck Backpulver', '400 ml Milch', 'Ahornsirup'],
+    ['Alles verrühren.', 'In der Pfanne goldbraun backen.']);
+  const ofen = await recipe('Ofengemüse mit Tofu', 40, ['Meal-Prep'], false,
+    ['500 g Kartoffeln', '1 Paprika', '200 g Räuchertofu', '2 EL Olivenöl', '1 TL Kräuter der Provence', '1 Zucchini'],
+    ['Gemüse schneiden, mit Öl und Kräutern mischen.', '30 Min. bei 200 °C backen.']);
+  await api('POST', '/api/meals', { day: day(0), slot: 1, recipeId: curry.id }, 1);
+  await api('POST', '/api/meals', { day: day(0), slot: 2, recipeId: ofen.id }, 2);
+  await api('POST', '/api/meals', { day: day(1), slot: 1, recipeId: chili.id }, 2);
+  await api('POST', '/api/meals', { day: day(2), slot: 1, title: 'Reste' }, 1);
+  await api('POST', '/api/meals', { day: day(3), slot: 1, recipeId: pancakes.id }, 1);
+
   // Beispiel-Aufgaben
   await api('POST', '/api/tasks', { title: 'Altglas wegbringen', due: day(0), assigneeId: 2 }, 1);
   await api('POST', '/api/tasks', { title: 'Bad putzen', due: day(-2), repeat: 'woechentlich' }, 2);
@@ -78,8 +107,9 @@ function check(cond, msg) {
   await page.reload();
   await page.waitForSelector('.check-row');
   check(await page.locator('.who-screen').isHidden(), 'Gerät merkt sich die Person');
-  check(await page.locator('.check-row__who').count() === 7, 'Liste zeigt, wer etwas draufgesetzt hat');
-  check(await page.locator('.nav__link[href="#/liste"] .badge').textContent() === '7', 'Badge zeigt 7');
+  check(await page.locator('#view-liste .check-row__who').count() === 8, 'Liste zeigt, wer etwas draufgesetzt hat');
+  check(await page.locator('.nav__link[href="#/liste"] .badge').textContent() === '8', 'Badge zeigt 8 (Tomatenmark ist unter der Mindestmenge)');
+  check(await page.locator('#view-liste .buy-amount', { hasText: 'Tube' }).count() === 1, 'Artikel mit Menge: Einkaufsmenge wählbar');
   await page.screenshot({ path: path.join(OUT, 'handy-liste.jpg'), quality: 85 });
 
   await page.locator('.check-row', { hasText: 'Kaffee' }).click();
@@ -110,8 +140,18 @@ function check(cond, msg) {
   // Löschmodus
   await page.locator('button', { hasText: 'Bearbeiten' }).click();
   await page.locator('.chip--delete', { hasText: 'Hafermilch' }).click();
+  await page.locator('[data-focus-key="edit-delete"]').click();
   await page.waitForTimeout(400);
-  check(await page.locator('.chip', { hasText: 'Hafermilch' }).count() === 0, 'Löschmodus entfernt Artikel');
+  check(await page.locator('.chip', { hasText: 'Hafermilch' }).count() === 0, 'Bearbeiten: Artikel löschen');
+  await page.locator('.chip--delete', { hasText: 'Kidneybohnen' }).click();
+  await page.locator('[data-focus-key="edit-quantity"]').fill('1');
+  await page.locator('[data-focus-key="edit-minQty"]').fill('2');
+  await page.locator('[data-focus-key="edit-unit"]').fill('Dose');
+  await page.locator('.item-editor').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'handy-vorrat-menge.jpg'), quality: 85 });
+  await page.locator('.item-editor button[type="submit"]').click();
+  await page.waitForSelector('#view-vorrat .chip:has-text("Kidneybohnen") .chip__qty');
+  check(true, 'Bearbeiten: Menge und Mindestmenge gespeichert');
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({ path: path.join(OUT, 'handy-vorrat-loeschmodus.jpg'), quality: 85 });
   await page.locator('button', { hasText: 'Fertig' }).click();
@@ -143,7 +183,49 @@ function check(cond, msg) {
 
   await page.goto(BASE + '/#/vorrat');
   await page.waitForSelector('#view-vorrat .card--due');
-  check(true, 'Zettel „Heute dran“ hängt im Vorrat');
+  check(await page.locator('#view-vorrat .card--due', { hasText: 'Heute gibt’s' }).count() === 1, 'Zettel „Heute dran“ und „Heute gibt’s“ hängen im Vorrat');
+
+  // Kochen: Wochenplan, Rezept, Fehlendes einkaufen, Gekocht
+  await page.goto(BASE + '/#/kochen');
+  await page.waitForSelector('#view-kochen .day-card.is-today');
+  await page.waitForFunction(() => !document.querySelector('.toast'), null, { timeout: 10000 }); // Hinweis weg
+  await page.screenshot({ path: path.join(OUT, 'handy-kochen-woche.jpg'), quality: 85, fullPage: true });
+  await page.locator('#view-kochen .day-card.is-today .meal', { hasText: 'Linsen-Curry' }).locator('.pill', { hasText: 'Das gibt’s' }).click();
+  await page.waitForSelector('#view-kochen .day-card.is-today .meal.is-other');
+  check(true, '„Das gibt’s“ wählt einen der zwei Vorschläge');
+  await page.locator('#view-kochen .day-card.is-today .pill--cook').click();
+  await page.waitForSelector('.sheet .cook-row');
+  await page.screenshot({ path: path.join(OUT, 'handy-kochen-gekocht.jpg'), quality: 85 });
+  await page.locator('[data-focus-key="cook-ok"]').click();
+  await page.waitForSelector('#view-kochen .day-card.is-today .meal__done');
+  const { items: afterCook } = await api('GET', '/api/state');
+  check(afterCook.find((i) => i.name === 'Kokosmilch').quantity === 1, 'Gekocht: Kokosmilch 2 → 1 Dose abgezogen');
+
+  await page.goto(BASE + '/#/kochen/rezepte');
+  await page.waitForSelector('#view-kochen .recipe-card');
+  await page.screenshot({ path: path.join(OUT, 'handy-rezepte.jpg'), quality: 85 });
+  await page.locator('#view-kochen .recipe-card__title', { hasText: 'Linsen-Curry' }).click();
+  await page.waitForSelector('#view-kochen .ing-list');
+  check(await page.locator('#view-kochen .ing--extra', { hasText: 'rote Linsen' }).count() === 1, 'Rezept: Linsen sind nicht im Vorrat → Wunschzettel');
+  check(await page.locator('#view-kochen .ing', { hasText: 'Knoblauchzehen' }).locator('select').inputValue().then(async (v) =>
+    v === 'auto' && (await page.locator('#view-kochen .ing', { hasText: 'Knoblauchzehen' }).textContent()).includes('Knoblauch')), 'Rezept: Knoblauchzehen → Knoblauch (automatisch)');
+  await page.screenshot({ path: path.join(OUT, 'handy-rezept.jpg'), quality: 85, fullPage: true });
+  await page.locator('[data-focus-key="shop"]').click();
+  await page.waitForSelector('.toast.is-visible:has-text("Wunschzettel")');
+  await page.goto(BASE + '/#/liste');
+  await page.waitForSelector('#view-liste .card--wish .check-row:has-text("rote Linsen")');
+  check(true, 'Fehlendes einkaufen: Linsen stehen auf dem Wunschzettel');
+  await page.locator('#view-liste .card--wish').scrollIntoViewIfNeeded();
+  await page.screenshot({ path: path.join(OUT, 'handy-wunschzettel.jpg'), quality: 85 });
+
+  await page.goto(BASE + '/#/kochen/neu');
+  await page.locator('[data-focus-key="form-title"]').fill('Overnight Oats');
+  await page.locator('[data-focus-key="form-ingredients"]').fill('80 g Haferflocken\n150 ml Hafermilch\n1 EL Ahornsirup');
+  await page.locator('[data-focus-key="form-steps"]').fill('Alles mischen und über Nacht kalt stellen.');
+  await page.screenshot({ path: path.join(OUT, 'handy-rezept-neu.jpg'), quality: 85 });
+  await page.locator('[data-focus-key="form-save"]').click();
+  await page.waitForSelector('#view-kochen .ing-list');
+  check(await page.locator('#view-kochen .ing').count() === 3, 'Neues Rezept selbst geschrieben und gespeichert');
   await page.goto(BASE + '/#/einstellungen');
   await page.waitForSelector('.person-row');
   await page.screenshot({ path: path.join(OUT, 'handy-einstellungen.jpg'), quality: 85, fullPage: true });
@@ -164,6 +246,12 @@ function check(cond, msg) {
   await page.goto(BASE + '/#/einstellungen');
   await page.waitForSelector('.person-row');
   await page.screenshot({ path: path.join(OUT, 'handy-einstellungen-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/kochen');
+  await page.waitForSelector('#view-kochen .day-card.is-today');
+  await page.screenshot({ path: path.join(OUT, 'handy-kochen-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/kochen/rezepte');
+  await page.waitForSelector('#view-kochen .recipe-card');
+  await page.screenshot({ path: path.join(OUT, 'handy-rezepte-dunkel.jpg'), quality: 85 });
   await dark.close();
 
   // ---------- Tablet ----------
@@ -198,6 +286,14 @@ function check(cond, msg) {
   await page.waitForSelector('#view-aufgaben .task');
   await page.mouse.move(0, 0);
   await page.screenshot({ path: path.join(OUT, 'pc-aufgaben.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/kochen');
+  await page.waitForSelector('#view-kochen .day-card');
+  await page.screenshot({ path: path.join(OUT, 'pc-kochen.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/kochen/rezepte');
+  await page.waitForSelector('#view-kochen .recipe-card');
+  await page.locator('#view-kochen .recipe-card__title', { hasText: 'Chili' }).click();
+  await page.waitForSelector('#view-kochen .ing-list');
+  await page.screenshot({ path: path.join(OUT, 'pc-rezept.jpg'), quality: 85 });
 
   const desktopDark = await device({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, colorScheme: 'dark' });
   page = await desktopDark.newPage(); watch(page);
@@ -207,6 +303,9 @@ function check(cond, msg) {
   await page.goto(BASE + '/#/aufgaben');
   await page.waitForSelector('#view-aufgaben .task');
   await page.screenshot({ path: path.join(OUT, 'pc-aufgaben-dunkel.jpg'), quality: 85 });
+  await page.goto(BASE + '/#/kochen/rezepte');
+  await page.waitForSelector('#view-kochen .recipe-card');
+  await page.screenshot({ path: path.join(OUT, 'pc-rezepte-dunkel.jpg'), quality: 85 });
 
   await browser.close();
   check(errors.length === 0, `keine Fehler in der Browser-Konsole ${errors.length ? JSON.stringify(errors) : ''}`);

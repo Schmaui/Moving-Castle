@@ -21,6 +21,10 @@ export const state = {
   settings: {},
   people: [],
   tasks: [],
+  recipes: [],
+  meals: [],
+  wishes: [],
+  links: [],
 };
 
 const listeners = new Set();
@@ -133,6 +137,9 @@ export async function logout() {
   state.photos = [];
   state.items = [];
   state.tasks = [];
+  state.recipes = [];
+  state.meals = [];
+  state.wishes = [];
   requireLogin();
 }
 
@@ -167,8 +174,8 @@ export function deleteItem(item) {
 
 /** Gelöschten Artikel wiederherstellen (für "Rückgängig"). */
 export function restoreItem(item) {
-  const { categoryId, name, missing, quantity, unit, note, sort } = item;
-  return mutate(null, () => api.create('items', { categoryId, name, missing, quantity, unit, note, sort }));
+  const { categoryId, name, missing, quantity, unit, note, sort, minQty } = item;
+  return mutate(null, () => api.create('items', { categoryId, name, missing, quantity, unit, note, sort, minQty }));
 }
 
 export function addCategory(name, icon) {
@@ -296,4 +303,106 @@ export function deleteTask(task) {
 export function restoreTask(task) {
   const { title, note, due, repeat, assigneeId } = task;
   return mutate(null, () => api.create('tasks', { title, note, due, repeat, assigneeId }));
+}
+
+// ---------- Mengen im Vorrat ----------
+/** Eingekauft: Menge setzen (der Server entscheidet dann selbst, ob es noch fehlt). */
+export function buyItem(item, quantity) {
+  const patch = quantity == null ? { missing: false } : { missing: false, quantity };
+  return mutate(
+    () => Object.assign(findItem(item.id) || {}, { missing: false }, quantity == null ? {} : { quantity }),
+    () => api.update('items', item.id, patch)
+  );
+}
+
+// ---------- Rezepte ----------
+const findRecipe = (id) => state.recipes.find((r) => r.id === id);
+export const recipeById = (id) => findRecipe(Number(id)) || null;
+
+export function addRecipe(data) {
+  return mutate(null, () => api.create('recipes', data));
+}
+
+export function updateRecipe(recipe, patch) {
+  return mutate(
+    () => Object.assign(findRecipe(recipe.id) || {}, patch),
+    () => api.update('recipes', recipe.id, patch)
+  );
+}
+
+export function deleteRecipe(recipe) {
+  return mutate(
+    () => {
+      state.recipes = state.recipes.filter((r) => r.id !== recipe.id);
+      state.meals = state.meals.filter((m) => m.recipeId !== recipe.id);
+    },
+    () => api.remove('recipes', recipe.id)
+  );
+}
+
+/** Rezept von einer Webseite holen (nur Entwurf). Wirft bei Fehler. */
+export const importRecipe = (url) => api.importRecipe(url);
+
+/** Gekocht: Vorrat anpassen (changes = [{ item, quantity } | { item, empty: true }]) und mitzählen. */
+export async function cookRecipe(recipe, changes, meal) {
+  for (const c of changes) {
+    if (c.empty) await setMissing(c.item, true);
+    else await updateItem(c.item, { quantity: c.quantity });
+  }
+  if (meal) await updateMeal(meal, { cooked: true, chosen: true });
+  if (recipe) return mutate(null, () => api.cooked(recipe));
+  return true;
+}
+
+/** Zutat fest einem Vorratsartikel zuordnen (itemId null = nicht im Vorrat, undefined = wieder automatisch). */
+export function linkIngredient(key, itemId) {
+  const existing = state.links.find((l) => l.nameKey === key);
+  if (itemId === undefined) {
+    if (!existing) return Promise.resolve(null);
+    return mutate(() => { state.links = state.links.filter((l) => l !== existing); }, () => api.remove('links', existing.id));
+  }
+  if (existing) return mutate(() => { existing.itemId = itemId; }, () => api.update('links', existing.id, { itemId }));
+  return mutate(() => { state.links = [...state.links, { id: -1, nameKey: key, itemId }]; }, () => api.create('links', { nameKey: key, itemId }));
+}
+
+// ---------- Wochenplan ----------
+export function addMeal(data) {
+  return mutate(null, () => api.create('meals', data));
+}
+
+export function updateMeal(meal, patch) {
+  return mutate(
+    () => Object.assign(state.meals.find((m) => m.id === meal.id) || {}, patch),
+    () => api.update('meals', meal.id, patch)
+  );
+}
+
+export function deleteMeal(meal) {
+  return mutate(
+    () => { state.meals = state.meals.filter((m) => m.id !== meal.id); },
+    () => api.remove('meals', meal.id)
+  );
+}
+
+/** "Das gibt's": diesen Vorschlag wählen, den anderen am selben Abend abwählen. */
+export async function chooseMeal(meal) {
+  const other = state.meals.find((m) => m.day === meal.day && m.id !== meal.id && m.chosen);
+  if (other) await updateMeal(other, { chosen: false });
+  return updateMeal(meal, { chosen: !meal.chosen });
+}
+
+// ---------- Wunschzettel ----------
+export function addWish(name, amount = null, recipeId = null) {
+  return mutate(null, () => api.create('wishes', { name, amount, recipeId }));
+}
+
+export function deleteWish(wish) {
+  return mutate(
+    () => { state.wishes = state.wishes.filter((w) => w.id !== wish.id); },
+    () => api.remove('wishes', wish.id)
+  );
+}
+
+export function restoreWish(wish) {
+  return addWish(wish.name, wish.amount, wish.recipeId);
 }

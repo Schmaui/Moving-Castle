@@ -51,6 +51,7 @@ const TYPES = {
   // Für Freiform-Daten (z. B. später Rezept-Zutaten als Liste)
   json(value, field, key) {
     if (value === null) return null;
+    if (field.check) value = field.check(value, key); // Inhalt prüfen/aufräumen (siehe z. B. modules/recipes.js)
     const s = JSON.stringify(value);
     if (field.max && s.length > field.max) throw new HttpError(400, `${key}: zu groß`);
     return s;

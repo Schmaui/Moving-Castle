@@ -8,5 +8,9 @@ import photos from './photos.js';
 import settings from './settings.js';
 import people from './people.js';
 import tasks from './tasks.js';
+import recipes from './recipes.js';
+import meals from './meals.js';
+import wishes from './wishes.js';
+import links from './links.js';
 
-export const MODULES = [people, categories, items, photos, settings, tasks];
+export const MODULES = [people, categories, items, photos, settings, tasks, recipes, meals, wishes, links];

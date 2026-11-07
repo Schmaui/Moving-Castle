@@ -11,11 +11,11 @@
     },
     {
       "name": "Nudeln & Co.", "icon": "nudeln", "emoji": "🍝",
-      "artikel": ["Fusilli", "Penne", "Lasagneteig", "Noriblätter"]
+      "artikel": ["Fusilli", "Penne", "Lasagneteig", "Noriblätter", "Reis"]
     },
     {
       "name": "Gewürze", "icon": "gewuerz", "emoji": "🌶️",
-      "artikel": ["Curry", "Garam Masala", "Paprika geräuchert", "Chili", "Paprika edelsüß", "Zimt", "Knoblauchpulver", "Italienische Kräuter", "Dill", "Pumpkin Spice", "Kräuter der Provence", "Salz", "Pfeffer"]
+      "artikel": ["Curry", "Garam Masala", "Paprika geräuchert", "Chili", "Paprika edelsüß", "Zimt", "Knoblauchpulver", "Italienische Kräuter", "Dill", "Pumpkin Spice", "Kräuter der Provence", "Salz", "Pfeffer", "Olivenöl"]
     },
     {
       "name": "Brötchen", "icon": "broetchen", "emoji": "🥐",
@@ -27,11 +27,19 @@
     },
     {
       "name": "Kühlschrank", "icon": "milch", "emoji": "🧊",
-      "artikel": ["Gurke", "Tomate", "Salat", "Paprika", "Mayo", "Ketchup", "Ahornsirup", "Sriracha", "Butter", "Joghurt", "Skyr", "Aufschnitt", "Aufstrich", "Salsa", "Frühlingszwiebeln", "Tofu", "Milch"]
+      "artikel": ["Gurke", "Tomate", "Salat", "Paprika", "Sriracha", "Butter", "Joghurt", "Skyr", "Aufschnitt", "Aufstrich", "Frühlingszwiebeln", "Tofu", "Milch"]
     },
     {
       "name": "Kartoffeln & Zwiebeln", "icon": "kartoffeln", "emoji": "🥔",
       "artikel": ["Kartoffeln", "Zwiebeln", "Knoblauch"]
+    },
+    {
+      "name": "Backen & Süßes", "icon": "honig", "emoji": "🍯",
+      "artikel": ["Mehl", "Zucker", "Backpulver", "Hefe", "Speisestärke", "Vanillezucker", "Ahornsirup"]
+    },
+    {
+      "name": "Soßen", "icon": "flasche", "emoji": "🍶",
+      "artikel": ["Sojasoße", "Tomatenmark", "Kokosmilch", "Mayo", "Ketchup", "Salsa"]
     }
   ]
 }

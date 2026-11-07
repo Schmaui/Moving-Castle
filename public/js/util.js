@@ -107,3 +107,12 @@ export function formatWhen(iso) {
   if (diff === 1) return `gestern ${time}`;
   return `${t.toLocaleDateString('de-DE', { weekday: 'short' })} ${t.getDate()}.${t.getMonth() + 1}.`;
 }
+
+/** Wochentag ausgeschrieben, z. B. "Montag". */
+export const weekdayLong = (day) => fromDay(day).toLocaleDateString('de-DE', { weekday: 'long' });
+
+/** Kurzes Datum, z. B. "9.11." */
+export const shortDate = (day) => { const d = fromDay(day); return `${d.getDate()}.${d.getMonth() + 1}.`; };
+
+/** Montag der Woche, in der day liegt. */
+export const mondayOf = (day) => addDays(day, -((fromDay(day).getDay() + 6) % 7));

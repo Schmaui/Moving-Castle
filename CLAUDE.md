@@ -7,7 +7,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
 ## Technik (Kurzfassung – Details in README.md und docs/ANPASSEN.md)
 - Node.js ≥ 22.13 ohne npm-Abhängigkeiten, eingebautes `node:sqlite`. Start: `npm start`, Tests: `npm test`.
 - Frontend: Vanilla JS (ES-Module), kein Build. Design-Variablen in `public/css/tokens.css`.
-- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks). Ansichten: `public/js/views/*`.
+- Module (Server): `server/modules/*` (people, categories, items, photos, settings, tasks, recipes, meals, wishes, links). Ansichten: `public/js/views/*`.
 - Migrationen: `server/migrations.js` – nur NEUE Einträge anhängen, alte nie ändern.
 - Gezeichnete Symbole statt Emojis: `public/js/ui/art.js`. Szenen-SVGs: `scripts/make-art.py`.
 - Strenge CSP (keine Inline-Styles/-Scripts), alle Ausgaben über `h()` (XSS-sicher).
@@ -43,9 +43,20 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   - Wer-hat-was: Einkaufsliste (wer draufgesetzt, „Zuletzt gekauft“ mit „nochmal“), Fotos (wer aufgehängt).
   - Aufgaben (#/aufgaben, `server/modules/tasks.js`): fällig am, wer macht’s, wiederholen
     (täglich/wöchentlich/2 Wochen/monatlich), Notiz, Erledigt-Verlauf; „Heute dran“-Zettel im Vorrat.
-- Nächste Wünsche (Reihenfolge der Nutzer): Rezepte + Essensplan (Abgleich mit Vorrat, Fehlendes
-  auf die Liste; Rezepte per Link-Import und selbst eintippen; Nutzer leben fast vegan),
-  dann Infos-Pinnwand (WLAN-QR, Nummern, Zählerstände, Müll …), dann Kalender
+- Branch `rezepte` (**noch nicht live**, wartet auf Freigabe) – Nav-Knopf „Kochen“ (#/kochen):
+  - Wochenplan nur Abendessen, pro Abend 2 Vorschläge („Das gibt’s“ wählt einen), „Gekocht“ zieht
+    nach Bestätigung Mengen vom Vorrat ab. Reiter Woche / Rezepte / Lieblinge (Herz).
+  - Rezepte: per Link holen (`server/recipe-import.js`, schema.org JSON-LD, SSRF-Schutz) oder selbst
+    schreiben; Zeit, Schlagwörter, Notizen. Kein Foto, kein Portionen-Umrechnen (so gewünscht).
+  - Abgleich mit Vorrat in `public/js/recipes.js` (Parser, Synonyme, Zuordnung merken = `links`).
+    „Fehlendes einkaufen“ pro Rezept: Vorrat -> Einkaufsliste, alles andere -> **Wunschzettel**
+    (eigener Zettel unter der Einkaufsliste, `wishes`).
+  - Vorrat = was immer da sein soll. Mengen optional (Menge, Mindestmenge, Einheit; im Vorrat unter
+    „Bearbeiten“ -> Artikel antippen). Unter Mindestmenge -> fehlt automatisch; beim Abhaken auf
+    der Liste wird auf die Mindestmenge aufgefüllt (+/- zum Erhöhen).
+  - Migration 7 ergänzt Grundzutaten: Kategorien „Backen & Süßes“ (+Ahornsirup verschoben) und
+    „Soßen“ (+Mayo, Ketchup, Salsa verschoben), Olivenöl -> Gewürze, Reis -> Nudeln & Co.
+- Nächste Wünsche (Reihenfolge der Nutzer): Infos-Pinnwand (WLAN-QR, Nummern, Zählerstände, Müll …), dann Kalender
   (Abo-Link für Apple-Kalender, ggf. iCloud-Kalender lesend anzeigen).
 - Später: NFC-Sticker (Anleitung `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`),
   evtl. später Aufgaben/Infos/Rezepte (Beispiel in docs/ANPASSEN.md).

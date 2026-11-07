@@ -126,6 +126,103 @@ export const MIGRATIONS = [
   CREATE INDEX tasks_done ON tasks (done);
   `,
 
+  // 7: Kochen – Rezepte, Wochenplan, Wunschzettel, Mengen im Vorrat, Grundzutaten
+  `
+  ALTER TABLE items ADD COLUMN min_qty REAL;   -- Mindestmenge (optional). Weniger da -> fehlt automatisch
+
+  CREATE TABLE recipes (
+    id           INTEGER PRIMARY KEY,
+    title        TEXT    NOT NULL,
+    ingredients  TEXT    NOT NULL DEFAULT '[]',  -- JSON: [{"qty":400,"unit":"g","name":"Kichererbsen","note":"abgetropft"}]
+    steps        TEXT,                           -- ein Schritt pro Zeile
+    minutes      INTEGER,                        -- Zeit gesamt
+    servings     INTEGER,                        -- Portionen (nur zur Info)
+    tags         TEXT    NOT NULL DEFAULT '[]',  -- JSON: ["schnell", "Meal-Prep"]
+    favorite     INTEGER NOT NULL DEFAULT 0,     -- Lieblingsgericht
+    notes        TEXT,
+    source_url   TEXT,
+    cooked_count INTEGER NOT NULL DEFAULT 0,
+    last_cooked  TEXT,
+    created_by   INTEGER REFERENCES people(id) ON DELETE SET NULL,
+    created_at   TEXT    NOT NULL,
+    updated_at   TEXT    NOT NULL
+  );
+
+  -- Gemerkte Zuordnung "Zutat -> Vorratsartikel" (z. B. nudeln -> Penne).
+  -- item_id leer = gehört nicht zum Vorrat (kommt dann auf den Wunschzettel)
+  CREATE TABLE ingredient_links (
+    id          INTEGER PRIMARY KEY,
+    name_key    TEXT    NOT NULL UNIQUE,
+    item_id     INTEGER REFERENCES items(id) ON DELETE CASCADE,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+
+  -- Wochenplan: pro Abend bis zu 2 Vorschläge (slot 1 und 2), einer davon wird "gewählt"
+  CREATE TABLE meals (
+    id          INTEGER PRIMARY KEY,
+    day         TEXT    NOT NULL,                 -- "JJJJ-MM-TT"
+    slot        INTEGER NOT NULL DEFAULT 1,
+    recipe_id   INTEGER REFERENCES recipes(id) ON DELETE CASCADE,
+    title       TEXT,                             -- statt Rezept einfach Text, z. B. "Reste"
+    chosen      INTEGER NOT NULL DEFAULT 0,       -- "Das gibt's"
+    cooked      INTEGER NOT NULL DEFAULT 0,
+    created_by  INTEGER REFERENCES people(id) ON DELETE SET NULL,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+  CREATE UNIQUE INDEX meals_day_slot ON meals (day, slot);
+
+  -- Wunschzettel: Sachen, die man nicht immer da haben will (z. B. Zutaten für ein Rezept)
+  CREATE TABLE wishes (
+    id          INTEGER PRIMARY KEY,
+    name        TEXT    NOT NULL,
+    amount      TEXT,                             -- z. B. "400 ml"
+    recipe_id   INTEGER REFERENCES recipes(id) ON DELETE SET NULL,
+    added_by    INTEGER REFERENCES people(id) ON DELETE SET NULL,
+    created_at  TEXT    NOT NULL,
+    updated_at  TEXT    NOT NULL
+  );
+
+  -- Grundzutaten ergänzen (nur bei schon bestehendem Vorrat –
+  -- neue Installationen bekommen sie direkt aus startdaten.json)
+  INSERT INTO categories (name, emoji, icon, sort, created_at, updated_at)
+    SELECT 'Backen & Süßes', '🍯', 'honig', (SELECT MAX(sort) + 1 FROM categories), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE EXISTS (SELECT 1 FROM categories)
+      AND NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Backen & Süßes' COLLATE NOCASE);
+  INSERT INTO categories (name, emoji, icon, sort, created_at, updated_at)
+    SELECT 'Soßen', '🍶', 'flasche', (SELECT MAX(sort) + 1 FROM categories), strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE EXISTS (SELECT 1 FROM categories)
+      AND NOT EXISTS (SELECT 1 FROM categories WHERE name = 'Soßen' COLLATE NOCASE);
+
+  INSERT INTO items (category_id, name, sort, created_at, updated_at)
+    SELECT c.id, v.name, 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    FROM categories c,
+      (SELECT 'Mehl' AS name UNION ALL SELECT 'Zucker' UNION ALL SELECT 'Backpulver' UNION ALL
+       SELECT 'Hefe' UNION ALL SELECT 'Speisestärke' UNION ALL SELECT 'Vanillezucker') v
+    WHERE c.name = 'Backen & Süßes'
+      AND NOT EXISTS (SELECT 1 FROM items i WHERE i.name = v.name COLLATE NOCASE);
+  INSERT INTO items (category_id, name, sort, created_at, updated_at)
+    SELECT c.id, v.name, 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    FROM categories c,
+      (SELECT 'Sojasoße' AS name UNION ALL SELECT 'Tomatenmark' UNION ALL SELECT 'Kokosmilch') v
+    WHERE c.name = 'Soßen'
+      AND NOT EXISTS (SELECT 1 FROM items i WHERE i.name = v.name COLLATE NOCASE);
+  UPDATE items SET category_id = (SELECT id FROM categories WHERE name = 'Backen & Süßes'), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE name = 'Ahornsirup' AND EXISTS (SELECT 1 FROM categories WHERE name = 'Backen & Süßes')
+      AND NOT EXISTS (SELECT 1 FROM items i, categories c WHERE c.name = 'Backen & Süßes' AND i.category_id = c.id AND i.name = 'Ahornsirup');
+  UPDATE items SET category_id = (SELECT id FROM categories WHERE name = 'Soßen'), updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
+    WHERE name IN ('Mayo', 'Ketchup', 'Salsa') AND EXISTS (SELECT 1 FROM categories WHERE name = 'Soßen')
+      AND NOT EXISTS (SELECT 1 FROM items i, categories c WHERE c.name = 'Soßen' AND i.category_id = c.id AND i.name = items.name);
+  -- Olivenöl zu den Gewürzen (dort, wo Salz steht), Reis zu den Nudeln (dort, wo Penne steht)
+  INSERT INTO items (category_id, name, sort, created_at, updated_at)
+    SELECT category_id, 'Olivenöl', 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now') FROM items WHERE name = 'Salz'
+      AND NOT EXISTS (SELECT 1 FROM items WHERE name = 'Olivenöl' COLLATE NOCASE) LIMIT 1;
+  INSERT INTO items (category_id, name, sort, created_at, updated_at)
+    SELECT category_id, 'Reis', 0, strftime('%Y-%m-%dT%H:%M:%fZ', 'now'), strftime('%Y-%m-%dT%H:%M:%fZ', 'now') FROM items WHERE name = 'Penne'
+      AND NOT EXISTS (SELECT 1 FROM items WHERE name = 'Reis' COLLATE NOCASE) LIMIT 1;
+  `,
+
   // Beispiel für später (auskommentiert lassen, bis du es brauchst):
   // `ALTER TABLE items ADD COLUMN store TEXT;`,
 ];

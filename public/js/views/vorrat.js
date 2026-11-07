@@ -6,7 +6,9 @@ import { viewHeader, categoryHeader, loading, toneOf, iconLabel } from '../ui/co
 import { icon, PICKABLE } from '../ui/art.js';
 import { photoTiles, photoHint } from '../ui/photos.js';
 import { dueNoteCard } from './aufgaben.js';
-import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory } from '../store.js';
+import { todayMealCard } from './kochen.js';
+import { formatQty } from '../recipes.js';
+import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory, updateItem } from '../store.js';
 import { showToast } from '../ui/toast.js';
 import { CONFIG } from '../config.js';
 
@@ -17,7 +19,11 @@ const ui = {
   drafts: {},           // angefangene Eingaben
   newCategoryOpen: false,
   justToggled: null,    // Artikel, der gerade angetippt wurde (kurzes Wippen)
+  editing: null,        // Artikel, der gerade bearbeitet wird: { id, name, quantity, minQty, unit }
 };
+
+// Vorschläge für Einheiten (man kann auch etwas anderes eintippen)
+const UNIT_SUGGESTIONS = ['Stück', 'Dose', 'Packung', 'Glas', 'Flasche', 'Becher', 'g', 'kg', 'ml', 'l'];
 
 export default {
   id: 'vorrat',
@@ -32,7 +38,7 @@ export default {
       id: 'title-vorrat',
       title: 'Vorrat',
       subtitle: ui.editMode
-        ? 'Tippe an, was weg soll …'
+        ? 'Tippe an, was du ändern oder löschen willst …'
         : `Tippe an, was fehlt ~ ${missingCount} von ${state.items.length} fehlen`,
       actions: [
         h('button', {
@@ -40,7 +46,7 @@ export default {
           class: ['btn', ui.editMode && 'btn--active'],
           'aria-pressed': String(ui.editMode),
           'data-focus-key': 'edit-toggle',
-          onclick: () => { ui.editMode = !ui.editMode; ctx.rerender(); },
+          onclick: () => { ui.editMode = !ui.editMode; ui.editing = null; ctx.rerender(); },
         }, ui.editMode ? iconLabel('haken', 'Fertig') : iconLabel('stift', 'Bearbeiten')),
       ],
     });
@@ -52,7 +58,7 @@ export default {
     const every = state.settings?.photoEvery ?? 2;
     const photos = every > 0 ? photoTiles() : [];
     // Fällige Aufgaben hängen als erster Zettel an der Tür
-    const board = [dueNoteCard(state, ctx)].filter(Boolean);
+    const board = [dueNoteCard(state, ctx), todayMealCard(state)].filter(Boolean);
     cards.forEach((card, i) => {
       board.push(card);
       if (every > 0 && (i + 1) % every === 0 && photos.length) board.push(photos.shift());
@@ -89,27 +95,35 @@ function categoryCard(cat, items, ctx) {
       }, icon(ui.addOpen.has(cat.id) ? 'minus' : 'plus', { wash: false })),
     ),
     items.length > 0
-      ? h('div', { class: 'chips' }, items.map((item) => chip(item)))
+      ? h('div', { class: 'chips' }, items.map((item) => chip(item, ctx)))
       : h('p', { class: 'muted' }, 'Noch keine Artikel.'),
+    ui.editMode && ui.editing && items.some((i) => i.id === ui.editing.id) && itemEditor(items.find((i) => i.id === ui.editing.id), ctx),
     ui.addOpen.has(cat.id) && addForm(cat, items, ctx),
   );
 }
 
-function chip(item) {
+/** Kleine Zahl im Chip, wenn der Artikel Mengen hat. */
+const qtyBadge = (item) => item.quantity != null &&
+  h('span', { class: 'chip__qty', title: item.minQty != null ? `mindestens ${formatQty(item.minQty)}` : null },
+    `${formatQty(item.quantity)}${item.unit ? ` ${item.unit}` : ''}`);
+
+function chip(item, ctx) {
   if (ui.editMode) {
+    const open = ui.editing?.id === item.id;
     return h('button', {
       type: 'button',
-      class: ['chip', 'chip--delete', item.missing && 'is-missing'],
+      class: ['chip', 'chip--delete', item.missing && 'is-missing', open && 'is-editing'],
       'data-focus-key': `chip-${item.id}`,
-      'aria-label': `${item.name} löschen`,
+      'aria-label': `${item.name} bearbeiten`,
+      'aria-expanded': String(open),
       onclick: () => {
-        deleteItem(item);
-        showToast(`„${item.name}“ gelöscht`, {
-          actionLabel: 'Rückgängig',
-          onAction: () => restoreItem(item),
-        });
+        ui.editing = open ? null : {
+          id: item.id, name: item.name, quantity: item.quantity ?? '', minQty: item.minQty ?? '', unit: item.unit ?? '',
+        };
+        ctx.rerender();
+        if (!open) document.querySelector('[data-focus-key="edit-qty"]')?.focus();
       },
-    }, item.name, h('span', { class: 'chip__x' }, icon('kreuz', { wash: false })));
+    }, item.name, qtyBadge(item), h('span', { class: 'chip__x' }, icon('stift', { wash: false })));
   }
   return h('button', {
     type: 'button',
@@ -123,7 +137,59 @@ function chip(item) {
       ui.wiggleTimer = setTimeout(() => { ui.justToggled = null; }, 600);
       setMissing(item, !item.missing);
     },
-  }, item.missing && icon('stern', { wash: false, className: 'chip__star' }), item.name);
+  }, item.missing && icon('stern', { wash: false, className: 'chip__star' }), item.name, qtyBadge(item));
+}
+
+/** Artikel bearbeiten: Name, Mengen (optional), Löschen. */
+function itemEditor(item, ctx) {
+  const d = ui.editing;
+  const close = () => { ui.editing = null; ctx.rerender(); };
+  const num = (v) => (String(v).trim() === '' ? null : Math.max(0, Number(String(v).replace(',', '.'))));
+  const field = (label, key, props) => h('label', { class: 'field' },
+    h('span', { class: 'field__label' }, label),
+    h('input', {
+      class: 'input', value: d[key], 'data-focus-key': `edit-${key}`, autocomplete: 'off',
+      oninput: (e) => { d[key] = e.target.value; }, ...props,
+    }));
+  return h('form', {
+    class: 'item-editor',
+    onsubmit: async (e) => {
+      e.preventDefault();
+      const name = d.name.trim();
+      if (!name) return;
+      const patch = { name, quantity: num(d.quantity), minQty: num(d.minQty), unit: d.unit.trim() || null };
+      if ([patch.quantity, patch.minQty].some((v) => Number.isNaN(v))) {
+        showToast('Bitte bei Mengen nur Zahlen eintragen', { variant: 'error' });
+        return;
+      }
+      for (const k of Object.keys(patch)) if (patch[k] === (item[k] ?? null)) delete patch[k];
+      ui.editing = null;
+      if (Object.keys(patch).length) await updateItem(item, patch);
+      ctx.rerender();
+    },
+    onkeydown: (e) => { if (e.key === 'Escape') close(); },
+  },
+    field('Name', 'name', { type: 'text', maxlength: 80 }),
+    h('div', { class: 'field-row' },
+      field('Menge da', 'quantity', { type: 'text', inputmode: 'decimal', placeholder: 'z. B. 3' }),
+      field('mindestens', 'minQty', { type: 'text', inputmode: 'decimal', placeholder: 'z. B. 2' }),
+      field('Einheit', 'unit', { type: 'text', maxlength: 20, placeholder: 'Dose', list: 'unit-suggestions' }),
+    ),
+    h('datalist', { id: 'unit-suggestions' }, UNIT_SUGGESTIONS.map((u) => h('option', { value: u }))),
+    h('p', { class: 'field__hint' }, 'Mengen sind freiwillig. Mit „mindestens“ kommt der Artikel von selbst auf die Liste, wenn weniger da ist.'),
+    h('div', { class: 'add-form' },
+      h('button', { type: 'submit', class: 'btn btn--primary' }, 'Speichern'),
+      h('button', { type: 'button', class: 'btn btn--ghost', onclick: close }, 'Abbrechen'),
+      h('button', {
+        type: 'button', class: 'btn btn--danger item-editor__delete', 'data-focus-key': 'edit-delete',
+        onclick: () => {
+          ui.editing = null;
+          deleteItem(item);
+          showToast(`„${item.name}“ gelöscht`, { actionLabel: 'Rückgängig', onAction: () => restoreItem(item) });
+        },
+      }, iconLabel('muell', 'Löschen')),
+    ),
+  );
 }
 
 function toggleAdd(catId, ctx) {
