@@ -43,7 +43,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   - Wer-hat-was: Einkaufsliste (wer draufgesetzt, „Zuletzt gekauft“ mit „nochmal“), Fotos (wer aufgehängt).
   - Aufgaben (#/aufgaben, `server/modules/tasks.js`): fällig am, wer macht’s, wiederholen
     (täglich/wöchentlich/2 Wochen/monatlich), Notiz, Erledigt-Verlauf; „Heute dran“-Zettel im Vorrat.
-- Branch `rezepte` (**noch nicht live**, wartet auf Freigabe) – Nav-Knopf „Kochen“ (#/kochen):
+- **Seit 7.11.2026 live** (vom Branch `rezepte` gemergt) – Nav-Knopf „Kochen“ (#/kochen):
   - Wochenplan nur Abendessen, pro Abend 2 Vorschläge („Das gibt’s“ wählt einen), „Gekocht“ zieht
     nach Bestätigung Mengen vom Vorrat ab. Reiter Woche / Rezepte / Lieblinge (Herz).
   - Rezepte: per Link holen (`server/recipe-import.js`, schema.org JSON-LD, SSRF-Schutz) oder selbst
@@ -56,6 +56,8 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
     der Liste wird auf die Mindestmenge aufgefüllt (+/- zum Erhöhen).
   - Migration 7 ergänzt Grundzutaten: Kategorien „Backen & Süßes“ (+Ahornsirup verschoben) und
     „Soßen“ (+Mayo, Ketchup, Salsa verschoben), Olivenöl -> Gewürze, Reis -> Nudeln & Co.
+  - Link-Import konnte nur mit Testseiten geprüft werden (Rezeptseiten aus der Cloud-Session
+    gesperrt) – bei Problemen Nutzer nach Link + Fehlermeldung fragen.
 - Nächste Wünsche (Reihenfolge der Nutzer): Infos-Pinnwand (WLAN-QR, Nummern, Zählerstände, Müll …), dann Kalender
   (Abo-Link für Apple-Kalender, ggf. iCloud-Kalender lesend anzeigen).
 - Später: NFC-Sticker (Anleitung `docs/NFC.md`, URLs `…/#/liste` und `…/#/vorrat`),
