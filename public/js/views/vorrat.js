@@ -4,7 +4,7 @@
 import { h, sameName } from '../util.js';
 import { viewHeader, categoryHeader, loading, toneOf, iconLabel } from '../ui/components.js';
 import { icon, PICKABLE } from '../ui/art.js';
-import { photoWall } from '../ui/photos.js';
+import { photoTiles } from '../ui/photos.js';
 import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory } from '../store.js';
 import { showToast } from '../ui/toast.js';
 import { CONFIG } from '../config.js';
@@ -47,7 +47,18 @@ export default {
     const cards = state.categories.map((cat) =>
       categoryCard(cat, state.items.filter((i) => i.categoryId === cat.id), ctx));
 
-    return [header, photoWall(state, ctx, { editMode: ui.editMode }), h('div', { class: 'cards' }, cards, newCategoryCard(ctx))];
+    // Polaroids zwischen die Zettel hängen: nach jedem 2. Zettel eins
+    const { photos, adder } = photoTiles(state, ctx, { editMode: ui.editMode });
+    const board = [];
+    cards.forEach((card, i) => {
+      board.push(card);
+      if (i % 2 === 0 && photos.length) board.push(photos.shift());
+      if (i === 0 && !photos.length) board.push(adder);  // "+ Foto" weit oben, solange es wenige Fotos gibt
+    });
+    board.push(...photos);
+    if (!board.includes(adder)) board.push(adder);
+
+    return [header, h('div', { class: 'cards' }, board, newCategoryCard(ctx))];
   },
 };
 

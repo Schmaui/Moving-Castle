@@ -562,32 +562,23 @@
 @media (min-width: 1100px) { .card__title { font-size: 1.3rem; } }
 .card__header > .badge, .card__header > .btn { flex: 0 0 auto; }
 
-/* ---------- Fotowand (Polaroids, js/ui/photos.js) ---------- */
-.photo-wall { margin: 0 calc(-1 * var(--space-4)) var(--space-5); }
-.photo-wall__strip {
-  display: flex;
-  gap: var(--space-4);
-  align-items: flex-start;
-  overflow-x: auto;
-  padding: var(--space-4) var(--space-4) var(--space-3);
-  scroll-snap-type: x proximity;
-  scrollbar-width: none;
-}
-.photo-wall__strip::-webkit-scrollbar { display: none; }
-
+/* ---------- Polaroids zwischen den Zetteln (js/ui/photos.js) ---------- */
 .polaroid {
   position: relative;
   flex: 0 0 auto;
-  width: 142px;
-  margin: 0;
+  z-index: 2;
+  width: 150px;
   padding: 8px 8px 0;
   background: #fffdf8;
-  box-shadow: 0 1px 1px rgb(0 0 0 / 0.12), 0 10px 16px -8px rgb(40 15 30 / 0.45);
-  scroll-snap-align: start;
-  rotate: -2deg;
+  box-shadow: 0 1px 1px rgb(0 0 0 / 0.12), 0 12px 18px -8px rgb(40 15 30 / 0.5);
 }
-.polaroid:nth-child(even) { rotate: 2.5deg; margin-top: 8px; }
-.polaroid:nth-child(3n) { rotate: -0.5deg; }
+/* abwechselnd rechts und links, etwas über die Zettelkanten geklebt */
+.cards > .polaroid { display: block; margin-top: calc(-1 * var(--space-6)); margin-bottom: calc(-1 * var(--space-4)); }
+.cards > .polaroid--right { margin-left: auto; margin-right: -6px; rotate: 4deg; }
+.cards > .polaroid--left  { margin-right: auto; margin-left: -6px; rotate: -3.5deg; }
+.cards > .polaroid:nth-of-type(3n) { rotate: -6deg; }
+.cards > .polaroid--add, .cards > .polaroid--draft { margin-left: auto; margin-right: auto; rotate: -2deg; }
+.cards > .polaroid--draft { rotate: 0deg; }
 /* Tape oben */
 .polaroid::before {
   content: "";
@@ -639,7 +630,7 @@
 .polaroid__remove .art { width: 18px; height: 18px; stroke-width: 3.4; }
 
 /* "+ Foto"-Kachel */
-.polaroid--add { background: rgb(255 253 248 / 0.55); box-shadow: none; outline: 2px dashed color-mix(in srgb, var(--on-fridge) 35%, transparent); outline-offset: -2px; }
+.polaroid--add { width: 120px; background: rgb(255 253 248 / 0.55); box-shadow: none; outline: 2px dashed color-mix(in srgb, var(--on-fridge) 35%, transparent); outline-offset: -2px; }
 .polaroid--add::before { display: none; }
 .polaroid--add .polaroid__photo {
   background: transparent;
@@ -687,12 +678,18 @@
 @keyframes fade-in { from { opacity: 0; } }
 
 @media (min-width: 700px) {
-  .photo-wall { margin-left: 0; margin-right: 0; }
-  .photo-wall__strip { padding-left: var(--space-2); flex-wrap: wrap; overflow: visible; }
-  .polaroid { width: 150px; }
+  .polaroid { width: 165px; }
 }
 
 /* Plus-Knopf fest oben rechts im Zettel, damit Titel und Zähler Platz haben */
 .card:not(.card--note) > .card__header { padding-right: 44px; position: relative; }
 .card:not(.card--note) > .card__header > .btn--ghost.btn--icon { position: absolute; right: -6px; top: 50%; translate: 0 -50%; }
 .card:not(.card--note) > .card__header > .btn--danger.btn--icon { margin-left: auto; }
+
+/* Handy: Polaroids kleiner und stärker überlappend, damit keine großen Lücken entstehen */
+@media (max-width: 699px) {
+  .cards > .polaroid { width: 128px; margin-top: -46px; margin-bottom: -6px; }
+  .cards > .polaroid--right { margin-right: 4px; }
+  .cards > .polaroid--left { margin-left: 4px; }
+  .cards > .polaroid .polaroid__caption { font-size: 1.05rem; min-height: 28px; }
+}

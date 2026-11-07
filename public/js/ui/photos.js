@@ -1,4 +1,4 @@
-// Fotowand: eure Fotos als Polaroids an der Kühlschranktür.
+// Fotos: eure Polaroids, die zwischen den Zetteln an der Kühlschranktür hängen.
 //   - "+ Foto" öffnet Kamera/Galerie, das Bild wird im Browser verkleinert
 //     (max. 1600 px, JPEG) und ohne Ortsdaten hochgeladen.
 //   - Antippen = groß ansehen. Im Bearbeiten-Modus: abnehmen (löschen).
@@ -11,20 +11,19 @@ import { icon } from './art.js';
 const MAX_SIZE = 1600;
 const draft = { blob: null, url: null, caption: '', busy: false };
 
-/** Die Fotoleiste. editMode = Löschen erlaubt. */
-export function photoWall(state, ctx, { editMode = false } = {}) {
-  const photos = state.photos || [];
-  const tiles = photos.map((photo, i) => polaroid(photo, i, editMode));
-
-  if (draft.blob) tiles.push(draftCard(ctx));
-  else tiles.push(addTile(ctx, photos.length === 0));
-
-  return h('section', { class: 'photo-wall', 'aria-label': 'Fotos' },
-    h('div', { class: 'photo-wall__strip' }, tiles));
+/**
+ * Liefert die Polaroids einzeln (zum Verteilen zwischen den Zetteln, siehe vorrat.js)
+ * und die Kachel zum Hinzufügen bzw. das Formular für ein neues Foto.
+ * editMode = Fotos können abgenommen werden.
+ */
+export function photoTiles(state, ctx, { editMode = false } = {}) {
+  const photos = (state.photos || []).map((photo, i) => polaroid(photo, i, editMode));
+  const adder = draft.blob ? draftCard(ctx) : addTile(ctx, photos.length === 0);
+  return { photos, adder };
 }
 
 function polaroid(photo, i, editMode) {
-  return h('figure', { class: 'polaroid', 'data-tone': (i % 6) + 1, style: null },
+  return h('figure', { class: ['polaroid', i % 2 ? 'polaroid--left' : 'polaroid--right'], 'data-tone': (i % 6) + 1 },
     h('button', {
       type: 'button',
       class: 'polaroid__photo',
