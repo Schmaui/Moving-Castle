@@ -47,7 +47,7 @@ eigenen Code-Blöcken, Schritt für Schritt erklären, nach Screenshots fragen.
   `.flat()` einmal) – verschachtelte Listen in ein `h('div')` packen. `data-focus-key` muss über ALLE
   Ansichten eindeutig sein (alle Ansichten werden immer gerendert, nur versteckt).
 
-## Stand (zuletzt aktualisiert: 7.11.2026, spätabends) – alles live auf `main`
+## Stand (zuletzt aktualisiert: 8.11.2026, Ende der Session) – alles live auf `main`
 Leiste unten (5 Knöpfe): **Liste · Küche · Planer · Pinnwand · Mehr**. Views in `public/js/views/index.js`;
 Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
 
@@ -108,10 +108,11 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   Nachricht gar keine Tür, mit Nachricht Tür ohne Animation.
 - **Benachrichtigungen** (Web-Push, NUR iPhone als Home-Bildschirm-App ab iOS 16.4 – Nutzerwunsch, am Mac nur
   Hinweis): `server/webpush.js` (RFC 8291/8292 selbst mit node:crypto, keine Pakete; VAPID-Schlüssel in Tabelle
-  `meta`), `server/modules/push.js` (Migration 14: `push_subscriptions` mit prefs pro Handy, `push_queue`),
+  `meta`), `server/modules/push.js` (Migration 14: `push_subscriptions` + `push_queue`; Einstellungen seit Migration 15
+  pro PERSON in `person_prefs.push`, die alte Spalte `prefs` am Abo ist nur noch Rückfall),
   Client `public/js/push.js` + `public/sw.js` (Service Worker OHNE Cache). Arten: tuer (sofort), liste (vom
   anderen, gesammelt 3 Min. nach letzter Änderung, „Rückgängig“ nimmt raus), aufgaben + termine (eine
-  Morgen-Nachricht zur eingestellten Zeit, bis 4 Std. danach, nur wenn etwas ansteht). Ruhezeit pro Handy
+  Morgen-Nachricht zur eingestellten Zeit, bis 4 Std. danach, nur wenn etwas ansteht). Ruhezeit pro Person
   (wartet bis danach). Nur echte Push-Dienste erlaubt (Apple/Google/Mozilla/Microsoft). Aus der Cloud-Session
   nicht am echten iPhone testbar – Nutzer beim ersten Einschalten begleiten (Home-Bildschirm-App!).
 - **Widget** (iPhone + Mac-Schreibtisch ab Sonoma über „iPhone-Widgets“): über die kostenlose App
@@ -145,6 +146,11 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
 - Filmabend, Animationen, verstreute Fotos, Zuklappen, Galerie: live, Feedback der Nutzer abwarten.
 - **Benachrichtigungen + Widget**: live seit 7.11. spätabends, mit den Nutzern am echten iPhone einrichten
   (Home-Bildschirm-App, Scriptable) und Feedback abwarten.
+- **App-Icon „Nacht“ + Einstellungen pro Person**: live seit 7./8.11., noch nicht von den Nutzern bestätigt.
+  Kait will das Nacht-Icon -> beim Neu-Hinzufügen (in Safari wählen!) begleiten, nach Screenshot fragen.
+- **Reihenfolge, um weiterzumachen** (Vorschlag): 1. Nutzer beim Einrichten am iPhone begleiten (Icon neu
+  hinzufügen -> anmelden -> „Wer bist du?“ -> Benachrichtigungen erlauben + „Test schicken“ -> Widget via
+  Scriptable), 2. dann nächste Idee per Klick-Fragen (Fotos bei Rezepten oder Wochen-Rückblick).
 - **Nächste gewünschte Ideen** (Nutzer am 7.11. gewählt, vorher per Klick-Fragen klären):
   **Wochen-Rückblick** (Sonntags-Zettel: erledigt, gekocht, geguckt).
   **Fotos bei Rezepten** (Nutzer am 7.11.: eigene Bilder vom Essen zu einem Rezept hinzufügen).
