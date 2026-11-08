@@ -142,6 +142,8 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   gesehene -> Tür zeigt sie kurz und geht von selbst auf), Benachrichtigungen (`push`; Server nimmt sie für alle
   Handys der Person, Fallback: prefs am Abo). Pro GERÄT bleiben nur „Wer bist du?“ und das App-Icon (Nutzerwahl).
   Widget-Hintergrund = Türfarbe der Person.
+- **Zoomen aus** (Nutzerwunsch 8.11., am iPhone bestätigt): `maximum-scale=1` (index.html), `touch-action: pan-x pan-y`
+  (base.css), `gesturestart` verhindert (app.js). Nicht wieder einschalten.
 - Profile: jedes Gerät fragt einmal „Wer bist du?“ und schickt `X-Person` mit (wer-hat-was).
 - **Backup** am 7.11.2026 mit den Nutzern geprüft (siehe „Betrieb“).
 - Von den Nutzern getestet: alles bis einschließlich Küche + Haushalt („funktioniert alles“).
