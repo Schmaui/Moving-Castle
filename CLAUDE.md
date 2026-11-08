@@ -122,7 +122,12 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   Auswahl der Zettel (Liste, Aufgaben, Essen, Tür-Nachricht, Termine) in der App; pro Widget per „Parameter“
   (z. B. `tuer,essen`) änderbar. Klein 1, Mittel 2, Groß bis 4 Zettel, Türfarbe als Hintergrund.
   Getestet mit Nachbau `scripts/scriptable-nachbau.cjs` (führt Skript aus, zeichnet Vorschau) – echtes
-  Scriptable nicht testbar, Nutzer nach Screenshot fragen. Daten für Morgen-Nachricht + Widget: `server/summary.js`.
+  Scriptable nicht testbar, Nutzer nach Screenshot fragen.
+  **Mac (8.11. mit Nutzer eingerichtet, läuft „perfekt“):** MacBook Pro Intel, macOS Sequoia 15.7. Ablauf: Skript in
+  Scriptable am iPhone, Handoff an, „iPhone-Widgets verwenden“, Widget hinzufügen, Rechtsklick → „Widget bearbeiten“ →
+  Skript wählen. Fallen: Linksklick aufs Widget -> „iPhone-Synchronisierung in deinem Land nicht verfügbar“ (EU, nicht
+  behebbar, Widget nur zum Anschauen). Erst komplett schwarz -> Widget entfernen, neu hinzufügen, iPhone entsperrt
+  daneben, ein paar Min. warten. Ersatz falls nötig (nicht gebaut): Widget für Mac-Programm „Übersicht“. Daten für Morgen-Nachricht + Widget: `server/summary.js`.
 - **Mehr** (#/einstellungen), Reihenfolge von den Nutzern festgelegt: Nachricht an die Tür, Wir zwei (Profile),
   Galerie, Kühlschrank (Türfarbe, Fotos an/aus), Benachrichtigungen, Widget, Kalender, Dieses Gerät (+ Abmelden).
 - **App-Icon** (Mehr → Dieses Gerät, pro Gerät): „Original“ oder „Nacht“ (Kaits Wunsch: blau, Mond, Sterne, Fenster
