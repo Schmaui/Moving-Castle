@@ -2,7 +2,8 @@
 
 *, *::before, *::after { box-sizing: border-box; }
 
-html { -webkit-text-size-adjust: 100%; }
+/* Kein versehentliches Zoomen: nur Wischen/Scrollen, kein Doppeltipp- oder Zwei-Finger-Zoom */
+html { -webkit-text-size-adjust: 100%; touch-action: pan-x pan-y; }
 
 body {
   margin: 0;

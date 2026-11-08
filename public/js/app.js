@@ -21,6 +21,13 @@ const appEl = document.querySelector('.app');
 const loginScreen = document.getElementById('login-screen');
 const whoScreen = document.getElementById('who-screen');
 
+// Kein versehentliches Zoomen mit zwei Fingern (iPhone/iPad/Mac-Trackpad in Safari).
+// Doppeltipp-Zoom verhindert touch-action in base.css, das Hineinzoomen beim
+// Antippen von Eingabefeldern "maximum-scale=1" in index.html.
+for (const type of ['gesturestart', 'gesturechange']) {
+  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+}
+
 const ctx = { rerender: render };
 const parts = new Map(); // id -> { view, section, link, badge }
 
