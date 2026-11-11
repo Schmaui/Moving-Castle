@@ -76,6 +76,7 @@ Unterbereiche haben `inNav: false`, der Hauptknopf leuchtet über `navAlso`.
   heute?“ (was beide wollen, kommt doppelt so oft), „Gesehen“ mit 1–5 Popcorn je Person, Schnitt ≥ 4
   = „Unsere Lieblinge“. Karten hängen direkt an der Tür (Nutzer mochten den dunklen „KI-blocky“-Kasten
   NICHT – keine großen dunklen Container mehr), oben nur ein schmales Vorhang-Band.
+- **Suche in der Küche** (Vorrat + Haushalt, `searchBox`/`searchResults` in `views/vorrat.js`): Suchleiste oben, darunter Trefferliste über ALLE Artikel (unscharf: ohne Groß/Klein, Umlaute egal, 1–2 Tippfehler), Kreis links = fehlt/da (gleicher Zustand wie die Zettel, daher automatisch synchron).
 - **Küche zuklappbar** (Vorrat + Haushalt): Zettel zeigen zugeklappt nur Überschrift + was fehlt („alles da“),
   Überschrift antippen = auf/zu, „Alle auf/zu“ oben; pro Person gespeichert (`openNotes`, früher localStorage).
   Bearbeiten-Modus und „+“ klappen automatisch auf. Nutzer fanden die App vorher „zu voll“ – das half.

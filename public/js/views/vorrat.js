@@ -14,6 +14,7 @@ import { todayMealCard } from './kochen.js';
 import { formatQty } from '../recipes.js';
 import { setMissing, addItem, deleteItem, restoreItem, addCategory, deleteCategory, updateItem, updateCategory, areaOf, sortedPhotos, myPrefs, updateMyPrefs } from '../store.js';
 import { showToast } from '../ui/toast.js';
+import { checkMark } from './liste.js';
 import { CONFIG } from '../config.js';
 
 const OPEN_KEY = 'haushalt_offene_zettel'; // früher pro Gerät – wird einmal zur Person übernommen
@@ -25,6 +26,7 @@ const ui = {
   drafts: {},           // angefangene Eingaben
   newCategoryOpen: false,
   justToggled: null,    // Artikel, der gerade angetippt wurde (kurzes Wippen)
+  query: '',            // Suchtext (gilt für Vorrat + Haushalt zusammen)
   editing: null,        // Artikel, der gerade bearbeitet wird: { id, name, quantity, minQty, unit }
 };
 
@@ -46,6 +48,81 @@ function toggleOpen(cat, ctx) {
   if (open.has(cat.id)) { open.delete(cat.id); ui.addOpen.delete(cat.id); } else open.add(cat.id);
   saveOpen(open);
   ctx.rerender();
+}
+
+
+// ---------- Suche (über Vorrat + Haushalt, unscharf) ----------
+const fold = (t) => String(t).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ß/g, 'ss');
+
+function editDistance(a, b) {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const cur = [i];
+    for (let j = 1; j <= b.length; j++) {
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[b.length];
+}
+
+/** Trefferqualität: 0 = kein Treffer, höher = besser. Findet auch Tippfehler. */
+function matchScore(name, query) {
+  const n = fold(name);
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  if (!words.length) return 0;
+  let total = 0;
+  for (const w of words) {
+    if (n.startsWith(w)) total += 3;
+    else if (n.includes(w)) total += 2;
+    else if (w.length >= 3) {
+      const tol = w.length > 5 ? 2 : 1;
+      const close = n.split(/[\s,.\-/()]+/).some((part) =>
+        part && Math.min(editDistance(w, part), editDistance(w, part.slice(0, w.length))) <= tol);
+      if (!close) return 0;
+      total += 1;
+    } else return 0;
+  }
+  return total;
+}
+
+function searchBox(id, ctx) {
+  return h('div', { class: 'search-box' },
+    h('input', {
+      class: 'input', type: 'search', placeholder: 'Alle Produkte suchen …', 'aria-label': 'Produkte suchen',
+      'data-focus-key': `search-${id}`, autocomplete: 'off', autocapitalize: 'off', enterkeyhint: 'search',
+      value: ui.query,
+      oninput: (e) => { ui.query = e.target.value; ctx.rerender(); },
+    }));
+}
+
+function searchResults(state, id, ctx) {
+  const query = ui.query.trim();
+  if (!query) return null;
+  const catName = new Map(state.categories.map((c) => [c.id, c.name]));
+  const hits = state.items
+    .map((item) => ({ item, score: matchScore(item.name, query) }))
+    .filter((x) => x.score > 0)
+    .sort((a, b) => b.score - a.score || a.item.name.localeCompare(b.item.name, 'de'))
+    .slice(0, 40);
+  return h('section', { class: 'card search-results' },
+    hits.length === 0
+      ? h('p', { class: 'muted' }, `Nichts gefunden für „${query}“.`)
+      : h('ul', { class: 'check-list' }, hits.map(({ item }) => h('li', {}, h('button', {
+        type: 'button',
+        class: ['check-row', 'search-row', item.missing && 'is-checked'],
+        'aria-pressed': String(!!item.missing),
+        'data-focus-key': `search-${id}-item-${item.id}`,
+        'aria-label': item.missing ? `${item.name} fehlt – antippen, wenn wieder da` : `${item.name} fehlt – antippen, um auf die Liste zu setzen`,
+        onclick: () => setMissing(item, !item.missing),
+      },
+        h('span', { class: 'check-row__box', 'aria-hidden': 'true' }, checkMark()),
+        h('span', { class: 'check-row__text' },
+          h('span', { class: 'check-row__name' }, item.name),
+          h('span', { class: 'check-row__detail' }, catName.get(item.categoryId) || ''),
+        ),
+      )))),
+  );
 }
 
 // Vorschläge für Einheiten (man kann auch etwas anderes eintippen)
@@ -99,10 +176,11 @@ function stockView({ id, area, title, icon: iconName, intro, navLabel, navAlso, 
         ],
       });
 
+      const search = [searchBox(id, ctx), searchResults(state, id, ctx)].filter(Boolean);
       const cards = categories.map((cat) =>
         categoryCard(cat, items.filter((i) => i.categoryId === cat.id), ctx));
 
-      if (!decorate) return [kitchenTabs(id), header, h('div', { class: 'cards' }, cards, newCategoryCard(ctx, area))];
+      if (!decorate) return [kitchenTabs(id), header, ...search, h('div', { class: 'cards' }, cards, newCategoryCard(ctx, area))];
 
       // Fotos hängen wie Magnete verstreut über der Tür (Position: scatterPhotos in ui/photos.js).
       // Einstellung "Fotos an der Tür": 0 = aus.
@@ -115,7 +193,7 @@ function stockView({ id, area, title, icon: iconName, intro, navLabel, navAlso, 
         if (showPhotos && i === 0 && !photos.length) board.push(photoHint());
       });
 
-      return [kitchenTabs(id), header, h('div', { class: 'fridge-board' },
+      return [kitchenTabs(id), header, ...search, h('div', { class: 'fridge-board' },
         h('div', { class: 'cards' }, board, newCategoryCard(ctx, area)),
         photos.length > 0 && photoLayer(photos),
       )];

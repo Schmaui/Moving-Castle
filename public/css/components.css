@@ -2497,3 +2497,10 @@ body.is-split .view--split-aside .list-section { font-size: 1.4rem; margin-top: 
 .icon-choice__item:disabled:not(.is-chosen) { opacity: .55; }
 .icon-choice__img { width: 64px; height: 64px; border-radius: 15px; box-shadow: 0 2px 6px rgb(0 0 0 / .2); }
 .icon-choice__steps { margin-top: var(--space-3); }
+
+/* ---------- Suche in der Küche ---------- */
+.search-box { margin-bottom: var(--space-3); }
+.search-box .input { width: 100%; }
+.search-results { margin-bottom: var(--space-4); }
+.search-row.is-checked { opacity: 1; }
+.search-row.is-checked .check-row__name { text-decoration: none; color: var(--color-missing); }
